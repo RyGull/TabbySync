@@ -764,6 +764,7 @@
 
   var TabStash = {
     STATE_KEY: STATE_KEY,
+    STATUS_KEY: STATUS_KEY,
     emptyState: emptyState,
     uid: uid,
     slugify: slugify,

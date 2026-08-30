@@ -6,11 +6,10 @@
   var settings = null;
 
   var listEl = document.getElementById("list");
-  var statsEl = document.getElementById("stats");
-  var syncPill = document.getElementById("sync-pill");
+  var statusEl = document.getElementById("status-block");
   var suppressReload = false;
   var searchQuery = "";
-  var baseStats = "";
+  var countsOverride = null; // set while a search is active; null shows the normal tab/group counts
 
   // ---- utilities -----------------------------------------------------------
 
@@ -35,17 +34,63 @@
 
   function persist() {
     suppressReload = true;
-    setSync("busy");
-    TabStash.saveState(state)
-      .then(function () { setSync("ok"); })
-      .catch(function () { setSync("err"); })
+    // Local save only — this always succeeds almost instantly, so it isn't
+    // meaningful "sync" status. The status block reflects the real remote
+    // sync outcome instead (see renderStatusBlock), which lands a moment
+    // later via the debounced background push.
+    TabStash.saveState(state).catch(function () {})
       .finally(function () { setTimeout(function () { suppressReload = false; }, 200); });
   }
-  function setSync(kind) {
-    syncPill.className = "sync-pill" + (kind ? " " + kind : "");
-    syncPill.querySelector(".txt").textContent =
-      kind === "busy" ? "Syncing…" : kind === "err" ? "Sync error" :
-      kind === "ok" ? "Saved" : "Sync";
+
+  // ---- status block (profile / encryption / sync status) -------------------
+
+  function encryptionOn() { return !!(settings && settings.passphrase); }
+  function profileLabel() {
+    if (settings && settings.syncKey) return settings.syncKey;
+    // No sync name set (e.g. JSONBin, which has one profile per key) — fall
+    // back to naming the sync method instead of showing a blank name.
+    try { return self.SyncLockerProviders.providerMeta(settings && settings.provider).label; }
+    catch (e) { return "Profile"; }
+  }
+  function countsLabel() {
+    var t = totals();
+    return t.tabs === 0 ? "no stashed tabs" :
+      t.tabs + " tab" + (t.tabs === 1 ? "" : "s") + " in " +
+      t.groups + " group" + (t.groups === 1 ? "" : "s");
+  }
+  function setCountsDisplay(text) {
+    var c = statusEl && statusEl.querySelector(".status-count");
+    if (c) c.textContent = text;
+  }
+  // Rebuilds the whole status block from the real, persisted sync status
+  // (TabStash.getSyncStatus()) plus current settings — not from whether the
+  // last local edit merely saved, which is a different (and always-succeeds)
+  // thing.
+  function renderStatusBlock() {
+    if (!statusEl) return;
+    TabStash.getSyncStatus().then(function (st) {
+      var kind = st.status === "ok" ? "ok" : st.status === "error" ? "err" : "";
+      var syncText = st.status === "ok" ? "Synced" : st.status === "error" ? "Sync error" : "Never synced";
+      statusEl.className = "status-block" + (kind ? " " + kind : "");
+      statusEl.title = (st.status === "error" && st.error) ? st.error : "Sync status";
+      statusEl.innerHTML = "";
+      statusEl.appendChild(el("span", "status-dot"));
+      statusEl.appendChild(el("span", "status-name", profileLabel()));
+      statusEl.appendChild(el("span", "status-enc" + (encryptionOn() ? " on" : ""),
+        encryptionOn() ? "🔒 Encrypted" : "Not encrypted"));
+      statusEl.appendChild(el("span", "status-sync", syncText));
+      if (st.at) statusEl.appendChild(el("span", "status-last", formatDate(st.at)));
+      statusEl.appendChild(el("span", "status-count", countsOverride != null ? countsOverride : countsLabel()));
+    });
+  }
+  // Immediate feedback for a manually-triggered sync; renderStatusBlock()
+  // (called once the request settles) replaces it with the real outcome.
+  function setSyncBusy(on) {
+    if (!statusEl) return;
+    if (!on) { renderStatusBlock(); return; }
+    statusEl.classList.add("busy");
+    var s = statusEl.querySelector(".status-sync");
+    if (s) s.textContent = "Syncing…";
   }
 
   // ---- actions -------------------------------------------------------------
@@ -316,13 +361,8 @@
   }
 
   function render() {
-    var t = totals();
-    var label = settings && settings.syncKey ? settings.syncKey + " · " : "";
-    baseStats = label +
-      (t.tabs === 0 ? "no stashed tabs" :
-        t.tabs + " tab" + (t.tabs === 1 ? "" : "s") + " in " +
-        t.groups + " group" + (t.groups === 1 ? "" : "s"));
-    statsEl.textContent = baseStats;
+    countsOverride = null;
+    setCountsDisplay(countsLabel());
 
     listEl.innerHTML = "";
     if (!state.groups.length) {
@@ -362,7 +402,8 @@
         g.hidden = false;
         g.querySelectorAll("li.tab").forEach(function (t) { t.hidden = false; });
       });
-      statsEl.textContent = baseStats;
+      countsOverride = null;
+      setCountsDisplay(countsLabel());
       return;
     }
     labels.forEach(function (l) { l.hidden = true; });
@@ -377,8 +418,9 @@
       });
       g.hidden = !any;
     });
-    statsEl.textContent = shown + " matching tab" + (shown === 1 ? "" : "s") +
+    countsOverride = shown + " matching tab" + (shown === 1 ? "" : "s") +
       " · “" + searchQuery.trim() + "”";
+    setCountsDisplay(countsOverride);
   }
 
   function sectionLabel(text) {
@@ -709,11 +751,10 @@
     chrome.runtime.openOptionsPage();
   });
   document.getElementById("sync-now").addEventListener("click", function () {
-    setSync("busy");
-    chrome.runtime.sendMessage({ type: "tabstash-sync" }).then(function (res) {
-      setSync(res && res.ok ? "ok" : "err");
+    setSyncBusy(true);
+    chrome.runtime.sendMessage({ type: "tabstash-sync" }).then(function () {
       reload();
-    }).catch(function () { setSync("err"); });
+    }).catch(function () { renderStatusBlock(); });
   });
   document.getElementById("remove-on-restore").addEventListener("change", function (e) {
     var on = e.target.checked;
@@ -729,6 +770,7 @@
       var rr = document.getElementById("remove-on-restore");
       if (rr) rr.checked = !!settings.removeOnRestore;
       render();
+      renderStatusBlock();
       if (trashOverlay.classList.contains("show")) renderTrashList();
     });
   }
@@ -736,9 +778,12 @@
   chrome.storage.onChanged.addListener(function (changes, area) {
     if (area !== "local") return;
     if (changes[TabStash.STATE_KEY] && !suppressReload) { reload(); return; }
+    // The real sync outcome can change from elsewhere (the background alarm,
+    // another open copy of this page) — keep the status block live.
+    if (changes[TabStash.STATUS_KEY]) { renderStatusBlock(); }
     // Reload if any tab-relevant setting changed (shared config keys).
     var K = self.SyncLockerConfig.KEYS;
-    if ([K.tabRestoreGroup, K.tabDedupe, K.syncName, K.passphrase, K.tabRemoveOnRestore].some(function (k) {
+    if ([K.tabRestoreGroup, K.tabDedupe, K.syncName, K.passphrase, K.tabRemoveOnRestore, K.provider].some(function (k) {
       return k in changes;
     })) { reload(); }
   });

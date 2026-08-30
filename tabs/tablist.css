@@ -10,6 +10,7 @@
   --danger: #c0392b;
   --star: #e9a319;
   --drop: #cfe0ff;
+  --ok: #16a34a;
 }
 
 /* dark palette: system default unless forced light; and when forced dark */
@@ -142,21 +143,33 @@ header.top {
 }
 .linkbtn:hover { color: var(--link-hover); text-decoration: underline; }
 
-.sync-pill {
+/* status block — profile / encryption / sync status, popup-style */
+.status-block {
   margin-left: auto;
-  font-size: 12px;
-  color: var(--muted);
   display: flex;
   align-items: center;
-  gap: 6px;
+  flex-wrap: wrap;
+  row-gap: 2px;
+  font-size: 12px;
+  color: var(--muted);
 }
-.sync-pill .led {
+.status-block > span { white-space: nowrap; }
+.status-block > span + span::before {
+  content: "·";
+  margin: 0 7px;
+  color: var(--border);
+}
+.status-dot {
   width: 8px; height: 8px; border-radius: 50%;
   background: #b9b9b9;
+  flex: 0 0 auto;
 }
-.sync-pill.ok .led { background: #37a24a; }
-.sync-pill.busy .led { background: var(--star); }
-.sync-pill.err .led { background: var(--danger); }
+.status-block.ok .status-dot { background: var(--ok); }
+.status-block.err .status-dot { background: var(--danger); }
+.status-block.busy .status-dot { background: var(--star); }
+.status-name { font-weight: 700; color: var(--text); }
+.status-enc.on { color: var(--ok); font-weight: 600; }
+.status-block.err .status-sync { color: var(--danger); font-weight: 600; }
 
 .section-label {
   font-size: 12px;
