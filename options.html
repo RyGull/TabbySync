@@ -40,8 +40,8 @@
       <p class="hint" id="srv-token-hint">Sent as <code>Authorization: Bearer …</code>. Stored only in this browser profile.</p>
 
       <label class="field" for="srv-name" id="srv-name-label">Sync name</label>
-      <input type="text" id="srv-name" placeholder="work" spellcheck="false" autocomplete="off">
-      <p class="hint" id="srv-name-hint">This profile's name (e.g. <code>work</code>, <code>home</code>). Use the identical name on your other computers to share the same data; a different name stays separate.</p>
+      <input type="text" id="srv-name" placeholder="work" spellcheck="false" autocomplete="off" maxlength="40">
+      <p class="hint" id="srv-name-hint">This profile's name (e.g. <code>work</code>, <code>home</code>). Use the identical name on your other computers to share the same data; a different name stays separate. Letters, numbers, dots, dashes and underscores only, up to 40 characters — anything else is stripped when you save.</p>
 
       <div class="preview" id="srv-preview">Set a URL and sync name to see your file paths.</div>
 

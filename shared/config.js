@@ -126,9 +126,29 @@
     return SERVER_KEYS.some(function (k) { return k in changes; });
   }
 
+  // The sync name is embedded in remote filenames (bookmarks-<name>.json /
+  // tabs-<name>.json) and shown all over the UI (Options preview, the
+  // popup, the tab-list status block) — so it needs to be both filename-safe
+  // and short enough not to overflow those layouts. This matches the regex
+  // the generated synclocker.php server itself requires
+  // (/^(bookmarks|tabs)-[A-Za-z0-9._-]+\.json$/), so a name that passes here
+  // is guaranteed to be accepted there too.
+  var SYNC_NAME_MAX = 40;
+  function sanitizeSyncName(name) {
+    return (name || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]+/g, "-")
+      .slice(0, SYNC_NAME_MAX)
+      // Trim leading/trailing separators — including any left dangling right
+      // at the cut point by the length limit above.
+      .replace(/^[-.]+|[-.]+$/g, "");
+  }
+
   self.SyncLockerConfig = {
     KEYS: K,
     SERVER_KEYS: SERVER_KEYS,
+    SYNC_NAME_MAX: SYNC_NAME_MAX,
+    sanitizeSyncName: sanitizeSyncName,
     getConfig: getConfig,
     setConfig: setConfig,
     serverChanged: serverChanged,

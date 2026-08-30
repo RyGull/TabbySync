@@ -281,7 +281,10 @@
   // colliding, regardless of which provider (self-hosted / Gist / JSONBin —
   // see shared/providers.js) that destination actually is.
   function remoteFileName(settings) {
-    return "tabs-" + slugify(settings.syncKey || "") + ".json";
+    // Shared with the bookmarks engine's sanitizer so the same sync name
+    // always produces the same filename-safe form on both sides, and
+    // defensively re-sanitized here regardless of how syncKey got set.
+    return "tabs-" + shared().sanitizeSyncName(settings.syncKey || "") + ".json";
   }
 
   function serialize(settings, state) {

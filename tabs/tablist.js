@@ -75,7 +75,9 @@
       statusEl.title = (st.status === "error" && st.error) ? st.error : "Sync status";
       statusEl.innerHTML = "";
       statusEl.appendChild(el("span", "status-dot"));
-      statusEl.appendChild(el("span", "status-name", profileLabel()));
+      var nameEl = el("span", "status-name", profileLabel());
+      nameEl.title = nameEl.textContent; // full name on hover if it's truncated
+      statusEl.appendChild(nameEl);
       statusEl.appendChild(el("span", "status-enc" + (encryptionOn() ? " on" : ""),
         encryptionOn() ? "🔒 Encrypted" : "Not encrypted"));
       statusEl.appendChild(el("span", "status-sync", syncText));

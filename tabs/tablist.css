@@ -159,6 +159,17 @@ header.top {
   margin: 0 7px;
   color: var(--border);
 }
+/* Sync names are capped at save time (see shared/config.js), but this is a
+   belt-and-suspenders limit against a long name saved before that existed,
+   or any other unexpectedly long value — never let one span push the
+   toolbar layout around. */
+.status-name {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  vertical-align: bottom;
+}
 .status-dot {
   width: 8px; height: 8px; border-radius: 50%;
   background: #b9b9b9;

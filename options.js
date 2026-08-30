@@ -115,7 +115,9 @@ $('sync-provider').addEventListener('change', updateProviderUI);
 
 function preview() {
   const provider = currentProvider();
-  const name = $('srv-name').value.trim();
+  // Preview the name as it'll actually be used (sanitized), without
+  // rewriting the input itself while the user is still typing.
+  const name = SL.sanitizeSyncName($('srv-name').value);
   if (provider === 'custom') {
     const base = $('srv-url').value.trim();
     if (!base || !name) { $('srv-preview').textContent = 'Set a URL and sync name to see your file paths.'; return; }
@@ -189,11 +191,19 @@ $('srv-save').addEventListener('click', async () => {
   const meta = SP.providerMeta(provider);
   const serverUrl = $('srv-url').value.trim().replace(/\/+$/, '');
   const token = $('srv-token').value;
-  const syncName = $('srv-name').value.trim();
+  // Letters/numbers/dots/dashes/underscores only, capped at SYNC_NAME_MAX —
+  // it ends up embedded in remote filenames and shown throughout the UI.
+  // Reflect the cleaned-up value back into the field so what's saved is
+  // exactly what's visible, rather than silently rewriting behind the input.
+  const syncName = SL.sanitizeSyncName($('srv-name').value);
+  $('srv-name').value = syncName;
 
   if (meta.needsUrl && !serverUrl) { status('srv-status', 'Server URL is required.', 'bad'); return; }
   if (!token) { status('srv-status', `${meta.tokenLabel} is required.`, 'bad'); return; }
-  if (provider === 'custom' && !syncName) { status('srv-status', 'Sync name is required.', 'bad'); return; }
+  if (provider === 'custom' && !syncName) {
+    status('srv-status', 'Sync name is required (letters, numbers, dots, dashes and underscores).', 'bad');
+    return;
+  }
 
   status('srv-status', 'Saving…');
   await SL.setConfig({ provider, serverUrl, token, syncName });
@@ -214,7 +224,8 @@ $('srv-test').addEventListener('click', async () => {
   const meta = SP.providerMeta(provider);
   const serverUrl = $('srv-url').value.trim().replace(/\/+$/, '');
   const token = $('srv-token').value;
-  const syncName = $('srv-name').value.trim();
+  const syncName = SL.sanitizeSyncName($('srv-name').value);
+  $('srv-name').value = syncName;
 
   if (meta.needsUrl && !serverUrl) { status('srv-status', 'Fill in the Server URL first.', 'bad'); return; }
   if (!token) { status('srv-status', `Fill in the ${meta.tokenLabel} first.`, 'bad'); return; }

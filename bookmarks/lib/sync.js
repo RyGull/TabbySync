@@ -11,7 +11,10 @@ import { encryptJSON, decryptJSON, isEncrypted } from './crypto.js';
 export const FILE_PREFIX = 'bookmarks-';
 
 function fileName(cfg) {
-  return FILE_PREFIX + (cfg.syncName || '') + '.json';
+  // Sanitize defensively here too, not just at the Options save point — this
+  // is what actually reaches the server/Gist/bin, so it needs to be
+  // filename-safe regardless of how syncName ended up in config.
+  return FILE_PREFIX + self.SyncLockerConfig.sanitizeSyncName(cfg.syncName) + '.json';
 }
 
 // Returns the remote bookmark tree, or null if nothing stored yet.
