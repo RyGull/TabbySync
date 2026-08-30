@@ -1,0 +1,58 @@
+{
+  "manifest_version": 3,
+  "name": "SyncLocker",
+  "version": "1.0.18",
+  "description": "Self-hosted sync for your bookmarks and your open tabs — two tools in one extension, sharing one server, one token and one sync name. Use either or both.",
+  "permissions": [
+    "bookmarks",
+    "tabs",
+    "tabGroups",
+    "storage",
+    "unlimitedStorage",
+    "contextMenus",
+    "alarms"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "SyncLocker",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "64": "icons/icon-64.png",
+    "96": "icons/icon-96.png",
+    "128": "icons/icon-128.png",
+    "256": "icons/icon-256.png"
+  },
+  "commands": {
+    "send-all-tabs": {
+      "suggested_key": {
+        "default": "Alt+Shift+O",
+        "mac": "Alt+Shift+O"
+      },
+      "description": "Send all tabs in this window to SyncLocker"
+    },
+    "open-tabstash": {
+      "description": "Open the SyncLocker tab list"
+    }
+  }
+}

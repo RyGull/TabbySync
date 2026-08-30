@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SyncLocker — Options</title>
+  <link rel="stylesheet" href="options.css">
+  <script src="shared/theme.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <img class="olo olo-light" src="icons/logo-light.svg" alt="SyncLocker">
+      <img class="olo olo-dark" src="icons/logo-dark.svg" alt="SyncLocker">
+      <span class="tag">self-hosted bookmark &amp; tab sync</span>
+      <span id="sl-theme"></span>
+    </div>
+    <p class="lead">One server, one token, one sync name — shared by both tools. Turn on the
+      bookmark sync, the tab sync, or both. Nothing ever leaves your own server.</p>
+
+    <!-- ================= SHARED SERVER ================= -->
+    <section class="card server">
+      <h2><span class="ic">🌐</span> Server &amp; sync</h2>
+      <p>Point SyncLocker at your own endpoint. Both tools use it: bookmarks are stored as
+        <code>bookmarks-&lt;name&gt;.json</code> and tabs as <code>tabs-&lt;name&gt;.json</code>,
+        so they never collide.</p>
+
+      <label class="field" for="srv-url">Server URL</label>
+      <input type="url" id="srv-url" placeholder="https://example.com/synclocker/synclocker.php" spellcheck="false">
+      <p class="hint">The <code>synclocker.php</code> script (see “Self-hosting” below). Requests route via <code>?name=</code>.</p>
+
+      <label class="field" for="srv-token">Bearer token</label>
+      <input type="password" id="srv-token" placeholder="the token inside synclocker.php" spellcheck="false" autocomplete="off">
+      <p class="hint">Sent as <code>Authorization: Bearer …</code>. Stored only in this browser profile.</p>
+
+      <label class="field" for="srv-name">Sync name</label>
+      <input type="text" id="srv-name" placeholder="work" spellcheck="false" autocomplete="off">
+      <p class="hint">This profile's name (e.g. <code>work</code>, <code>home</code>). Use the identical name on your other computers to share the same data; a different name stays separate.</p>
+
+      <div class="preview" id="srv-preview">Set a URL and sync name to see your file paths.</div>
+
+      <div class="row">
+        <button class="btn primary" id="srv-save">Save &amp; grant access</button>
+        <button class="btn" id="srv-test">Test connection</button>
+      </div>
+      <div class="status" id="srv-status"></div>
+
+      <h3>Encryption (optional, shared)</h3>
+      <p>Encrypt data <b>before</b> it reaches your server, so the stored files are unreadable
+        even to your host. One passphrase covers both tools; enter the same one on every computer.</p>
+      <label class="field" for="enc-pass">Passphrase</label>
+      <input type="password" id="enc-pass" placeholder="a phrase only you know" spellcheck="false" autocomplete="new-password">
+      <div class="callout"><b>Important:</b> never sent to the server, stored only on this device.
+        If you forget it, the encrypted data can't be recovered — there's no reset.</div>
+      <div class="row">
+        <button class="btn" id="enc-save">Save passphrase</button>
+        <button class="btn outline" id="enc-clear">Turn off encryption</button>
+      </div>
+      <div class="status" id="enc-status"></div>
+
+    </section>
+
+    <!-- ================= SELF-HOSTING ================= -->
+    <section class="card selfhost">
+      <h2><span class="ic">🛠️</span> Self-hosting — generate your server files</h2>
+      <p>No endpoint yet? Generate a ready-to-upload bundle (one PHP script + <code>.htaccess</code>
+        guards) with a fresh random token. It runs on <b>your</b> web space; SyncLocker never sends your data to anyone.</p>
+      <label class="field" for="gen-token">Server token</label>
+      <div class="row" style="margin-top:4px">
+        <input type="text" id="gen-token" spellcheck="false" autocomplete="off" readonly style="flex:1;min-width:220px">
+        <button class="btn" id="gen-regen" type="button">Regenerate</button>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="gen-download" type="button">Download server files (.zip)</button>
+        <button class="btn outline" id="gen-use" type="button">Use this token above</button>
+      </div>
+      <div class="status" id="gen-status"></div>
+      <details>
+        <summary>How to host it (about 3 minutes)</summary>
+        <div class="callout">
+          <ol style="margin:0 0 0 18px;padding:0;line-height:1.7">
+            <li>Click <b>Download server files</b> — you get <code>synclocker-server.zip</code> containing a <code>synclocker/</code> folder.</li>
+            <li>Upload that whole folder to your PHP web space (e.g. <code>public_html/</code> on cPanel) over HTTPS.</li>
+            <li>Set <b>Server URL</b> above to <code>https://YOURDOMAIN/synclocker/synclocker.php</code>, then click <b>Use this token above</b>.</li>
+            <li><b>Save &amp; grant access</b>, then <b>Test connection</b> — a <code>404</code> is expected until the first sync creates a file.</li>
+            <li>Repeat the same URL + token + sync name on your other computers.</li>
+          </ol>
+        </div>
+      </details>
+    </section>
+
+    <!-- ================= BOOKMARKS ================= -->
+    <section class="card bm" id="bmCard">
+      <h2><span class="ic">📑</span> Bookmarks
+        <label class="sw" title="Enable bookmark sync">
+          <input type="checkbox" id="bm-enable"><span class="track"></span>
+        </label>
+      </h2>
+      <p>Sync your whole bookmark tree (bar + other bookmarks) with a true three-way merge across devices.</p>
+      <div class="body">
+        <label class="field" for="bm-interval">Auto-sync every (minutes)</label>
+        <input type="number" id="bm-interval" min="1" max="1440" step="1" value="5">
+        <label class="check"><input type="checkbox" id="bm-autosync"> Sync shortly after any bookmark change</label>
+        <label class="check"><input type="checkbox" id="bm-deletewins"> Deletions win over edits <span class="hint">(off = an edit beats a delete, so nothing is silently lost)</span></label>
+
+        <h3>Import &amp; export</h3>
+        <p>Imports <b>merge</b> into your current bookmarks (matched by URL, no duplicates), then sync.</p>
+        <div class="row">
+          <button class="btn outline" id="bm-exp-html">Export HTML</button>
+          <button class="btn outline" id="bm-imp-html">Import HTML…</button>
+        </div>
+        <label class="field" for="bm-backup-pass" style="margin-top:16px">Encrypted backup passphrase</label>
+        <input type="password" id="bm-backup-pass" placeholder="backup passphrase" spellcheck="false" autocomplete="new-password">
+        <div class="row">
+          <button class="btn outline" id="bm-exp-enc">Export encrypted backup</button>
+          <button class="btn outline" id="bm-imp-enc">Import encrypted backup…</button>
+        </div>
+        <input type="file" id="bm-file-html" accept=".html,text/html">
+        <input type="file" id="bm-file-enc" accept=".json,application/json">
+        <div class="status" id="bm-io-status"></div>
+      </div>
+    </section>
+
+    <!-- ================= TABS ================= -->
+    <section class="card tab" id="tabCard">
+      <h2><span class="ic">🗂️</span> Tabs
+        <label class="sw" title="Enable tab sync">
+          <input type="checkbox" id="tab-enable"><span class="track"></span>
+        </label>
+      </h2>
+      <p>Collapse open tabs into a saved list to free memory, then restore them individually or all at once — synced across devices.</p>
+      <div class="body">
+        <label class="field" for="tab-interval">Auto-sync every (minutes)</label>
+        <input type="number" id="tab-interval" min="0" max="1440" step="1" value="5">
+        <p class="hint">0 disables the background check (you can still sync from the popup). Minimum 1 minute when on.</p>
+
+        <label class="field" for="tab-dedupe">When sending tabs already saved<span class="req">* required</span></label>
+        <select id="tab-dedupe" required>
+          <option value="" disabled selected hidden>— Choose one —</option>
+          <option value="allow">Keep duplicates (save everything)</option>
+          <option value="group">Skip duplicates within the same send</option>
+          <option value="all">Skip tabs already saved in this list</option>
+        </select>
+        <p class="hint">Pick one so you know whether repeat tabs get added to your lists again — there's no default. Skipped tabs still close in your window; they're just not saved a second time.</p>
+        <div class="row">
+          <button class="btn" id="tab-dedupe-now">Remove duplicates already saved</button>
+        </div>
+        <div class="status" id="tab-dedupe-status"></div>
+
+        <h3>Restoring</h3>
+        <label class="check"><input type="checkbox" id="tab-restore-group"> Open each restored list as a browser tab group</label>
+        <label class="check"><input type="checkbox" id="tab-remove-restore"> Remove links from the list when I restore them <span class="hint">(off = keep them after restoring)</span></label>
+
+        <h3>Tab list on startup</h3>
+        <label class="check"><input type="checkbox" id="tab-open-startup"> Open the tab list automatically when the browser starts</label>
+        <label class="check"><input type="checkbox" id="tab-pin-list"> Keep the tab-list tab pinned</label>
+
+        <h3>Import &amp; export</h3>
+        <p>Imports <b>merge</b> into this profile's lists (matched by URL, no duplicates), then sync. In a plain URL list, a <b>blank line</b> starts a new group.</p>
+        <div class="row">
+          <button class="btn outline" id="tab-exp">Export JSON</button>
+          <button class="btn outline" id="tab-imp">Import JSON…</button>
+        </div>
+        <label class="field" for="tab-backup-pass" style="margin-top:16px">Encrypted backup passphrase</label>
+        <input type="password" id="tab-backup-pass" placeholder="backup passphrase" spellcheck="false" autocomplete="new-password">
+        <div class="row">
+          <button class="btn outline" id="tab-exp-enc">Export encrypted backup</button>
+          <button class="btn outline" id="tab-imp-enc">Import encrypted backup…</button>
+        </div>
+        <input type="file" id="tab-file" accept=".json,application/json">
+        <div class="status" id="tab-io-status"></div>
+
+        <h3>Shortcuts</h3>
+        <p><code>Alt</code>+<code>Shift</code>+<code>O</code> — send all tabs. Right-click the toolbar icon for more (this tab, others, left, right). Rebind at <code>chrome://extensions/shortcuts</code>.</p>
+      </div>
+    </section>
+  </div>
+
+  <script src="shared/config.js"></script>
+  <script src="shared/server-files.js"></script>
+  <script src="tabs/storage.js"></script>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

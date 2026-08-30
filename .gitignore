@@ -1,0 +1,3 @@
+
+# Never commit the reCAPTCHA secret
+server/feedback/config.php

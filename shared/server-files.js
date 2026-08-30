@@ -1,0 +1,311 @@
+// server-files.js — generates the self-hosting server bundle in the browser.
+//
+// SyncLocker uses ONE endpoint + ONE token for both engines. Files are
+// namespaced by prefix (bookmarks-<name>.json / tabs-<name>.json) so they
+// share the same PHP script and data/ folder without ever colliding.
+//
+// Produces a downloadable synclocker-server.zip with a fresh token baked in,
+// two .htaccess guards and a plain-text INSTALL guide. Store-only ZIP writer,
+// no dependencies.
+//
+// Classic IIFE -> self.SyncLockerServerFiles.
+(function () {
+  "use strict";
+
+  // A 24-byte random token, hex-encoded (48 chars).
+  function randomToken() {
+    var bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, function (b) {
+      return b.toString(16).padStart(2, "0");
+    }).join("");
+  }
+
+  // The self-hosted endpoint. Routes by ?name= (no URL rewriting needed) and
+  // only ever touches files named bookmarks-<x>.json or tabs-<x>.json inside
+  // ./data/. Emits/honours ETag + If-Match so concurrent writers are caught.
+  function phpFile(token) {
+    return "<?php\n" +
+"/**\n" +
+" * synclocker.php — self-hosted sync endpoint for the SyncLocker extension.\n" +
+" *\n" +
+" * SINGLE self-contained file, shared by BOTH SyncLocker engines:\n" +
+" *   - bookmarks sync  -> data/bookmarks-<name>.json\n" +
+" *   - tab-list sync   -> data/tabs-<name>.json\n" +
+" * One token, one folder. It routes by a query parameter, so it can even sit\n" +
+" * in a directory alongside another app without conflict.\n" +
+" *\n" +
+" * Contract:\n" +
+" *   GET  synclocker.php?name=bookmarks-<name>.json  -> stored JSON (404 if none)\n" +
+" *   PUT  synclocker.php?name=tabs-<name>.json       -> stores the body\n" +
+" * Both require:  Authorization: Bearer <TOKEN>\n" +
+" *\n" +
+" * Deploy: put this file in its OWN directory on your server, e.g.\n" +
+" *   https://your-server.example/synclocker/synclocker.php\n" +
+" * Then put that URL + the TOKEN below into the extension's Options.\n" +
+" * A ./data/ folder is created automatically next to this file.\n" +
+" */\n" +
+"\n" +
+"// ---- CONFIG ----------------------------------------------------------------\n" +
+"const TOKEN = '" + token + "';\n" +
+"const DATA_DIR = __DIR__ . '/data';\n" +
+"const MAX_BYTES = 8 * 1024 * 1024; // 8 MB safety cap per file\n" +
+"const NAME_RE = '/^(bookmarks|tabs)-[A-Za-z0-9._-]+\\\\.json$/';\n" +
+"// ----------------------------------------------------------------------------\n" +
+"\n" +
+"header('Access-Control-Allow-Origin: *');\n" +
+"header('Access-Control-Allow-Methods: GET, PUT, OPTIONS');\n" +
+"header('Access-Control-Allow-Headers: Authorization, Content-Type, If-Match');\n" +
+"header('Access-Control-Expose-Headers: ETag');\n" +
+"header('X-Content-Type-Options: nosniff');\n" +
+"\n" +
+"$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';\n" +
+"if ($method === 'OPTIONS') { http_response_code(204); exit; }\n" +
+"\n" +
+"function fail($code, $msg) {\n" +
+"    http_response_code($code);\n" +
+"    header('Content-Type: application/json');\n" +
+"    echo json_encode(['error' => $msg]);\n" +
+"    exit;\n" +
+"}\n" +
+"\n" +
+"// ---- auth ------------------------------------------------------------------\n" +
+"function bearer_token() {\n" +
+"    $h = null;\n" +
+"    if (isset($_SERVER['HTTP_AUTHORIZATION']))              $h = $_SERVER['HTTP_AUTHORIZATION'];\n" +
+"    elseif (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) $h = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];\n" +
+"    elseif (function_exists('getallheaders')) {\n" +
+"        foreach (getallheaders() as $k => $v) {\n" +
+"            if (strtolower($k) === 'authorization') { $h = $v; break; }\n" +
+"        }\n" +
+"    }\n" +
+"    if ($h && preg_match('/Bearer\\\\s+(.+)/i', $h, $m)) return trim($m[1]);\n" +
+"    return null;\n" +
+"}\n" +
+"\n" +
+"$provided = bearer_token();\n" +
+"if ($provided === null) fail(401, 'Missing Authorization bearer token.');\n" +
+"if (!hash_equals(TOKEN, $provided)) fail(403, 'Invalid token.');\n" +
+"\n" +
+"// ---- resolve target file (query param, with PATH_INFO fallback) ------------\n" +
+"$name = $_GET['name'] ?? null;\n" +
+"if (!$name && !empty($_SERVER['PATH_INFO'])) $name = basename($_SERVER['PATH_INFO']);\n" +
+"if (!$name || !preg_match(NAME_RE, $name)) {\n" +
+"    fail(400, 'Invalid or non-namespaced file name (must be bookmarks-<name>.json or tabs-<name>.json).');\n" +
+"}\n" +
+"$path = DATA_DIR . '/' . $name;\n" +
+"\n" +
+"// ---- ensure data dir + protection -----------------------------------------\n" +
+"if (!is_dir(DATA_DIR)) {\n" +
+"    if (!@mkdir(DATA_DIR, 0755, true) && !is_dir(DATA_DIR)) fail(500, 'Cannot create data directory.');\n" +
+"}\n" +
+"$guard = DATA_DIR . '/.htaccess';\n" +
+"if (!file_exists($guard)) @file_put_contents($guard, \"Require all denied\\nDeny from all\\n\");\n" +
+"\n" +
+"// ---- handle methods --------------------------------------------------------\n" +
+"if ($method === 'GET') {\n" +
+"    if (!is_file($path)) fail(404, 'Not found.');\n" +
+"    header('Content-Type: application/json');\n" +
+"    header('Cache-Control: no-store');\n" +
+"    header('ETag: \"' . md5_file($path) . '\"');\n" +
+"    readfile($path);\n" +
+"    exit;\n" +
+"}\n" +
+"\n" +
+"if ($method === 'PUT') {\n" +
+"    $body = file_get_contents('php://input', false, null, 0, MAX_BYTES + 1);\n" +
+"    if ($body === false) fail(400, 'Could not read request body.');\n" +
+"    if (strlen($body) > MAX_BYTES) fail(413, 'Payload too large.');\n" +
+"    if ($body === '') fail(400, 'Empty body.');\n" +
+"    json_decode($body);\n" +
+"    if (json_last_error() !== JSON_ERROR_NONE) fail(400, 'Body is not valid JSON.');\n" +
+"\n" +
+"    // Optimistic concurrency: reject if the file changed under us.\n" +
+"    $ifMatch = $_SERVER['HTTP_IF_MATCH'] ?? '';\n" +
+"    if ($ifMatch !== '') {\n" +
+"        $current = is_file($path) ? '\"' . md5_file($path) . '\"' : '';\n" +
+"        $want = trim($ifMatch);\n" +
+"        if ($current !== '' && $current !== $want) fail(412, 'Precondition failed (file changed).');\n" +
+"    }\n" +
+"\n" +
+"    $tmp = $path . '.tmp.' . bin2hex(random_bytes(4));\n" +
+"    if (file_put_contents($tmp, $body, LOCK_EX) === false) fail(500, 'Write failed.');\n" +
+"    if (!rename($tmp, $path)) { @unlink($tmp); fail(500, 'Atomic rename failed.'); }\n" +
+"\n" +
+"    header('Content-Type: application/json');\n" +
+"    header('ETag: \"' . md5($body) . '\"');\n" +
+"    echo json_encode(['ok' => true, 'name' => $name, 'bytes' => strlen($body)]);\n" +
+"    exit;\n" +
+"}\n" +
+"\n" +
+"fail(405, 'Method not allowed.');\n";
+  }
+
+  function rootHtaccess() {
+    return "# synclocker — protection for this directory (its own folder, so it never\n" +
+"# affects anything else on your server).\n" +
+"\n" +
+"# Don't allow directory listing.\n" +
+"Options -Indexes\n" +
+"\n" +
+"# Preserve the \"Authorization: Bearer\" header — some cPanel/PHP-FPM setups strip\n" +
+"# it before it reaches PHP. This restores it so token auth works reliably.\n" +
+"<IfModule mod_rewrite.c>\n" +
+"    RewriteEngine On\n" +
+"    RewriteCond %{HTTP:Authorization} ^(.+)$\n" +
+"    RewriteRule .* - [E=HTTP_AUTHORIZATION:%1]\n" +
+"</IfModule>\n" +
+"<IfModule mod_setenvif.c>\n" +
+"    SetEnvIf Authorization \"(.*)\" HTTP_AUTHORIZATION=$1\n" +
+"</IfModule>\n" +
+"\n" +
+"# Block direct web access to the stored data (also guarded inside data/).\n" +
+"RedirectMatch 403 (?i)/data/.*\\.json$\n";
+  }
+
+  function dataHtaccess() {
+    return "Require all denied\nDeny from all\n";
+  }
+
+  function installReadme(token) {
+    return "SyncLocker — self-hosting your own sync server\n" +
+"==============================================\n" +
+"\n" +
+"This one bundle serves BOTH SyncLocker engines — bookmark sync and tab-list\n" +
+"sync — from a single endpoint with a single token. It is completely\n" +
+"self-contained: one PHP script plus two .htaccess guards. No database.\n" +
+"\n" +
+"Your token (already baked into synclocker.php):\n" +
+"\n" +
+"    " + token + "\n" +
+"\n" +
+"Keep this token private — anyone who has it and your server URL can read and\n" +
+"write your bookmarks and tab lists.\n" +
+"\n" +
+"1. Upload\n" +
+"   Create a directory named \"synclocker\" on your web server (FTP, cPanel File\n" +
+"   Manager, SSH — whatever you use) and upload the CONTENTS of this bundle\n" +
+"   into it, keeping the layout:\n" +
+"\n" +
+"       synclocker/synclocker.php\n" +
+"       synclocker/.htaccess\n" +
+"       synclocker/data/.htaccess      (the data/ folder holds your synced files)\n" +
+"\n" +
+"   Requirements: PHP 7+ and Apache-style .htaccess support (typical shared\n" +
+"   hosting). The web server user must be able to write inside the folder so\n" +
+"   the data/ directory and your JSON files can be created.\n" +
+"\n" +
+"2. Point the extension at it\n" +
+"   Open SyncLocker's Options and, under \"Server\", fill in:\n" +
+"     - Server URL:   https://YOUR-DOMAIN/synclocker/synclocker.php\n" +
+"     - Bearer token: the token above\n" +
+"     - Sync name:    e.g. \"work\" (same name = shared across devices)\n" +
+"   Click \"Test connection\", then \"Save\".\n" +
+"\n" +
+"3. How the files are named\n" +
+"   Both engines share this one endpoint and token; they never collide because\n" +
+"   each engine namespaces its file:\n" +
+"     - bookmarks -> data/bookmarks-<name>.json\n" +
+"     - tabs      -> data/tabs-<name>.json\n" +
+"   Same sync name on another device  -> that device shares the same files.\n" +
+"   Different names stay separate.\n" +
+"\n" +
+"Notes\n" +
+"-----\n" +
+"- Everything this project stores stays inside the synclocker/ directory.\n" +
+"- The data/ folder is blocked from direct web access by the .htaccess guards.\n" +
+"- To rotate the token later: edit the TOKEN value at the top of\n" +
+"  synclocker.php and update it in each device's Options, or just generate a\n" +
+"  fresh bundle from the extension's Options page.\n";
+  }
+
+  // ---- store-only ZIP writer (no compression, no dependencies) -------------
+  var CRC_TABLE = (function () {
+    var t = new Uint32Array(256);
+    for (var n = 0; n < 256; n++) {
+      var c = n;
+      for (var k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+
+  function crc32(bytes) {
+    var c = 0xffffffff;
+    for (var i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  }
+
+  function makeZip(entries) {
+    var enc = new TextEncoder();
+    var files = entries.map(function (e) {
+      return {
+        nameBytes: enc.encode(e.name),
+        data: e.name.endsWith("/") ? new Uint8Array(0) : enc.encode(e.text || ""),
+      };
+    });
+
+    var chunks = [];
+    var central = [];
+    var offset = 0;
+    var u16 = function (n) { return new Uint8Array([n & 0xff, (n >>> 8) & 0xff]); };
+    var u32 = function (n) { return new Uint8Array([n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, (n >>> 24) & 0xff]); };
+    var push = function (arr) { chunks.push(arr); offset += arr.length; };
+
+    files.forEach(function (f) {
+      var crc = crc32(f.data);
+      var size = f.data.length;
+      var localOffset = offset;
+
+      push(u32(0x04034b50));
+      push(u16(20)); push(u16(0)); push(u16(0));
+      push(u16(0)); push(u16(0));
+      push(u32(crc)); push(u32(size)); push(u32(size));
+      push(u16(f.nameBytes.length)); push(u16(0));
+      push(f.nameBytes); push(f.data);
+
+      var cd = [];
+      var cpush = function (arr) { cd.push(arr); };
+      cpush(u32(0x02014b50));
+      cpush(u16(20)); cpush(u16(20));
+      cpush(u16(0)); cpush(u16(0));
+      cpush(u16(0)); cpush(u16(0));
+      cpush(u32(crc)); cpush(u32(size)); cpush(u32(size));
+      cpush(u16(f.nameBytes.length));
+      cpush(u16(0)); cpush(u16(0));
+      cpush(u16(0)); cpush(u16(0));
+      cpush(u32(0)); cpush(u32(localOffset));
+      cpush(f.nameBytes);
+      central.push(cd);
+    });
+
+    var cdStart = offset;
+    central.forEach(function (cd) { cd.forEach(push); });
+    var cdSize = offset - cdStart;
+
+    push(u32(0x06054b50));
+    push(u16(0)); push(u16(0));
+    push(u16(files.length)); push(u16(files.length));
+    push(u32(cdSize)); push(u32(cdStart));
+    push(u16(0));
+
+    return new Blob(chunks, { type: "application/zip" });
+  }
+
+  function buildServerZip(token) {
+    return makeZip([
+      { name: "synclocker-server/" },
+      { name: "synclocker-server/synclocker.php", text: phpFile(token) },
+      { name: "synclocker-server/.htaccess", text: rootHtaccess() },
+      { name: "synclocker-server/INSTALL.txt", text: installReadme(token) },
+      { name: "synclocker-server/data/" },
+      { name: "synclocker-server/data/.htaccess", text: dataHtaccess() },
+    ]);
+  }
+
+  self.SyncLockerServerFiles = {
+    randomToken: randomToken,
+    phpFile: phpFile,
+    buildServerZip: buildServerZip,
+  };
+})();

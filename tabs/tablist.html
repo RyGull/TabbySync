@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SyncLocker — Tabs</title>
+  <link rel="stylesheet" href="tablist.css">
+  <script src="../shared/theme.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div class="brand">
+        <img class="tlogo tlogo-light" src="../icons/logo-light.svg" alt="SyncLocker">
+        <img class="tlogo tlogo-dark" src="../icons/logo-dark.svg" alt="SyncLocker">
+        <span class="brand-sub">· Tabs</span>
+      </div>
+      <div class="stats" id="stats"></div>
+      <span id="sl-theme"></span>
+    </header>
+
+    <div class="toolbar">
+      <button class="tbtn" id="restore-all">Restore all</button>
+      <button class="tbtn" id="delete-all">Delete all</button>
+      <button class="tbtn" id="export">Export</button>
+      <button class="tbtn" id="import">Import</button>
+      <button class="tbtn" id="trash-link">Trash</button>
+      <button class="tbtn" id="options-link">Options</button>
+      <button class="tbtn" id="sync-now">Sync now</button>
+      <label class="tchk" title="When on, restoring a link (or all) removes it from the list. Off keeps it.">
+        <input type="checkbox" id="remove-on-restore"> Remove after restore
+      </label>
+      <input type="search" id="search" class="tsearch" placeholder="Search tabs by title or URL…" autocomplete="off" spellcheck="false">
+      <div class="sync-pill" id="sync-pill" title="Sync status">
+        <span class="led"></span><span class="txt">Sync</span>
+      </div>
+    </div>
+
+    <div id="list"></div>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h3 id="modal-title">Export</h3>
+      <p id="modal-help" class="stats"></p>
+      <label id="modal-encrypt-row" style="display:none;align-items:center;gap:8px;margin:0 0 8px;font-size:13px;cursor:pointer">
+        <input type="checkbox" id="modal-encrypt"> Encrypt with my passphrase
+      </label>
+      <textarea id="modal-text" spellcheck="false"></textarea>
+      <div class="row">
+        <button class="btn" id="modal-primary">Copy</button>
+        <button class="btn ghost tabs-modal-btns" id="modal-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="trash-overlay">
+    <div class="modal">
+      <h3>Trash — recently deleted</h3>
+      <p class="stats" id="trash-help"></p>
+      <div id="trash-list"></div>
+      <div class="row">
+        <button class="btn ghost" id="trash-empty">Empty trash</button>
+        <button class="btn ghost tabs-modal-btns" id="trash-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../shared/config.js"></script>
+  <script src="storage.js"></script>
+  <script src="tablist.js"></script>
+</body>
+</html>

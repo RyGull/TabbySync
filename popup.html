@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SyncLocker</title>
+  <style>
+    /* light palette (default) */
+    :root {
+      --bg:#ffffff; --panel:#f7f8fa; --line:#e3e6ea; --text:#1c2330; --muted:#6b7280;
+      --bm:#2563eb; --bm-soft:#e8f0fe;      /* bookmarks = blue  */
+      --tab:#0d9488; --tab-soft:#d7f4ef;    /* tabs      = teal  */
+      --ok:#16a34a; --err:#dc2626; --busy:#eab308;
+    }
+    /* dark palette — applied by the system default UNLESS the user forced light,
+       and always when the user forces dark via the toggle. */
+    :root[data-theme="dark"],
+    :root:not([data-theme="light"]) {
+      color-scheme: light dark;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg:#1e222a; --panel:#252a33; --line:#333a45; --text:#e8eaed; --muted:#9aa2af;
+        --bm:#5b8def; --bm-soft:#1e2a44; --tab:#2dd4bf; --tab-soft:#123b37;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg:#1e222a; --panel:#252a33; --line:#333a45; --text:#e8eaed; --muted:#9aa2af;
+      --bm:#5b8def; --bm-soft:#1e2a44; --tab:#2dd4bf; --tab-soft:#123b37;
+    }
+    * { box-sizing:border-box; }
+    [hidden] { display:none !important; }
+    body { width:320px; margin:0; background:var(--bg); color:var(--text);
+      font:13px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+    .head { display:flex; align-items:center; gap:8px; padding:13px 15px 10px; }
+    .logo { height:44px; width:auto; flex:0 0 auto; display:none; }
+    .ver { font-size:11px; font-weight:600; color:var(--muted); align-self:flex-end; margin:0 0 6px 1px; }
+    .head .sub { color:var(--muted); font-size:11px; margin-left:auto; }
+    /* logo swaps with the effective theme */
+    :root .logo-light { display:block; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) .logo-light { display:none; }
+      :root:not([data-theme="light"]) .logo-dark  { display:block; }
+    }
+    :root[data-theme="dark"]  .logo-light { display:none; }
+    :root[data-theme="dark"]  .logo-dark  { display:block; }
+    :root[data-theme="light"] .logo-light { display:block; }
+    :root[data-theme="light"] .logo-dark  { display:none; }
+    /* theme toggle button (icon + label, one button) */
+    .theme-btn { margin-left:auto; height:28px; padding:0 9px; border-radius:8px;
+      display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; line-height:1;
+      background:var(--panel); color:var(--text); border:1px solid var(--line); cursor:pointer; }
+    .theme-btn:hover { border-color:var(--muted); }
+    .theme-btn .ic { font-size:14px; }
+    #sl-theme { margin-left:auto; }
+    .banner { margin:0 15px 8px; padding:8px 10px; border-radius:8px;
+      background:var(--panel); border:1px solid var(--line); color:var(--muted); font-size:12px; }
+    .banner a { color:var(--bm); cursor:pointer; text-decoration:underline; }
+    .cards { padding:2px 15px 6px; display:flex; flex-direction:column; gap:10px; }
+
+    .card { border:1px solid var(--line); border-radius:11px; overflow:hidden; background:var(--panel); }
+    .card.bm { border-left:4px solid var(--bm); }
+    .card.tab { border-left:4px solid var(--tab); }
+    .card.off { opacity:.55; }
+    .card-h { display:flex; align-items:center; gap:9px; padding:10px 12px 6px; }
+    .badge { width:26px; height:26px; border-radius:8px; display:grid; place-items:center; font-size:15px; }
+    .bm .badge { background:var(--bm-soft); }
+    .tab .badge { background:var(--tab-soft); }
+    .card-h .title { font-weight:700; font-size:13.5px; }
+    .card-h .title small { display:block; font-weight:500; color:var(--muted); font-size:11px; }
+    .dot { width:8px; height:8px; border-radius:50%; background:#9ca3af; margin-left:auto; }
+    .dot.ok{background:var(--ok);} .dot.err{background:var(--err);} .dot.busy{background:var(--busy);}
+
+    /* toggle */
+    .sw { position:relative; width:34px; height:20px; flex:0 0 auto; }
+    .sw input { opacity:0; width:0; height:0; }
+    .sw .track { position:absolute; inset:0; border-radius:20px; background:#c3c8d0; transition:.15s; }
+    .sw input:checked + .track { background:var(--accent, var(--bm)); }
+    .card.tab .sw input:checked + .track { background:var(--tab); }
+    .sw .track::before { content:""; position:absolute; width:16px; height:16px; left:2px; top:2px;
+      background:#fff; border-radius:50%; transition:.15s; }
+    .sw input:checked + .track::before { transform:translateX(14px); }
+
+    .rows { padding:2px 12px 4px; }
+    .kv { display:flex; justify-content:space-between; gap:10px; padding:3px 0; font-size:12px; }
+    .kv span:first-child { color:var(--muted); }
+    .kv .v { font-weight:600; text-align:right; word-break:break-word; }
+    .kv .v.err { color:var(--err); font-weight:600; }
+    .acts { display:flex; gap:7px; padding:8px 12px 12px; flex-wrap:wrap; }
+    button { border:0; border-radius:8px; padding:8px 11px; font-size:12.5px; font-weight:600; cursor:pointer;
+      background:var(--bg); color:var(--text); border:1px solid var(--line); }
+    button:hover:not(:disabled) { border-color:var(--muted); }
+    button:disabled { opacity:.5; cursor:default; }
+    .card.bm button.primary { background:var(--bm); color:#fff; border-color:var(--bm); }
+    .card.tab button.primary { background:var(--tab); color:#fff; border-color:var(--tab); }
+    .grow { flex:1; }
+
+    .foot { display:flex; align-items:center; gap:10px; padding:10px 15px; border-top:1px solid var(--line); }
+    .foot .note { font-size:11.5px; color:var(--muted); line-height:1.35; }
+    .foot .note b { color:var(--text); }
+    .foot .note .warn { color:#b45309; font-weight:600; }
+    :root[data-theme="dark"] .foot .note .warn { color:#f0b357; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .foot .note .warn { color:#f0b357; } }
+    .foot .note a { color:var(--bm); cursor:pointer; text-decoration:underline; }
+    .foot .note .okenc { color:var(--ok); font-weight:600; }
+    .foot .opts { margin-left:auto; flex:0 0 auto; background:transparent; border:1px solid var(--line); }
+
+    /* donate bar (bottom of the main view) — opens the donation screen */
+    .donate-bar { width:100%; border:0; border-top:1px solid var(--line); border-radius:0; background:transparent;
+      color:var(--text); display:flex; align-items:center; justify-content:space-between;
+      padding:12px 15px; font-size:13.5px; font-weight:700; cursor:pointer; }
+    .donate-bar:hover { background:var(--panel); }
+    .donate-bar .chev { color:var(--muted); font-size:15px; }
+
+    /* dedicated donation screen (swaps in for the whole popup, so it never scrolls) */
+    .dv-head { display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line); }
+    .dv-back { width:30px; height:30px; padding:0; border-radius:8px; background:var(--panel); color:var(--text);
+      border:1px solid var(--line); font-size:16px; line-height:1; cursor:pointer; }
+    .dv-back:hover { border-color:var(--muted); }
+    .dv-title { font-size:15px; font-weight:800; }
+    .dv-body { padding:16px 20px 22px; text-align:center; }
+    .dv-msg { font-size:14px; line-height:1.55; color:var(--text); margin:0 0 16px; text-align:left; }
+    .dv-qr { width:190px; height:190px; background:#fff; padding:10px; border-radius:12px; border:1px solid var(--line); }
+    .dv-scan { font-size:13px; color:var(--muted); margin:14px 0 9px; }
+    .dv-any { font-size:12.5px; color:var(--muted); margin:12px 0 0; }
+    .donate-btn { display:block; width:100%; background:#0070ba; color:#fff; border:0; border-radius:9px;
+      padding:12px; font-size:14px; font-weight:700; cursor:pointer; }
+    .donate-btn:hover { background:#005c98; }
+
+    /* feedback screen */
+    .fv-body { padding:14px 15px 18px; }
+    .fv-body .dv-msg { text-align:left; }
+    .fv-frame { width:100%; height:360px; border:1px solid var(--line); border-radius:10px; background:#fff; display:block; }
+    .fv-fallback { font-size:12px; color:var(--muted); margin:9px 2px 0; }
+    .fv-fallback a { color:var(--bm); cursor:pointer; text-decoration:underline; }
+  </style>
+  <script src="shared/theme.js"></script>
+</head>
+<body>
+ <div id="mainView">
+  <div class="head">
+    <img class="logo logo-light" src="icons/logo-light.svg" alt="SyncLocker">
+    <img class="logo logo-dark" src="icons/logo-dark.svg" alt="SyncLocker">
+    <span class="ver" id="ver"></span>
+    <span id="sl-theme"></span>
+  </div>
+
+  <div id="setup" class="banner" hidden>
+    No server set up yet. <a id="setupLink">Open Options</a> to add your server URL, token and sync name — one setup covers both tools.
+  </div>
+
+  <div class="cards">
+    <!-- Bookmarks -->
+    <section class="card bm" id="bmCard">
+      <div class="card-h">
+        <span class="badge">📑</span>
+        <span class="title">Bookmarks<small id="bmSub">sync your bookmark tree</small></span>
+        <span class="dot" id="bmDot"></span>
+        <label class="sw" title="Enable bookmark sync">
+          <input type="checkbox" id="bmEnable"><span class="track"></span>
+        </label>
+      </div>
+      <div class="rows" id="bmRows">
+        <div class="kv"><span>Saved</span><span class="v" id="bmCount">—</span></div>
+        <div class="kv"><span>Last sync</span><span class="v" id="bmLast">—</span></div>
+        <div class="kv" id="bmErrRow" hidden><span>Error</span><span class="v err" id="bmErr"></span></div>
+      </div>
+      <div class="acts">
+        <button class="primary grow" id="bmSync">Sync now</button>
+        <button id="bmOpts">Options</button>
+      </div>
+    </section>
+
+    <!-- Tabs -->
+    <section class="card tab" id="tabCard">
+      <div class="card-h">
+        <span class="badge">🗂️</span>
+        <span class="title">Tabs<small id="tabSub">collapse &amp; sync open tabs</small></span>
+        <span class="dot" id="tabDot"></span>
+        <label class="sw" title="Enable tab sync">
+          <input type="checkbox" id="tabEnable"><span class="track"></span>
+        </label>
+      </div>
+      <div class="rows" id="tabRows">
+        <div class="kv"><span>Saved</span><span class="v" id="tabCount">—</span></div>
+        <div class="kv"><span>Last sync</span><span class="v" id="tabLast">—</span></div>
+        <div class="kv" id="tabErrRow" hidden><span>Error</span><span class="v err" id="tabErr"></span></div>
+      </div>
+      <div class="acts">
+        <button class="primary grow" id="tabStash">Stash all tabs</button>
+        <button id="tabOpen">Open list</button>
+        <button id="tabSync">Sync</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="foot">
+    <span class="note" id="footNote">One server · one token · one sync name</span>
+    <button class="opts" id="opts">Options</button>
+  </div>
+
+  <button class="donate-bar" id="feedbackOpen">
+    <span>✉️ Send Feedback</span><span class="chev">›</span>
+  </button>
+  <button class="donate-bar" id="donateOpen">
+    <span>❤️ Please Donate</span><span class="chev">›</span>
+  </button>
+ </div><!-- /mainView -->
+
+ <div id="feedbackView" hidden>
+   <div class="dv-head">
+     <button class="dv-back" id="feedbackBack" aria-label="Back to SyncLocker">←</button>
+     <span class="dv-title">✉️ Send Feedback</span>
+   </div>
+   <div class="fv-body">
+     <p class="dv-msg">Found a bug, have an idea, or just want to say hi? Send it straight to the
+       developer.</p>
+     <iframe id="feedbackFrame" class="fv-frame" title="SyncLocker feedback form"></iframe>
+     <p class="fv-fallback">Form not loading? <a id="feedbackTab">Open it in a new tab</a>.</p>
+   </div>
+ </div>
+
+ <div id="donateView" hidden>
+   <div class="dv-head">
+     <button class="dv-back" id="donateBack" aria-label="Back to SyncLocker">←</button>
+     <span class="dv-title">❤️ Support SyncLocker</span>
+   </div>
+   <div class="dv-body">
+     <p class="dv-msg">If this extension saves you time or makes your browsing better, consider
+       chipping in! Every donation helps cover development costs and keeps the updates rolling out.</p>
+     <img class="dv-qr" src="icons/donate-qr.svg" alt="PayPal donation QR code — scan to donate">
+     <p class="dv-scan">Scan the code with your phone, or:</p>
+     <button class="donate-btn" id="donateBtn">Donate with PayPal</button>
+     <p class="dv-any">Any amount is appreciated — thank you! 🙏</p>
+   </div>
+ </div>
+
+  <script src="shared/config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

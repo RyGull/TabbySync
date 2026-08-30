@@ -1,0 +1,46 @@
+#!/bin/sh
+# SyncLocker pre-commit hook: auto-increment the manifest.json patch version.
+#
+# On every commit the third (patch) number in manifest.json's "version" is
+# bumped and re-staged — so 1.0.2 -> 1.0.3 -> 1.0.4 without anyone editing it
+# by hand. Manual bumps still win: if this commit already changes the version
+# (e.g. you set 1.1.0 for a feature), the hook leaves it alone.
+#
+# Enable it once per clone:  git config core.hooksPath .githooks
+# Skip it for one commit:    git commit --no-verify   (or SKIP_VERSION_BUMP=1)
+
+[ "$SKIP_VERSION_BUMP" = "1" ] && exit 0
+
+MANIFEST="manifest.json"
+[ -f "$MANIFEST" ] || exit 0
+
+read_version() {
+  sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([0-9][0-9.]*\)".*/\1/p' "$1" | head -n1
+}
+
+cur=$(read_version "$MANIFEST")
+[ -n "$cur" ] || exit 0
+
+# Version as it stands in the last commit. Empty on the very first commit.
+head_ver=$(git show HEAD:"$MANIFEST" 2>/dev/null | \
+  sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([0-9][0-9.]*\)".*/\1/p' | head -n1)
+
+# If the version already changed in this commit, respect the manual choice.
+if [ -n "$head_ver" ] && [ "$cur" != "$head_ver" ]; then
+  exit 0
+fi
+
+# Increment the patch component (pads to x.y.z if shorter).
+new=$(printf '%s' "$cur" | awk -F. 'BEGIN{OFS="."}{while(NF<3)$(++NF)=0; $3=$3+1; print}')
+
+tmp="$MANIFEST.bump.$$"
+awk -v new="$new" '
+  !done && /"version"[[:space:]]*:/ {
+    sub(/"version"[[:space:]]*:[[:space:]]*"[0-9][0-9.]*"/, "\"version\": \"" new "\"")
+    done=1
+  }
+  { print }
+' "$MANIFEST" > "$tmp" && mv "$tmp" "$MANIFEST"
+
+git add "$MANIFEST"
+echo "pre-commit: bumped version $cur -> $new"
