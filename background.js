@@ -9,6 +9,7 @@
 // Order matters: the shared globals must be installed before the engines run.
 import './shared/config.js';       // sets self.SyncLockerConfig
 import './shared/status.js';       // sets self.SyncLockerStatus
+import './shared/providers.js';    // sets self.SyncLockerProviders
 import './tabs/storage.js';        // sets self.TabStash
 import './tabs/background-core.js';
 import './bookmarks/background-core.js';

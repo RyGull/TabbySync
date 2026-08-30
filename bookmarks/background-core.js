@@ -33,7 +33,7 @@ async function doSync(trigger) {
 // Set the dot from stored state without running a sync (e.g. on worker wake).
 async function refreshBadgeFromState() {
   const [cfg, state] = await Promise.all([getConfig(), getState()]);
-  if (!(cfg.enabled && cfg.baseUrl && cfg.token && cfg.syncName)) return report('none');
+  if (!(cfg.enabled && self.SyncLockerProviders.isConfigured(cfg))) return report('none');
   if (state.lastStatus === 'error') return report('error');
   if (state.lastStatus === 'ok') return report('ok');
   return report('none');
@@ -121,7 +121,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     (async () => {
       try {
         const cfg = await getConfig();
-        if (!(cfg.enabled && cfg.baseUrl && cfg.token && cfg.syncName)) {
+        if (!(cfg.enabled && self.SyncLockerProviders.isConfigured(cfg))) {
           return sendResponse({ ok: false, message: 'not configured' });
         }
         const state = await getState();
@@ -140,7 +140,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       const s = state.cacheTree ? stats(state.cacheTree) : { bookmarks: 0, folders: 0 };
       sendResponse({
         enabled: cfg.enabled,
-        configured: !!(cfg.baseUrl && cfg.token && cfg.syncName),
+        configured: self.SyncLockerProviders.isConfigured(cfg),
         syncName: cfg.syncName,
         encrypted: !!cfg.passphrase,
         autoSync: cfg.autoSync,

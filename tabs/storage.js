@@ -2,22 +2,23 @@
  * SyncLocker — tabs engine: storage + server-sync layer (single-list model).
  *
  * One stash list per extension install (i.e. per browser profile). The list is
- * stored in chrome.storage.local and mirrored to YOUR webserver as a single
- * JSON file: GET to read, PUT to write, bearer-token auth.
+ * stored in chrome.storage.local and mirrored to a remote JSON file via
+ * shared/providers.js, which abstracts over whichever backend is configured
+ * (a self-hosted endpoint, a GitHub Gist, or a JSONBin.io bin).
  *
  * Cross-machine model: you replicate your browser profiles (Work, Multimedia, …)
  * across computers with your browser's sync. In each browser profile you set a "sync key"
- * once (e.g. "work"); the list then syncs to <base>/work.json. The same-named
+ * once (e.g. "work"); the list then syncs to a file named after it. The same-named
  * profile on another computer uses the same key -> same file -> shared list.
  *
  * Merges use per-group updatedAt (last-write-wins) plus tombstones so deletes
  * propagate instead of resurrecting.
  *
- * Part of SyncLocker: server URL / token / sync name / passphrase come from the
- * SHARED config (self.SyncLockerConfig); tab files are namespaced "tabs-<name>"
- * so they share one endpoint + token with the bookmarks engine. Loaded as a
- * <script> in pages and imported for its side effect in the module worker, so
- * everything hangs off the global `TabStash`.
+ * Part of SyncLocker: provider/server URL/token/sync name/passphrase come from
+ * the SHARED config (self.SyncLockerConfig); tab files are namespaced
+ * "tabs-<name>" so they share one destination + token with the bookmarks
+ * engine. Loaded as a <script> in pages and imported for its side effect in
+ * the module worker, so everything hangs off the global `TabStash`.
  */
 (function () {
   "use strict";
@@ -27,6 +28,7 @@
   var pushTimer = null;
 
   function shared() { return self.SyncLockerConfig; }
+  function providers() { return self.SyncLockerProviders; }
 
   function uid() {
     return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
@@ -172,7 +174,13 @@
         baseUrl: c.serverUrl,
         token: c.token,
         syncKey: c.syncName,             // shared profile name, e.g. "work"
+        syncName: c.syncName,            // same value, name expected by shared/providers.js
         customUrl: "",                    // (no per-engine override in SyncLocker)
+        // which sync backend the fields above apply to (see shared/providers.js)
+        provider: c.provider,
+        gistId: c.gistId,
+        jsonbinTabsId: c.jsonbinTabsId,
+        jsonbinBookmarksId: c.jsonbinBookmarksId,
         autoSyncMinutes: typeof c.tabs.intervalMin === "number" ? c.tabs.intervalMin : 5,
         // duplicate handling when stashing: "allow" | "group" | "all"
         dedupe: c.tabs.dedupe,
@@ -196,7 +204,12 @@
     if ("baseUrl" in patch) out.serverUrl = patch.baseUrl;
     if ("token" in patch) out.token = patch.token;
     if ("syncKey" in patch) out.syncName = patch.syncKey;
+    if ("syncName" in patch) out.syncName = patch.syncName;
     if ("passphrase" in patch) out.passphrase = patch.passphrase;
+    if ("provider" in patch) out.provider = patch.provider;
+    if ("gistId" in patch) out.gistId = patch.gistId;
+    if ("jsonbinTabsId" in patch) out.jsonbinTabsId = patch.jsonbinTabsId;
+    if ("jsonbinBookmarksId" in patch) out.jsonbinBookmarksId = patch.jsonbinBookmarksId;
     var tabs = {};
     if ("syncEnabled" in patch) tabs.enabled = patch.syncEnabled;
     if ("autoSyncMinutes" in patch) tabs.intervalMin = patch.autoSyncMinutes;
@@ -261,25 +274,14 @@
 
   function isEncrypted(obj) { return obj && obj.enc === "v1" && obj.ct; }
 
-  // ---- remote HTTP ---------------------------------------------------------
+  // ---- remote transport ------------------------------------------------------
 
-  // Files are namespaced "tabs-<name>.json" so they share one endpoint + token
-  // with the bookmarks engine ("bookmarks-<name>.json") without colliding.
-  function remoteUrl(settings) {
-    if (settings.customUrl) return settings.customUrl;
-    if (!settings.baseUrl || !settings.syncKey) return "";
-    var base = settings.baseUrl.replace(/\/+$/, "");
-    var file = "tabs-" + slugify(settings.syncKey) + ".json";
-    // A base URL ending in ".php" is the standalone SyncLocker script — route
-    // via ?name= (matches the bookmarks engine and the generated endpoint).
-    if (/\.php$/i.test(base)) return base + "?name=" + encodeURIComponent(file);
-    return base + "/" + file;
-  }
-
-  function authHeaders(settings, extra) {
-    var h = Object.assign({}, extra || {});
-    if (settings.token) h["Authorization"] = "Bearer " + settings.token;
-    return h;
+  // Files are namespaced "tabs-<name>.json" so they share one destination +
+  // token with the bookmarks engine ("bookmarks-<name>.json") without
+  // colliding, regardless of which provider (self-hosted / Gist / JSONBin —
+  // see shared/providers.js) that destination actually is.
+  function remoteFileName(settings) {
+    return "tabs-" + slugify(settings.syncKey || "") + ".json";
   }
 
   function serialize(settings, state) {
@@ -330,53 +332,40 @@
   }
 
   function pullRemote(settings) {
-    var url = remoteUrl(settings);
-    if (!url) return Promise.resolve(null);
-    return fetch(url, { method: "GET", headers: authHeaders(settings), cache: "no-store" })
-      .then(function (res) {
-        if (res.status === 404) return null;
-        if (!res.ok) throw new Error("GET " + res.status + " " + res.statusText);
-        var etag = res.headers.get("ETag") || "";
-        return res.text().then(function (text) {
-          if (!text.trim()) return null;
-          var obj = null;
-          try { obj = JSON.parse(text); } catch (e) { obj = null; }
-          if (isEncrypted(obj)) {
-            if (!settings.passphrase) {
-              var e1 = new Error("The synced list is encrypted — set your passphrase in Options to read it.");
-              e1.needPass = true; throw e1;
-            }
-            return decryptEnvelope(settings.passphrase, obj)
-              .then(function (json) { return { state: parse(json), etag: etag, encrypted: true }; })
-              .catch(function (err) {
-                if (err && err.needPass) throw err;
-                var e2 = new Error("Wrong passphrase — could not decrypt the synced list.");
-                e2.badPass = true; throw e2;
-              });
-          }
-          // plaintext (unencrypted) file
-          return { state: parse(text), etag: etag, encrypted: false };
-        });
-      });
+    if (!providers().isConfigured(settings)) return Promise.resolve(null);
+    return providers().get(settings, remoteFileName(settings)).then(function (r) {
+      var text = (r && r.text != null) ? r.text.trim() : "";
+      var etag = (r && r.etag) || "";
+      if (!text) return null;
+      var obj = null;
+      try { obj = JSON.parse(text); } catch (e) { obj = null; }
+      if (isEncrypted(obj)) {
+        if (!settings.passphrase) {
+          var e1 = new Error("The synced list is encrypted — set your passphrase in Options to read it.");
+          e1.needPass = true; throw e1;
+        }
+        return decryptEnvelope(settings.passphrase, obj)
+          .then(function (json) { return { state: parse(json), etag: etag, encrypted: true }; })
+          .catch(function (err) {
+            if (err && err.needPass) throw err;
+            var e2 = new Error("Wrong passphrase — could not decrypt the synced list.");
+            e2.badPass = true; throw e2;
+          });
+      }
+      // plaintext (unencrypted) file
+      return { state: parse(text), etag: etag, encrypted: false };
+    });
   }
 
   function pushRemote(settings, state, etag) {
-    var url = remoteUrl(settings);
-    if (!url) throw new Error("No server URL configured (need base URL + sync key)");
-    var headers = authHeaders(settings, { "Content-Type": "application/json" });
-    if (etag) headers["If-Match"] = etag;
-
+    if (!providers().isConfigured(settings)) throw new Error("No sync destination configured — pick one in Options.");
     var bodyPromise = settings.passphrase
       ? encryptString(settings.passphrase, serialize(settings, state))
           .then(function (env) { return JSON.stringify(env); })
       : Promise.resolve(serialize(settings, state));
 
     return bodyPromise.then(function (body) {
-      return fetch(url, { method: "PUT", headers: headers, body: body }).then(function (res) {
-        if (res.status === 412) { var e = new Error("conflict"); e.conflict = true; throw e; }
-        if (!res.ok) throw new Error("PUT " + res.status + " " + res.statusText);
-        return { etag: res.headers.get("ETag") || "" };
-      });
+      return providers().put(settings, remoteFileName(settings), body, etag);
     });
   }
 
@@ -486,7 +475,7 @@
   function syncNow(force) {
     return getSettings().then(function (settings) {
       if (!settings.syncEnabled && !force) { setBadge("neutral"); return getState(); }
-      if (!remoteUrl(settings)) { setBadge("neutral"); return getState(); }
+      if (!providers().isConfigured(settings)) { setBadge("neutral"); return getState(); }
       return doSync(settings, 0).then(function (st) {
         setBadge("ok");
         setSyncStatus("ok", "");
@@ -546,7 +535,7 @@
   function pushLocalOverwrite() {
     return Promise.all([getSettings(), getState()]).then(function (r) {
       var settings = r[0], state = r[1];
-      if (!remoteUrl(settings)) return state;
+      if (!providers().isConfigured(settings)) return state;
       return pushRemote(settings, state, "").then(function (res) {
         return setEtag(res.etag).then(function () { return state; });
       });
@@ -554,10 +543,10 @@
   }
 
   function testConnection(settings) {
-    var url = remoteUrl(settings);
-    if (!url) return Promise.reject(new Error("No URL (set base URL + sync key)"));
-    return fetch(url, { method: "GET", headers: authHeaders(settings), cache: "no-store" })
-      .then(function (res) { return { status: res.status, ok: res.ok || res.status === 404 }; });
+    if (!providers().isConfigured(settings)) return Promise.reject(new Error("Not configured yet — pick a sync method in Options."));
+    return providers().get(settings, remoteFileName(settings))
+      .then(function (r) { return { status: (r && r.text != null) ? 200 : 404, ok: true }; })
+      .catch(function (e) { return { status: 0, ok: false, error: e && e.message }; });
   }
 
   function schedulePush() {
@@ -565,7 +554,7 @@
     pushTimer = setTimeout(function () {
       pushTimer = null;
       getSettings().then(function (settings) {
-        if (!settings.syncEnabled || !remoteUrl(settings)) return;
+        if (!settings.syncEnabled || !providers().isConfigured(settings)) return;
         return syncNow().catch(function (e) {
           console.warn("[SyncLocker] sync failed:", e && e.message);
         });
@@ -790,7 +779,6 @@
     removeDuplicates: removeDuplicates,
     getSettings: getSettings,
     setSettings: setSettings,
-    remoteUrl: remoteUrl,
     pullRemote: pullRemote,
     pushRemote: pushRemote,
     mergeStates: mergeStates,

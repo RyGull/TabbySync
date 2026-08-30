@@ -15,27 +15,33 @@
       <span class="tag">self-hosted bookmark &amp; tab sync</span>
       <span id="sl-theme"></span>
     </div>
-    <p class="lead">One server, one token, one sync name — shared by both tools. Turn on the
-      bookmark sync, the tab sync, or both. Nothing ever leaves your own server.</p>
+    <p class="lead">One sync destination, one token, one sync name — shared by both tools. Turn on the
+      bookmark sync, the tab sync, or both. Self-hosting keeps your data on a server only you control;
+      the free alternatives below trade some of that privacy for not needing a server at all.</p>
 
     <!-- ================= SHARED SERVER ================= -->
     <section class="card server">
       <h2><span class="ic">🌐</span> Server &amp; sync</h2>
-      <p>Point SyncLocker at your own endpoint. Both tools use it: bookmarks are stored as
+      <p>Both tools share this: bookmarks are stored as
         <code>bookmarks-&lt;name&gt;.json</code> and tabs as <code>tabs-&lt;name&gt;.json</code>,
         so they never collide.</p>
 
-      <label class="field" for="srv-url">Server URL</label>
+      <label class="field" for="sync-provider">Sync method</label>
+      <select id="sync-provider"></select>
+      <p class="hint" id="provider-hint"></p>
+      <div class="callout" id="provider-disclaimer" hidden></div>
+
+      <label class="field" for="srv-url" id="srv-url-label">Server URL</label>
       <input type="url" id="srv-url" placeholder="https://example.com/synclocker/synclocker.php" spellcheck="false">
-      <p class="hint">The <code>synclocker.php</code> script (see “Self-hosting” below). Requests route via <code>?name=</code>.</p>
+      <p class="hint" id="srv-url-hint">The <code>synclocker.php</code> script (see “Self-hosting” below). Requests route via <code>?name=</code>.</p>
 
-      <label class="field" for="srv-token">Bearer token</label>
+      <label class="field" for="srv-token" id="srv-token-label">Bearer token</label>
       <input type="password" id="srv-token" placeholder="the token inside synclocker.php" spellcheck="false" autocomplete="off">
-      <p class="hint">Sent as <code>Authorization: Bearer …</code>. Stored only in this browser profile.</p>
+      <p class="hint" id="srv-token-hint">Sent as <code>Authorization: Bearer …</code>. Stored only in this browser profile.</p>
 
-      <label class="field" for="srv-name">Sync name</label>
+      <label class="field" for="srv-name" id="srv-name-label">Sync name</label>
       <input type="text" id="srv-name" placeholder="work" spellcheck="false" autocomplete="off">
-      <p class="hint">This profile's name (e.g. <code>work</code>, <code>home</code>). Use the identical name on your other computers to share the same data; a different name stays separate.</p>
+      <p class="hint" id="srv-name-hint">This profile's name (e.g. <code>work</code>, <code>home</code>). Use the identical name on your other computers to share the same data; a different name stays separate.</p>
 
       <div class="preview" id="srv-preview">Set a URL and sync name to see your file paths.</div>
 
@@ -61,7 +67,7 @@
     </section>
 
     <!-- ================= SELF-HOSTING ================= -->
-    <section class="card selfhost">
+    <section class="card selfhost" id="selfhostCard">
       <h2><span class="ic">🛠️</span> Self-hosting — generate your server files</h2>
       <p>No endpoint yet? Generate a ready-to-upload bundle (one PHP script + <code>.htaccess</code>
         guards) with a fresh random token. It runs on <b>your</b> web space; SyncLocker never sends your data to anyone.</p>
@@ -176,6 +182,7 @@
   </div>
 
   <script src="shared/config.js"></script>
+  <script src="shared/providers.js"></script>
   <script src="shared/server-files.js"></script>
   <script src="tabs/storage.js"></script>
   <script type="module" src="options.js"></script>

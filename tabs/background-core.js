@@ -205,7 +205,7 @@
           (state.groups || []).forEach(function (g) { links += (g.tabs || []).length; });
           sendResponse({
             enabled: settings.syncEnabled,
-            configured: !!(settings.baseUrl && settings.syncKey),
+            configured: self.SyncLockerProviders.isConfigured(settings),
             syncName: settings.syncKey,
             encrypted: !!settings.passphrase,
             intervalMin: settings.autoSyncMinutes,

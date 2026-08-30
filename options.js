@@ -11,6 +11,7 @@ import { readLiveModel, importTopLevel } from './bookmarks/lib/import-merge.js';
 
 const SL = self.SyncLockerConfig;
 const SF = self.SyncLockerServerFiles;
+const SP = self.SyncLockerProviders;
 const $ = (id) => document.getElementById(id);
 
 function send(msg) {
@@ -68,17 +69,76 @@ function updateCardsDisabled() {
   $('bmCard').classList.toggle('off', !$('bm-enable').checked);
   $('tabCard').classList.toggle('off', !$('tab-enable').checked);
 }
+
+function currentProvider() { return $('sync-provider').value || 'custom'; }
+
+// Populate the provider <select> once from the shared metadata.
+function populateProviderSelect() {
+  const sel = $('sync-provider');
+  sel.innerHTML = '';
+  Object.keys(SP.PROVIDERS).forEach((id) => {
+    const opt = document.createElement('option');
+    opt.value = id; opt.textContent = SP.PROVIDERS[id].label;
+    sel.appendChild(opt);
+  });
+}
+
+// Show/hide + relabel fields for whichever sync method is selected, and swap
+// in that provider's setup hint + security disclaimer.
+function updateProviderUI() {
+  const meta = SP.providerMeta(currentProvider());
+  $('srv-url-label').style.display = meta.needsUrl ? '' : 'none';
+  $('srv-url').style.display = meta.needsUrl ? '' : 'none';
+  $('srv-url-hint').style.display = meta.needsUrl ? '' : 'none';
+
+  $('srv-name-label').style.display = meta.needsSyncName ? '' : 'none';
+  $('srv-name').style.display = meta.needsSyncName ? '' : 'none';
+  $('srv-name-hint').style.display = meta.needsSyncName ? '' : 'none';
+
+  $('srv-token-label').textContent = meta.tokenLabel;
+  $('srv-token').placeholder = meta.tokenPlaceholder;
+  $('srv-token-hint').textContent = currentProvider() === 'custom'
+    ? 'Sent as Authorization: Bearer …. Stored only in this browser profile.'
+    : currentProvider() === 'gist'
+      ? 'Sent as Authorization: Bearer …. Stored only in this browser profile — treat it like a password.'
+      : 'Sent as the X-Master-Key header. Stored only in this browser profile — treat it like a password.';
+
+  $('provider-hint').textContent = meta.setupHint || '';
+  const disc = $('provider-disclaimer');
+  if (meta.disclaimer) { disc.textContent = meta.disclaimer; disc.hidden = false; }
+  else { disc.textContent = ''; disc.hidden = true; }
+
+  $('selfhostCard').hidden = currentProvider() !== 'custom';
+  preview();
+}
+$('sync-provider').addEventListener('change', updateProviderUI);
+
 function preview() {
-  const base = $('srv-url').value.trim();
+  const provider = currentProvider();
   const name = $('srv-name').value.trim();
-  if (!base || !name) { $('srv-preview').textContent = 'Set a URL and sync name to see your file paths.'; return; }
-  $('srv-preview').innerHTML =
-    `<b>Bookmarks →</b> ${fileUrl(base, 'bookmarks-' + name + '.json')}<br>` +
-    `<b>Tabs →</b> ${fileUrl(base, 'tabs-' + name + '.json')}`;
+  if (provider === 'custom') {
+    const base = $('srv-url').value.trim();
+    if (!base || !name) { $('srv-preview').textContent = 'Set a URL and sync name to see your file paths.'; return; }
+    $('srv-preview').innerHTML =
+      `<b>Bookmarks →</b> ${fileUrl(base, 'bookmarks-' + name + '.json')}<br>` +
+      `<b>Tabs →</b> ${fileUrl(base, 'tabs-' + name + '.json')}`;
+  } else if (provider === 'gist') {
+    const suffix = name ? `-${name}` : '';
+    $('srv-preview').innerHTML =
+      `<b>Bookmarks →</b> a file named <code>bookmarks${suffix}.json</code> in your private gist<br>` +
+      `<b>Tabs →</b> a file named <code>tabs${suffix}.json</code> in the same gist ` +
+      `<span class="hint">(created automatically on first save)</span>`;
+  } else if (provider === 'jsonbin') {
+    $('srv-preview').innerHTML =
+      `<b>Bookmarks</b> and <b>Tabs</b> each get their own JSONBin bin ` +
+      `<span class="hint">(created automatically on first save — one profile per API key)</span>`;
+  }
 }
 
 async function load() {
   const c = await SL.getConfig();
+  populateProviderSelect();
+  $('sync-provider').value = c.provider;
   $('srv-url').value = c.serverUrl;
   $('srv-token').value = c.token;
   $('srv-name').value = c.syncName;
@@ -104,7 +164,7 @@ async function load() {
   $('gen-token').value = gt;
 
   updateCardsDisabled();
-  preview();
+  updateProviderUI();
 }
 
 // ---------------------------------------------------------------------------
@@ -112,16 +172,32 @@ async function load() {
 // ---------------------------------------------------------------------------
 ['srv-url', 'srv-name'].forEach((id) => $(id).addEventListener('input', preview));
 
+// The host permission a provider actually needs — self-hosted is whatever
+// URL the user typed, Gist/JSONBin are fixed third-party API hosts.
+function grantAccess(provider, serverUrl) {
+  if (provider === 'gist') {
+    return new Promise((resolve) => chrome.permissions.request({ origins: ['https://api.github.com/*'] }, resolve));
+  }
+  if (provider === 'jsonbin') {
+    return new Promise((resolve) => chrome.permissions.request({ origins: ['https://api.jsonbin.io/*'] }, resolve));
+  }
+  return requestOrigin(serverUrl);
+}
+
 $('srv-save').addEventListener('click', async () => {
+  const provider = currentProvider();
+  const meta = SP.providerMeta(provider);
   const serverUrl = $('srv-url').value.trim().replace(/\/+$/, '');
   const token = $('srv-token').value;
   const syncName = $('srv-name').value.trim();
-  if (!serverUrl || !token || !syncName) {
-    status('srv-status', 'Server URL, token and sync name are all required.', 'bad'); return;
-  }
+
+  if (meta.needsUrl && !serverUrl) { status('srv-status', 'Server URL is required.', 'bad'); return; }
+  if (!token) { status('srv-status', `${meta.tokenLabel} is required.`, 'bad'); return; }
+  if (provider === 'custom' && !syncName) { status('srv-status', 'Sync name is required.', 'bad'); return; }
+
   status('srv-status', 'Saving…');
-  await SL.setConfig({ serverUrl, token, syncName });
-  const granted = await requestOrigin(serverUrl);
+  await SL.setConfig({ provider, serverUrl, token, syncName });
+  const granted = await grantAccess(provider, serverUrl);
   await send({ type: 'tabstash-reschedule' });
   // Nudge both engines (they also auto-sync from the config change).
   send({ type: 'syncNow' });
@@ -129,26 +205,48 @@ $('srv-save').addEventListener('click', async () => {
   preview();
   status('srv-status', granted
     ? 'Saved — syncing the enabled tools now.'
-    : "Saved, but access to your server wasn't granted — sync will fail until you allow it.",
+    : "Saved, but access wasn't granted — sync will fail until you allow it.",
     granted ? 'ok' : 'bad');
 });
 
 $('srv-test').addEventListener('click', async () => {
-  const base = $('srv-url').value.trim().replace(/\/+$/, '');
+  const provider = currentProvider();
+  const meta = SP.providerMeta(provider);
+  const serverUrl = $('srv-url').value.trim().replace(/\/+$/, '');
   const token = $('srv-token').value;
-  const name = $('srv-name').value.trim();
-  if (!base || !token || !name) { status('srv-status', 'Fill in URL, token and sync name first.', 'bad'); return; }
+  const syncName = $('srv-name').value.trim();
+
+  if (meta.needsUrl && !serverUrl) { status('srv-status', 'Fill in the Server URL first.', 'bad'); return; }
+  if (!token) { status('srv-status', `Fill in the ${meta.tokenLabel} first.`, 'bad'); return; }
+
   status('srv-status', 'Testing…');
-  await requestOrigin(base);
-  try {
-    const res = await fetch(fileUrl(base, 'bookmarks-' + name + '.json'),
-      { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
-    if (res.status === 404) status('srv-status', "Reachable — no data stored yet for this sync name (that's expected).", 'ok');
-    else if (res.status === 401 || res.status === 403) status('srv-status', 'Reached the server but the token was rejected (auth failed).', 'bad');
-    else if (res.ok) status('srv-status', 'Connected — existing data found for this sync name.', 'ok');
-    else status('srv-status', `Server responded HTTP ${res.status}.`, 'bad');
-  } catch (e) {
-    status('srv-status', `Could not reach server: ${e.message} (check URL, token, and that you granted access).`, 'bad');
+  await grantAccess(provider, serverUrl);
+
+  if (provider === 'custom') {
+    try {
+      const res = await fetch(fileUrl(serverUrl, 'bookmarks-' + syncName + '.json'),
+        { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+      if (res.status === 404) status('srv-status', "Reachable — no data stored yet for this sync name (that's expected).", 'ok');
+      else if (res.status === 401 || res.status === 403) status('srv-status', 'Reached the server but the token was rejected (auth failed).', 'bad');
+      else if (res.ok) status('srv-status', 'Connected — existing data found for this sync name.', 'ok');
+      else status('srv-status', `Server responded HTTP ${res.status}.`, 'bad');
+    } catch (e) {
+      status('srv-status', `Could not reach server: ${e.message} (check URL, token, and that you granted access).`, 'bad');
+    }
+  } else if (provider === 'gist') {
+    try {
+      const res = await fetch('https://api.github.com/gists?per_page=1',
+        { headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' } });
+      if (res.status === 401 || res.status === 403) status('srv-status', 'GitHub rejected the token — check it has the “Gists” scope.', 'bad');
+      else if (res.ok) status('srv-status', 'Token works. Save to create (or reuse) your SyncLocker gist.', 'ok');
+      else status('srv-status', `GitHub responded HTTP ${res.status}.`, 'bad');
+    } catch (e) {
+      status('srv-status', `Could not reach GitHub: ${e.message}`, 'bad');
+    }
+  } else if (provider === 'jsonbin') {
+    // JSONBin has no side-effect-free "check this key" endpoint — the key is
+    // actually verified the first time you Save (which creates the bins).
+    status('srv-status', 'Nothing to verify yet — click “Save & grant access”; the key is checked when your bins are created.', 'ok');
   }
 });
 
@@ -159,7 +257,7 @@ $('srv-test').addEventListener('click', async () => {
 //   3) overwrite the server file in the new encryption state
 async function applyPassphrase(newPass) {
   const c = await SL.getConfig();
-  const configured = !!(c.serverUrl && c.token && c.syncName);
+  const configured = SP.isConfigured({ ...c, baseUrl: c.serverUrl });
   if (configured && c.bookmarks.enabled) await send({ type: 'syncNow' });
   if (configured && c.tabs.enabled) await send({ type: 'tabstash-sync' });
 

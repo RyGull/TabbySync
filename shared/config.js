@@ -24,6 +24,14 @@
     passphrase: "sl.passphrase",
     genToken: "sl.genToken",
 
+    // Which sync backend "serverUrl"/"token" above apply to. "custom" (the
+    // default) is the self-hosted synclocker.php endpoint; "gist" and
+    // "jsonbin" are free no-server alternatives (see shared/providers.js).
+    provider: "sl.provider",
+    gistId: "sl.gist.id",
+    jsonbinTabsId: "sl.jsonbin.tabsId",
+    jsonbinBookmarksId: "sl.jsonbin.bookmarksId",
+
     bmEnabled: "sl.bm.enabled",
     bmInterval: "sl.bm.intervalMin",
     bmAutoSync: "sl.bm.autoSync",
@@ -41,7 +49,10 @@
   var ALL = Object.keys(K).map(function (k) { return K[k]; });
 
   // Changing any of these should kick an immediate re-sync on both engines.
-  var SERVER_KEYS = [K.serverUrl, K.token, K.syncName, K.passphrase];
+  var SERVER_KEYS = [
+    K.serverUrl, K.token, K.syncName, K.passphrase,
+    K.provider, K.gistId, K.jsonbinTabsId, K.jsonbinBookmarksId,
+  ];
 
   function num(v, d) { var n = Number(v); return isNaN(n) ? d : n; }
 
@@ -54,6 +65,10 @@
         syncName: s[K.syncName] || "",
         passphrase: s[K.passphrase] || "",
         genToken: s[K.genToken] || "",
+        provider: s[K.provider] || "custom",       // default: self-hosted
+        gistId: s[K.gistId] || "",
+        jsonbinTabsId: s[K.jsonbinTabsId] || "",
+        jsonbinBookmarksId: s[K.jsonbinBookmarksId] || "",
         bookmarks: {
           enabled: s[K.bmEnabled] !== false,          // default on
           intervalMin: Math.max(1, num(s[K.bmInterval], 5)),
@@ -82,6 +97,10 @@
     if ("syncName" in patch) out[K.syncName] = patch.syncName;
     if ("passphrase" in patch) out[K.passphrase] = patch.passphrase;
     if ("genToken" in patch) out[K.genToken] = patch.genToken;
+    if ("provider" in patch) out[K.provider] = patch.provider;
+    if ("gistId" in patch) out[K.gistId] = patch.gistId;
+    if ("jsonbinTabsId" in patch) out[K.jsonbinTabsId] = patch.jsonbinTabsId;
+    if ("jsonbinBookmarksId" in patch) out[K.jsonbinBookmarksId] = patch.jsonbinBookmarksId;
     if (patch.bookmarks) {
       var b = patch.bookmarks;
       if ("enabled" in b) out[K.bmEnabled] = b.enabled;

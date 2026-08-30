@@ -18,7 +18,7 @@ export async function runSync(trigger = 'manual') {
   const cfg = await getConfig();
   if (!isConfigured(cfg)) {
     await setState({ lastStatus: 'not configured', lastError: '' });
-    return { ok: false, status: 'not configured', message: 'Set server URL, token and sync name in Options.' };
+    return { ok: false, status: 'not configured', message: 'Set up a sync method in Options.' };
   }
 
   busy = true;

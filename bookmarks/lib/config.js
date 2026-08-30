@@ -14,6 +14,10 @@ export const DEFAULTS = {
   token: '',
   syncName: '',
   passphrase: '',
+  provider: 'custom',
+  gistId: '',
+  jsonbinTabsId: '',
+  jsonbinBookmarksId: '',
   intervalMin: 5,
   autoSync: true,
   deleteWins: false,
@@ -28,6 +32,11 @@ export async function getConfig() {
     token: c.token,
     syncName: c.syncName,
     passphrase: c.passphrase,
+    // which sync backend the fields above apply to (see shared/providers.js)
+    provider: c.provider,
+    gistId: c.gistId,
+    jsonbinTabsId: c.jsonbinTabsId,
+    jsonbinBookmarksId: c.jsonbinBookmarksId,
     intervalMin: c.bookmarks.intervalMin,
     autoSync: c.bookmarks.autoSync,
     deleteWins: c.bookmarks.deleteWins,
@@ -41,6 +50,10 @@ export async function setConfig(patch) {
   if ('token' in patch) server.token = patch.token;
   if ('syncName' in patch) server.syncName = patch.syncName;
   if ('passphrase' in patch) server.passphrase = patch.passphrase;
+  if ('provider' in patch) server.provider = patch.provider;
+  if ('gistId' in patch) server.gistId = patch.gistId;
+  if ('jsonbinTabsId' in patch) server.jsonbinTabsId = patch.jsonbinTabsId;
+  if ('jsonbinBookmarksId' in patch) server.jsonbinBookmarksId = patch.jsonbinBookmarksId;
   const bookmarks = {};
   if ('intervalMin' in patch) bookmarks.intervalMin = patch.intervalMin;
   if ('autoSync' in patch) bookmarks.autoSync = patch.autoSync;
@@ -51,7 +64,7 @@ export async function setConfig(patch) {
 
 // Configured AND enabled — the engine only runs when both hold.
 export function isConfigured(cfg) {
-  return !!(cfg.enabled && cfg.baseUrl && cfg.token && cfg.syncName);
+  return !!(cfg.enabled) && self.SyncLockerProviders.isConfigured(cfg);
 }
 
 // --- sync state (not user-editable), under bookmark-only keys ---

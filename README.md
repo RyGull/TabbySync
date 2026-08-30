@@ -3,8 +3,10 @@
 **Self-hosted sync for your bookmarks _and_ your open tabs — two tools in one
 extension.** SyncLocker merges the former *BookmarkStash* and *TabStash*
 extensions into a single Manifest V3 extension (any Chromium browser) that talks
-to **one server, one token and one sync name**. Turn on the bookmark sync, the
-tab sync, or both.
+to **one sync destination, one token and one sync name**. Turn on the bookmark
+sync, the tab sync, or both. Self-hosting your own endpoint is the recommended
+setup — free, no-server alternatives (GitHub Gist, JSONBin.io) are also
+available for anyone who doesn't have a server, see [below](#no-server-free-alternatives).
 
 - 📑 **Bookmarks** — syncs your whole bookmark tree (bar + other bookmarks) with
   a true three-way merge, so adds/edits/moves/deletes from several devices are
@@ -53,6 +55,25 @@ Prefer your own endpoint? Any server that answers `GET`/`PUT` on
 `synclocker.php` shows the exact contract (it also honours `ETag` / `If-Match`
 for safe concurrent writes).
 
+## No server? Free alternatives
+
+Self-hosting is the recommended way to use SyncLocker — your data never
+leaves a server you control. If that's not realistic for you, **Server &
+sync → Sync method** offers two free, no-server backends instead:
+
+- **GitHub Gist** — SyncLocker creates a private ("secret") gist for you and
+  stores each engine's file inside it. You just need a GitHub personal access
+  token scoped to Gists (classic token with the `gist` scope, or a
+  fine-grained token with the "Gists" account permission).
+- **JSONBin.io** — SyncLocker creates a bin per engine for you. You just need
+  a free JSONBin API key.
+
+Both are meaningfully **less private than self-hosting**: your data (or its
+ciphertext, if you turn on encryption) sits on a third party's servers under
+their access and retention policies, not yours. The Options page shows a
+disclaimer for each. **If you use either one, turn on the encryption
+passphrase above** so that third party only ever sees unreadable ciphertext.
+
 ## Encryption (optional, shared)
 
 Options → **Server & sync** → **Encryption**. One passphrase encrypts **both**
@@ -81,6 +102,7 @@ The extension lives at the repo root:
 | `popup.html` / `popup.js` | The hub UI (two feature cards) |
 | `options.html` / `options.js` / `options.css` | Unified options (shared server + per-tool settings) |
 | `shared/config.js` | Single source of truth for the shared config keys |
+| `shared/providers.js` | Pluggable sync backends: self-hosted, GitHub Gist, JSONBin.io |
 | `shared/status.js` | One combined toolbar badge |
 | `shared/server-files.js` | Generates the `synclocker.php` bundle |
 | `bookmarks/` | Bookmark engine (`background-core.js` + `lib/`) |

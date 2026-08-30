@@ -80,14 +80,15 @@ function esc(s) {
 
 async function refreshBanner() {
   var c = await self.SyncLockerConfig.getConfig();
-  var configured = !!(c.serverUrl && c.token && c.syncName);
+  var configured = self.SyncLockerProviders.isConfigured(Object.assign({}, c, { baseUrl: c.serverUrl }));
   $("setup").hidden = configured;
   var note = $("footNote");
   if (!configured) {
-    note.textContent = "Not set up yet — open Options to add your server.";
+    note.textContent = "Not set up yet — open Options to pick a sync method.";
     return configured;
   }
-  var name = "<b>" + esc(c.syncName) + "</b>";
+  var label = c.syncName || self.SyncLockerProviders.providerMeta(c.provider).label;
+  var name = "<b>" + esc(label) + "</b>";
   if (c.passphrase) {
     note.innerHTML = "Profile " + name + "<br><span class=\"okenc\">🔒 Encryption on</span>";
   } else {
