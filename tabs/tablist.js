@@ -747,10 +747,7 @@
     if (msg && msg.type === "tabstash-refresh") reload();
   });
 
-  reload().then(function () {
-    chrome.runtime.sendMessage({ type: "tabstash-sync" }).then(function (res) {
-      setSync(res && res.ok ? "ok" : "err");
-      reload();
-    }).catch(function () {});
-  });
+  // Just render what's already stored — syncing stays on the "Sync now"
+  // button and the background timer, not on opening this page.
+  reload();
 })();
