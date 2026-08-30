@@ -156,35 +156,7 @@
   chrome.runtime.onStartup.addListener(function () {
     buildMenus();
     rescheduleAlarm().then(function () { return TabStash.syncNow(); }).catch(function () {});
-    runOpenOnStartupOnce();
   });
-
-  // Optionally open (and pin) the tab list automatically on browser start.
-  //
-  // chrome.runtime.onStartup is the "right" event for this, but some
-  // Chromium-based browsers (Brave, notably) don't reliably deliver it to an
-  // extension's MV3 service worker — so relying on it alone can make this
-  // setting silently do nothing. chrome.storage.session lives only in memory
-  // and is cleared when the browser/profile actually restarts (it survives
-  // the service worker itself being suspended and woken back up), so a flag
-  // stored there tells us "have we already handled startup this browser
-  // session" regardless of which event happens to wake the worker first.
-  // Calling this once at module load covers that: the very first time the
-  // worker spins up in a new browser session — for whatever reason — is
-  // exactly the wake-up we want to catch.
-  var STARTUP_DONE_KEY = "sl.tab.startupDone";
-  function runOpenOnStartupOnce() {
-    return chrome.storage.session.get(STARTUP_DONE_KEY).then(function (r) {
-      if (r[STARTUP_DONE_KEY]) return;
-      var flag = {}; flag[STARTUP_DONE_KEY] = true;
-      return chrome.storage.session.set(flag).then(function () {
-        return TabStash.getSettings();
-      }).then(function (settings) {
-        if (settings.openOnStartup) return openOrFocusList();
-      });
-    }).catch(function () { /* storage.session unavailable — nothing we can do */ });
-  }
-  runOpenOnStartupOnce();
 
   // React to config changes: server settings, the interval, or the feature
   // toggle. Rebuild menus + reschedule + refresh the badge.

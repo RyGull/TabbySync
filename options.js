@@ -96,7 +96,6 @@ async function load() {
   else $('tab-dedupe').selectedIndex = 0;
   $('tab-restore-group').checked = c.tabs.restoreAsGroup;
   $('tab-remove-restore').checked = c.tabs.removeOnRestore;
-  $('tab-open-startup').checked = c.tabs.openOnStartup;
   $('tab-pin-list').checked = c.tabs.pinList;
   $('tab-backup-pass').value = c.tabs.backupPass;
 
@@ -297,14 +296,13 @@ async function saveTabs() {
     dedupe: $('tab-dedupe').value,
     restoreAsGroup: $('tab-restore-group').checked,
     removeOnRestore: $('tab-remove-restore').checked,
-    openOnStartup: $('tab-open-startup').checked,
     pinList: $('tab-pin-list').checked,
   } });
   updateCardsDisabled();
   await send({ type: 'tabstash-reschedule' });
 }
 ['tab-enable', 'tab-interval', 'tab-dedupe', 'tab-restore-group',
- 'tab-remove-restore', 'tab-open-startup', 'tab-pin-list'].forEach((id) =>
+ 'tab-remove-restore', 'tab-pin-list'].forEach((id) =>
   $(id).addEventListener('change', saveTabs));
 $('tab-backup-pass').addEventListener('change', () =>
   SL.setConfig({ tabs: { backupPass: $('tab-backup-pass').value } }));

@@ -35,7 +35,6 @@
     tabRestoreGroup: "sl.tab.restoreAsGroup",
     tabBackupPass: "sl.tab.backupPass",
     tabRemoveOnRestore: "sl.tab.removeOnRestore",
-    tabOpenOnStartup: "sl.tab.openOnStartup",
     tabPinList: "sl.tab.pinList",
   };
 
@@ -68,7 +67,6 @@
           restoreAsGroup: s[K.tabRestoreGroup] === true,
           backupPass: s[K.tabBackupPass] || "",
           removeOnRestore: s[K.tabRemoveOnRestore] === true, // default off (keep on restore)
-          openOnStartup: s[K.tabOpenOnStartup] === true,     // default off
           pinList: s[K.tabPinList] === true,                 // default off
         },
       };
@@ -99,7 +97,6 @@
       if ("restoreAsGroup" in t) out[K.tabRestoreGroup] = t.restoreAsGroup;
       if ("backupPass" in t) out[K.tabBackupPass] = t.backupPass;
       if ("removeOnRestore" in t) out[K.tabRemoveOnRestore] = t.removeOnRestore;
-      if ("openOnStartup" in t) out[K.tabOpenOnStartup] = t.openOnStartup;
       if ("pinList" in t) out[K.tabPinList] = t.pinList;
     }
     return chrome.storage.local.set(out);

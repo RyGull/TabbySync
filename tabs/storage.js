@@ -180,8 +180,6 @@
         restoreAsGroup: c.tabs.restoreAsGroup,
         // remove links from the list when restoring them (default off = keep)
         removeOnRestore: c.tabs.removeOnRestore,
-        // open the tab list automatically on browser startup
-        openOnStartup: c.tabs.openOnStartup,
         // keep the tab-list tab pinned
         pinList: c.tabs.pinList,
         // end-to-end encryption passphrase (shared; never sent to the server)
@@ -206,7 +204,6 @@
     if ("restoreAsGroup" in patch) tabs.restoreAsGroup = patch.restoreAsGroup;
     if ("backupPass" in patch) tabs.backupPass = patch.backupPass;
     if ("removeOnRestore" in patch) tabs.removeOnRestore = patch.removeOnRestore;
-    if ("openOnStartup" in patch) tabs.openOnStartup = patch.openOnStartup;
     if ("pinList" in patch) tabs.pinList = patch.pinList;
     out.tabs = tabs;
     return shared().setConfig(out).then(function () { return getSettings(); });
