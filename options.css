@@ -27,6 +27,13 @@
 [hidden] { display:none !important; }
 body { margin:0; background:var(--bg); color:var(--text);
   font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+/* Links had no rule at all here, so they fell back to the browser's default
+   blue/purple — poor contrast on the dark palette, and jarring in general.
+   Gold matches the accents already used on this page (the server card's
+   border, its field labels) and reads clearly on both palettes; :visited is
+   pinned to the same color so a clicked link doesn't revert to default purple. */
+a, a:visited { color:var(--gold); text-decoration:none; }
+a:hover { text-decoration:underline; }
 .wrap { max-width:720px; margin:0 auto; padding:26px 20px 60px; }
 
 .top { display:flex; align-items:center; gap:11px; margin-bottom:6px; }
