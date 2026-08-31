@@ -102,13 +102,15 @@
     @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .foot .note .warn { color:#f0b357; } }
     .foot .note a { color:var(--bm); cursor:pointer; text-decoration:underline; }
     .foot .note .okenc { color:var(--ok); font-weight:600; }
-    .foot .opts { margin-left:auto; flex:0 0 auto; background:transparent; border:1px solid var(--line); }
+    .foot .opts { flex:0 0 auto; background:transparent; border:1px solid var(--line); }
 
     /* small privacy-policy footer, below the feedback/donate bars */
     .priv-foot { display:flex; align-items:center; justify-content:space-between; gap:8px;
       padding:8px 15px 12px; border-top:1px solid var(--line); }
     .priv-link { font-size:11px; color:var(--muted); cursor:pointer; text-decoration:none; }
     .priv-link:hover { color:var(--bm); text-decoration:underline; }
+    .priv-right { display:flex; align-items:center; gap:8px; }
+    .priv-right .ver { align-self:auto; margin:0; } /* reset .head's bottom-align/margin for this row */
     .priv-badge { font-size:10.5px; font-weight:600; color:var(--muted); background:var(--panel);
       border:1px solid var(--line); border-radius:20px; padding:2px 9px; white-space:nowrap; cursor:default; }
 
@@ -148,8 +150,6 @@
   <div class="head">
     <img class="logo logo-light" src="icons/logo-light.png" alt="TabbySync">
     <img class="logo logo-dark" src="icons/logo-dark.png" alt="TabbySync">
-    <span class="ver" id="ver"></span>
-    <span id="sl-theme"></span>
   </div>
 
   <div id="setup" class="banner" hidden>
@@ -203,6 +203,7 @@
 
   <div class="foot">
     <span class="note" id="footNote">One server · one token · one sync name</span>
+    <span id="sl-theme"></span>
     <button class="opts" id="opts">Options</button>
   </div>
 
@@ -215,7 +216,10 @@
 
   <div class="priv-foot">
     <a id="privacyLink" class="priv-link">🔒 Privacy Policy</a>
-    <span class="priv-badge" title="No servers of our own, no analytics, no data selling — see the privacy policy for details.">🛡️ No tracking</span>
+    <span class="priv-right">
+      <span class="ver" id="ver"></span>
+      <span class="priv-badge" title="No servers of our own, no analytics, no data selling — see the privacy policy for details.">🛡️ No tracking</span>
+    </span>
   </div>
  </div><!-- /mainView -->
 
