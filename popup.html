@@ -8,7 +8,7 @@
     :root {
       --bg:#ffffff; --panel:#f7f8fa; --line:#e3e6ea; --text:#1c2330; --muted:#6b7280;
       --bm:#2563eb; --bm-soft:#e8f0fe;      /* bookmarks = blue  */
-      --tab:#0d9488; --tab-soft:#d7f4ef;    /* tabs      = teal  */
+      --tab:#ea580c; --tab-soft:#ffedd5;    /* tabs      = orange */
       --ok:#16a34a; --err:#dc2626; --busy:#eab308;
     }
     /* dark palette — applied by the system default UNLESS the user forced light,
@@ -20,12 +20,12 @@
     @media (prefers-color-scheme: dark) {
       :root:not([data-theme="light"]) {
         --bg:#1e222a; --panel:#252a33; --line:#333a45; --text:#e8eaed; --muted:#9aa2af;
-        --bm:#5b8def; --bm-soft:#1e2a44; --tab:#2dd4bf; --tab-soft:#123b37;
+        --bm:#5b8def; --bm-soft:#1e2a44; --tab:#fb923c; --tab-soft:#4a2c12;
       }
     }
     :root[data-theme="dark"] {
       --bg:#1e222a; --panel:#252a33; --line:#333a45; --text:#e8eaed; --muted:#9aa2af;
-      --bm:#5b8def; --bm-soft:#1e2a44; --tab:#2dd4bf; --tab-soft:#123b37;
+      --bm:#5b8def; --bm-soft:#1e2a44; --tab:#fb923c; --tab-soft:#4a2c12;
     }
     * { box-sizing:border-box; }
     [hidden] { display:none !important; }
