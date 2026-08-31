@@ -1,5 +1,5 @@
 /*
- * SyncLocker — tabs engine: storage + server-sync layer (single-list model).
+ * TabbySync — tabs engine: storage + server-sync layer (single-list model).
  *
  * One stash list per extension install (i.e. per browser profile). The list is
  * stored in chrome.storage.local and mirrored to a remote JSON file via
@@ -14,11 +14,11 @@
  * Merges use per-group updatedAt (last-write-wins) plus tombstones so deletes
  * propagate instead of resurrecting.
  *
- * Part of SyncLocker: provider/server URL/token/sync name/passphrase come from
- * the SHARED config (self.SyncLockerConfig); tab files are namespaced
+ * Part of TabbySync: provider/server URL/token/sync name/passphrase come from
+ * the SHARED config (self.TabbySyncConfig); tab files are namespaced
  * "tabs-<name>" so they share one destination + token with the bookmarks
  * engine. Loaded as a <script> in pages and imported for its side effect in
- * the module worker, so everything hangs off the global `TabStash`.
+ * the module worker, so everything hangs off the global `TabbySync`.
  */
 (function () {
   "use strict";
@@ -27,21 +27,21 @@
   var ETAG_KEY = "sl.tab.etag";
   var pushTimer = null;
 
-  function shared() { return self.SyncLockerConfig; }
-  function providers() { return self.SyncLockerProviders; }
+  function shared() { return self.TabbySyncConfig; }
+  function providers() { return self.TabbySyncProviders; }
 
   function uid() {
     return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
   }
 
-  // Report tab-sync status to the shared toolbar badge. SyncLocker has one
+  // Report tab-sync status to the shared toolbar badge. TabbySync has one
   // action shared with the bookmarks engine, so we don't drive the icon here —
   // we hand our state to the badge coordinator, which shows the worst of both.
   //   "ok" (green), "err" (red), "neutral"/anything else (cleared).
   function setBadge(status) {
     try {
       var kind = status === "ok" ? "ok" : status === "err" ? "error" : "none";
-      if (self.SyncLockerStatus) self.SyncLockerStatus.report("tabs", kind);
+      if (self.TabbySyncStatus) self.TabbySyncStatus.report("tabs", kind);
     } catch (e) { /* not available in this context */ }
   }
 
@@ -163,7 +163,7 @@
 
   // ---- settings ------------------------------------------------------------
 
-  // Read the tabs engine's settings out of SyncLocker's shared config. Server
+  // Read the tabs engine's settings out of TabbySync's shared config. Server
   // URL / token / sync name / passphrase are shared with the bookmarks engine;
   // syncEnabled mirrors the tabs feature toggle, so turning the feature off
   // stops the poll and the server writes.
@@ -175,7 +175,7 @@
         token: c.token,
         syncKey: c.syncName,             // shared profile name, e.g. "work"
         syncName: c.syncName,            // same value, name expected by shared/providers.js
-        customUrl: "",                    // (no per-engine override in SyncLocker)
+        customUrl: "",                    // (no per-engine override in TabbySync)
         // which sync backend the fields above apply to (see shared/providers.js)
         provider: c.provider,
         gistId: c.gistId,
@@ -257,7 +257,7 @@
         new TextEncoder().encode(plaintext));
     }).then(function (ctBuf) {
       return {
-        app: "SyncLocker", enc: "v1", cipher: "AES-GCM", kdf: "PBKDF2-SHA256",
+        app: "TabbySync", enc: "v1", cipher: "AES-GCM", kdf: "PBKDF2-SHA256",
         iter: PBKDF2_ITERS, salt: b64(salt), iv: b64(iv), ct: b64(new Uint8Array(ctBuf))
       };
     });
@@ -289,7 +289,7 @@
 
   function serialize(settings, state) {
     return JSON.stringify({
-      app: "SyncLocker",
+      app: "TabbySync",
       version: 1,
       key: settings.syncKey || "",
       updatedAt: state.updatedAt || Date.now(),
@@ -559,7 +559,7 @@
       getSettings().then(function (settings) {
         if (!settings.syncEnabled || !providers().isConfigured(settings)) return;
         return syncNow().catch(function (e) {
-          console.warn("[SyncLocker] sync failed:", e && e.message);
+          console.warn("[TabbySync] sync failed:", e && e.message);
         });
       });
     }, 1500);
@@ -618,7 +618,7 @@
   function exportJSON(settings, state) {
     return JSON.stringify(
       {
-        app: "SyncLocker", version: 1,
+        app: "TabbySync", version: 1,
         key: (settings && settings.syncKey) || "",
         exportedAt: new Date().toISOString(),
         groups: state.groups
@@ -765,7 +765,7 @@
     return state;
   }
 
-  var TabStash = {
+  var TabbySync = {
     STATE_KEY: STATE_KEY,
     STATUS_KEY: STATUS_KEY,
     emptyState: emptyState,
@@ -806,7 +806,7 @@
     isEncrypted: isEncrypted
   };
 
-  if (typeof self !== "undefined") self.TabStash = TabStash;
-  if (typeof window !== "undefined") window.TabStash = TabStash;
-  if (typeof module !== "undefined" && module.exports) module.exports = TabStash;
+  if (typeof self !== "undefined") self.TabbySync = TabbySync;
+  if (typeof window !== "undefined") window.TabbySync = TabbySync;
+  if (typeof module !== "undefined" && module.exports) module.exports = TabbySync;
 })();

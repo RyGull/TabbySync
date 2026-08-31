@@ -1,9 +1,9 @@
 /*
- * SyncLocker — pluggable sync backends ("providers").
+ * TabbySync — pluggable sync backends ("providers").
  *
  * Both engines (bookmarks + tabs) read/write ONE small JSON file per engine
  * (bookmarks-<name>.json / tabs-<name>.json). Historically that file lived on
- * a self-hosted endpoint (synclocker.php) — the most private option, since
+ * a self-hosted endpoint (tabbysync.php) — the most private option, since
  * the data never leaves a server you control, but it requires having a web
  * server at all, which is a real barrier for non-technical users.
  *
@@ -24,14 +24,14 @@
  * and return etag: ""; the app's own content-level merge (last-write-wins
  * per group, with tombstones) is what keeps concurrent edits safe either way.
  *
- * Written as a classic IIFE that sets self.SyncLockerProviders, so it works
+ * Written as a classic IIFE that sets self.TabbySyncProviders, so it works
  * both as a <script> on the pages and as a side-effect import in the module
  * worker — same pattern as shared/config.js.
  */
 (function () {
   "use strict";
 
-  function shared() { return self.SyncLockerConfig; }
+  function shared() { return self.TabbySyncConfig; }
 
   // ---- provider metadata, for the Options UI --------------------------------
   // `disclaimer` is shown next to the picker for anything that isn't your own
@@ -43,7 +43,7 @@
       id: "custom",
       label: "Self-hosted (recommended)",
       tokenLabel: "Bearer token",
-      tokenPlaceholder: "the token inside synclocker.php",
+      tokenPlaceholder: "the token inside tabbysync.php",
       needsUrl: true,
       needsSyncName: true,
       setupHint: "Your own server — see “Self-hosting” below if you don't have one yet.",
@@ -58,7 +58,7 @@
       needsSyncName: true,
       setupHint: "Create a token at github.com → Settings → Developer settings → " +
         "Personal access tokens → Fine-grained tokens, scoped to just “Gists: Read and write”. " +
-        "SyncLocker creates one private gist for you the first time you save.",
+        "TabbySync creates one private gist for you the first time you save.",
       disclaimer: "⚠️ Less private than self-hosting: your data is stored on GitHub's " +
         "servers in a “secret” gist. That means it's unlisted, not truly access-controlled — " +
         "anyone with the raw link, or anyone who gets your token, can read it. Strongly recommended: " +
@@ -72,7 +72,7 @@
       needsUrl: false,
       needsSyncName: false,
       setupHint: "Free account at jsonbin.io → API Keys → create a key, paste it here. " +
-        "SyncLocker creates the bin(s) for you the first time you save. One profile per key " +
+        "TabbySync creates the bin(s) for you the first time you save. One profile per key " +
         "(no separate “sync name”) — use self-hosting or GitHub Gist if you need more than one.",
       disclaimer: "⚠️ Least private option: your data is stored on JSONBin's free " +
         "third-party service, which doesn't offer the durability, access-control or longevity " +
@@ -87,12 +87,12 @@
   // ---- shared helpers --------------------------------------------------------
   function jsonHeaders(extra) { return Object.assign({ "Content-Type": "application/json" }, extra || {}); }
 
-  // ---- custom (self-hosted synclocker.php or any GET/PUT+bearer endpoint) ---
+  // ---- custom (self-hosted tabbysync.php or any GET/PUT+bearer endpoint) ---
   function customEndpoint(cfg, fileName) {
     if (!cfg.baseUrl) return "";
     var base = cfg.baseUrl.replace(/\/+$/, "");
     var file = encodeURIComponent(fileName);
-    // A base URL ending in ".php" is the standalone SyncLocker script — route
+    // A base URL ending in ".php" is the standalone TabbySync script — route
     // via ?name= (no URL rewriting needed on the server).
     if (/\.php$/i.test(base)) return base + "?name=" + file;
     return base + "/" + file;
@@ -138,7 +138,7 @@
     return fetch(GIST_API + "/gists", {
       method: "POST",
       headers: ghHeaders(cfg, jsonHeaders()),
-      body: JSON.stringify({ description: "SyncLocker data (private)", public: false, files: files })
+      body: JSON.stringify({ description: "TabbySync data (private)", public: false, files: files })
     }).then(function (res) {
       if (res.status === 401 || res.status === 403) throw new Error("GitHub rejected the token (check it has the “Gists” scope).");
       if (!res.ok) throw new Error("Could not create a Gist (HTTP " + res.status + ").");
@@ -257,7 +257,7 @@
     return !!(cfg.baseUrl && cfg.token && cfg.syncName); // custom (self-hosted)
   }
 
-  self.SyncLockerProviders = {
+  self.TabbySyncProviders = {
     PROVIDERS: PROVIDERS,
     providerMeta: providerMeta,
     get: get,

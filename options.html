@@ -3,22 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SyncLocker — Options</title>
+  <title>TabbySync — Options</title>
   <link rel="stylesheet" href="options.css">
   <script src="shared/theme.js"></script>
 </head>
 <body>
   <div class="wrap">
     <div class="top">
-      <img class="olo olo-light" src="icons/logo-light.png" alt="SyncLocker">
-      <img class="olo olo-dark" src="icons/logo-dark.png" alt="SyncLocker">
+      <img class="olo olo-light" src="icons/logo-light.png" alt="TabbySync">
+      <img class="olo olo-dark" src="icons/logo-dark.png" alt="TabbySync">
       <span class="tag">self-hosted bookmark &amp; tab sync</span>
       <span id="sl-theme"></span>
     </div>
     <div class="intro-cards">
       <div class="card intro-card">
         <p><strong>Privacy-first.</strong> Your bookmarks and tabs stay on your device and are sent
-          only to the sync destination you choose. SyncLocker runs no server of its own, collects no
+          only to the sync destination you choose. TabbySync runs no server of its own, collects no
           analytics, and never sees your data. <a href="privacy.html" target="_blank" rel="noopener">Read the full privacy policy →</a></p>
       </div>
       <div class="card intro-card warn">
@@ -41,11 +41,11 @@
       <div class="callout" id="provider-disclaimer" hidden></div>
 
       <label class="field gold" for="srv-url" id="srv-url-label">Server URL</label>
-      <input type="url" id="srv-url" placeholder="https://example.com/synclocker/synclocker.php" spellcheck="false">
-      <p class="hint" id="srv-url-hint">The <code>synclocker.php</code> script (see “Self-hosting” below). Requests route via <code>?name=</code>.</p>
+      <input type="url" id="srv-url" placeholder="https://example.com/tabbysync/tabbysync.php" spellcheck="false">
+      <p class="hint" id="srv-url-hint">The <code>tabbysync.php</code> script (see “Self-hosting” below). Requests route via <code>?name=</code>.</p>
 
       <label class="field gold" for="srv-token" id="srv-token-label">Bearer token</label>
-      <input type="password" id="srv-token" placeholder="the token inside synclocker.php" spellcheck="false" autocomplete="off">
+      <input type="password" id="srv-token" placeholder="the token inside tabbysync.php" spellcheck="false" autocomplete="off">
       <p class="hint" id="srv-token-hint">Sent as <code>Authorization: Bearer …</code>. Stored only in this browser profile.</p>
 
       <label class="field gold" for="srv-name" id="srv-name-label">Sync name</label>
@@ -79,7 +79,7 @@
     <section class="card selfhost" id="selfhostCard">
       <h2><span class="ic">🛠️</span> Self-hosting — generate your server files</h2>
       <p>No endpoint yet? Generate a ready-to-upload bundle (one PHP script + <code>.htaccess</code>
-        guards) with a fresh random token. It runs on <b>your</b> web space; SyncLocker never sends your data to anyone.</p>
+        guards) with a fresh random token. It runs on <b>your</b> web space; TabbySync never sends your data to anyone.</p>
       <label class="field" for="gen-token">Server token</label>
       <div class="row" style="margin-top:4px">
         <input type="text" id="gen-token" spellcheck="false" autocomplete="off" readonly style="flex:1;min-width:220px">
@@ -94,9 +94,9 @@
         <summary>How to host it (about 3 minutes)</summary>
         <div class="callout">
           <ol style="margin:0 0 0 18px;padding:0;line-height:1.7">
-            <li>Click <b>Download server files</b> — you get <code>synclocker-server.zip</code> containing a <code>synclocker/</code> folder.</li>
+            <li>Click <b>Download server files</b> — you get <code>tabbysync-server.zip</code> containing a <code>tabbysync/</code> folder.</li>
             <li>Upload that whole folder to your PHP web space (e.g. <code>public_html/</code> on cPanel) over HTTPS.</li>
-            <li>Set <b>Server URL</b> above to <code>https://YOURDOMAIN/synclocker/synclocker.php</code>, then click <b>Use this token above</b>.</li>
+            <li>Set <b>Server URL</b> above to <code>https://YOURDOMAIN/tabbysync/tabbysync.php</code>, then click <b>Use this token above</b>.</li>
             <li><b>Save &amp; grant access</b>, then <b>Test connection</b> — a <code>404</code> is expected until the first sync creates a file.</li>
             <li>Repeat the same URL + token + sync name on your other computers.</li>
           </ol>

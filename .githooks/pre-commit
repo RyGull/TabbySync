@@ -1,5 +1,5 @@
 #!/bin/sh
-# SyncLocker pre-commit hook: auto-increment the manifest.json patch version.
+# TabbySync pre-commit hook: auto-increment the manifest.json patch version.
 #
 # On every commit the third (patch) number in manifest.json's "version" is
 # bumped and re-staged — so 1.0.2 -> 1.0.3 -> 1.0.4 without anyone editing it

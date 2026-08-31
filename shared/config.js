@@ -1,4 +1,4 @@
-// config.js — SyncLocker's shared configuration layer.
+// config.js — TabbySync's shared configuration layer.
 //
 // Both engines (bookmarks + tabs) talk to ONE server, with ONE token, one
 // sync name and one optional encryption passphrase. That shared config lives
@@ -10,7 +10,7 @@
 //     <endpoint>?name=bookmarks-<syncName>.json
 //     <endpoint>?name=tabs-<syncName>.json
 //
-// Written as a classic IIFE that sets self.SyncLockerConfig, so it works both
+// Written as a classic IIFE that sets self.TabbySyncConfig, so it works both
 // as a <script> on the pages and as a side-effect import in the module worker.
 (function () {
   "use strict";
@@ -25,7 +25,7 @@
     genToken: "sl.genToken",
 
     // Which sync backend "serverUrl"/"token" above apply to. "custom" (the
-    // default) is the self-hosted synclocker.php endpoint; "gist" and
+    // default) is the self-hosted tabbysync.php endpoint; "gist" and
     // "jsonbin" are free no-server alternatives (see shared/providers.js).
     provider: "sl.provider",
     gistId: "sl.gist.id",
@@ -130,7 +130,7 @@
   // tabs-<name>.json) and shown all over the UI (Options preview, the
   // popup, the tab-list status block) — so it needs to be both filename-safe
   // and short enough not to overflow those layouts. This matches the regex
-  // the generated synclocker.php server itself requires
+  // the generated tabbysync.php server itself requires
   // (/^(bookmarks|tabs)-[A-Za-z0-9._-]+\.json$/), so a name that passes here
   // is guaranteed to be accepted there too.
   // IMPORTANT: never lowercase (or otherwise alter) an already-valid
@@ -151,7 +151,7 @@
       .replace(/^[-.]+|[-.]+$/g, "");
   }
 
-  self.SyncLockerConfig = {
+  self.TabbySyncConfig = {
     KEYS: K,
     SERVER_KEYS: SERVER_KEYS,
     SYNC_NAME_MAX: SYNC_NAME_MAX,

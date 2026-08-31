@@ -1,13 +1,13 @@
-// config.js — the bookmarks engine's view of SyncLocker's shared config.
+// config.js — the bookmarks engine's view of TabbySync's shared config.
 //
 // Server URL / token / sync name / passphrase are SHARED with the tabs engine
 // (see shared/config.js). Everything here maps that shared config onto the
 // field names the rest of the bookmarks engine already uses, and owns the
 // bookmark-only sync state under its own namespaced keys.
 
-// self.SyncLockerConfig is provided by shared/config.js, imported by the
+// self.TabbySyncConfig is provided by shared/config.js, imported by the
 // service worker before this engine runs.
-function shared() { return self.SyncLockerConfig; }
+function shared() { return self.TabbySyncConfig; }
 
 export const DEFAULTS = {
   baseUrl: '',
@@ -64,7 +64,7 @@ export async function setConfig(patch) {
 
 // Configured AND enabled — the engine only runs when both hold.
 export function isConfigured(cfg) {
-  return !!(cfg.enabled) && self.SyncLockerProviders.isConfigured(cfg);
+  return !!(cfg.enabled) && self.TabbySyncProviders.isConfigured(cfg);
 }
 
 // --- sync state (not user-editable), under bookmark-only keys ---

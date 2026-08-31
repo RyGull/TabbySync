@@ -29,7 +29,7 @@ export async function runSync(trigger = 'manual') {
     const { tree: local, stableToLocal } = await readBrowserTree(state.stableToLocal, state.cacheTree);
     const remoteRaw = await getRemote(cfg);
     const remote = remoteRaw || emptyTree();
-    console.log(`[SyncLocker] sync (${trigger}): remote ${remoteRaw ? 'found' : 'empty/none'}, local ${stats(local).bookmarks} bookmarks`);
+    console.log(`[TabbySync] sync (${trigger}): remote ${remoteRaw ? 'found' : 'empty/none'}, local ${stats(local).bookmarks} bookmarks`);
 
     const merged = threeWayMerge(base, local, remote, { deleteWins: cfg.deleteWins });
 
@@ -37,7 +37,7 @@ export async function runSync(trigger = 'manual') {
     await putRemote(cfg, merged);
 
     const ts = Date.now();
-    console.log(`[SyncLocker] sync ok: ${stats(merged).bookmarks} bookmarks, ${stats(merged).folders} folders after merge`);
+    console.log(`[TabbySync] sync ok: ${stats(merged).bookmarks} bookmarks, ${stats(merged).folders} folders after merge`);
     await setState({
       cacheTree: merged,
       stableToLocal: newMap,
@@ -49,7 +49,7 @@ export async function runSync(trigger = 'manual') {
     const s = stats(merged);
     return { ok: true, status: 'ok', trigger, lastSync: ts, ...s };
   } catch (e) {
-    console.warn('[SyncLocker] sync error:', e && (e.message || e));
+    console.warn('[TabbySync] sync error:', e && (e.message || e));
     await setState({ lastStatus: 'error', lastError: e.message || String(e) });
     return { ok: false, status: 'error', message: e.message || String(e) };
   } finally {

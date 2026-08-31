@@ -1,4 +1,4 @@
-// popup.js — SyncLocker hub. Shows both engines side by side, lets you enable
+// popup.js — TabbySync hub. Shows both engines side by side, lets you enable
 // either or both, and triggers their actions. Shared config for the toggles;
 // messages to the worker for status + actions.
 "use strict";
@@ -65,7 +65,7 @@ async function refreshTabs() {
   if (s.enabled && s.lastStatus === "error" && s.lastError) {
     $("tabErrRow").hidden = false; $("tabErr").textContent = s.lastError;
   } else $("tabErrRow").hidden = true;
-  $("tabStash").disabled = !s.enabled;
+  $("stashAllTabs").disabled = !s.enabled;
   $("tabSync").disabled = !s.enabled || !s.configured;
   return s;
 }
@@ -79,15 +79,15 @@ function esc(s) {
 }
 
 async function refreshBanner() {
-  var c = await self.SyncLockerConfig.getConfig();
-  var configured = self.SyncLockerProviders.isConfigured(Object.assign({}, c, { baseUrl: c.serverUrl }));
+  var c = await self.TabbySyncConfig.getConfig();
+  var configured = self.TabbySyncProviders.isConfigured(Object.assign({}, c, { baseUrl: c.serverUrl }));
   $("setup").hidden = configured;
   var note = $("footNote");
   if (!configured) {
     note.textContent = "Not set up yet — open Options to pick a sync method.";
     return configured;
   }
-  var label = c.syncName || self.SyncLockerProviders.providerMeta(c.provider).label;
+  var label = c.syncName || self.TabbySyncProviders.providerMeta(c.provider).label;
   var name = "<b>" + esc(label) + "</b>";
   if (c.passphrase) {
     note.innerHTML = "Profile " + name + "<br><span class=\"okenc\">🔒 Encryption on</span>";
@@ -118,11 +118,11 @@ $("privacyLink").addEventListener("click", function () {
 });
 
 $("bmEnable").addEventListener("change", async function () {
-  await self.SyncLockerConfig.setConfig({ bookmarks: { enabled: $("bmEnable").checked } });
+  await self.TabbySyncConfig.setConfig({ bookmarks: { enabled: $("bmEnable").checked } });
   await refreshBookmarks();
 });
 $("tabEnable").addEventListener("change", async function () {
-  await self.SyncLockerConfig.setConfig({ tabs: { enabled: $("tabEnable").checked } });
+  await self.TabbySyncConfig.setConfig({ tabs: { enabled: $("tabEnable").checked } });
   await refreshTabs();
 });
 
@@ -133,8 +133,8 @@ $("bmSync").addEventListener("click", async function () {
   await refreshBookmarks();
 });
 
-$("tabStash").addEventListener("click", async function () {
-  $("tabStash").disabled = true;
+$("stashAllTabs").addEventListener("click", async function () {
+  $("stashAllTabs").disabled = true;
   await send({ type: "sl-stash", mode: "all" });
   window.close(); // the list tab opens; close the popup
 });
@@ -144,7 +144,7 @@ $("tabOpen").addEventListener("click", async function () {
 });
 $("tabSync").addEventListener("click", async function () {
   $("tabSync").disabled = true; $("tabSync").textContent = "…"; setDot($("tabDot"), "busy");
-  await send({ type: "tabstash-sync" });
+  await send({ type: "tabbysync-sync" });
   $("tabSync").textContent = "Sync";
   await refreshTabs();
 });

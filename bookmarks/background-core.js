@@ -1,8 +1,8 @@
-// background-core.js — the bookmarks sync engine, running inside SyncLocker's
+// background-core.js — the bookmarks sync engine, running inside TabbySync's
 // shared module service worker. Runs syncs on: bookmark changes (debounced),
 // a periodic alarm, and manual requests from the popup/options.
 //
-// It reports its status to the shared badge (self.SyncLockerStatus) rather than
+// It reports its status to the shared badge (self.TabbySyncStatus) rather than
 // driving the toolbar icon directly, since the tabs engine shares that icon.
 
 import { runSync, isSuppressed } from './lib/engine.js';
@@ -16,7 +16,7 @@ const DEBOUNCE = 'sl.bm.debounce';
 const INITIAL = 'sl.bm.initial';
 
 function report(kind) {
-  try { self.SyncLockerStatus.report('bookmarks', kind); } catch { /* not ready */ }
+  try { self.TabbySyncStatus.report('bookmarks', kind); } catch { /* not ready */ }
 }
 
 // Run a sync and reflect the outcome on the shared badge.
@@ -33,7 +33,7 @@ async function doSync(trigger) {
 // Set the dot from stored state without running a sync (e.g. on worker wake).
 async function refreshBadgeFromState() {
   const [cfg, state] = await Promise.all([getConfig(), getState()]);
-  if (!(cfg.enabled && self.SyncLockerProviders.isConfigured(cfg))) return report('none');
+  if (!(cfg.enabled && self.TabbySyncProviders.isConfigured(cfg))) return report('none');
   if (state.lastStatus === 'error') return report('error');
   if (state.lastStatus === 'ok') return report('ok');
   return report('none');
@@ -66,10 +66,10 @@ refreshBadgeFromState();
 // computer syncs immediately instead of waiting for a timer.
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
-  const K = self.SyncLockerConfig.KEYS;
+  const K = self.TabbySyncConfig.KEYS;
   if ((K.bmInterval in changes) || (K.bmEnabled in changes)) setupPeriodic();
   if (K.bmEnabled in changes) refreshBadgeFromState();
-  if (self.SyncLockerConfig.serverChanged(changes) || (K.bmEnabled in changes) ||
+  if (self.TabbySyncConfig.serverChanged(changes) || (K.bmEnabled in changes) ||
       (K.bmAutoSync in changes) || (K.bmDeleteWins in changes)) {
     chrome.alarms.create(INITIAL, { delayInMinutes: 0.02 }); // ~1s later
   }
@@ -121,7 +121,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     (async () => {
       try {
         const cfg = await getConfig();
-        if (!(cfg.enabled && self.SyncLockerProviders.isConfigured(cfg))) {
+        if (!(cfg.enabled && self.TabbySyncProviders.isConfigured(cfg))) {
           return sendResponse({ ok: false, message: 'not configured' });
         }
         const state = await getState();
@@ -140,7 +140,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       const s = state.cacheTree ? stats(state.cacheTree) : { bookmarks: 0, folders: 0 };
       sendResponse({
         enabled: cfg.enabled,
-        configured: self.SyncLockerProviders.isConfigured(cfg),
+        configured: self.TabbySyncProviders.isConfigured(cfg),
         syncName: cfg.syncName,
         encrypted: !!cfg.passphrase,
         autoSync: cfg.autoSync,

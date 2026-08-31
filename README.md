@@ -1,8 +1,8 @@
-# SyncLocker
+# TabbySync
 
 **Self-hosted sync for your bookmarks _and_ your open tabs — two tools in one
-extension.** SyncLocker merges the former *BookmarkStash* and *TabStash*
-extensions into a single Manifest V3 extension (any Chromium browser) that talks
+extension.** TabbySync began as two separate extensions that were later
+merged into a single Manifest V3 extension (any Chromium browser) that talks
 to **one sync destination, one token and one sync name**. Turn on the bookmark
 sync, the tab sync, or both. Self-hosting your own endpoint is the recommended
 setup — free, no-server alternatives (GitHub Gist, JSONBin.io) are also
@@ -29,21 +29,21 @@ Different names stay separate. Nothing ever leaves your own server.
 
 1. In your browser open `chrome://extensions`, turn on **Developer mode**.
 2. **Load unpacked** → select this repo's folder (the one containing `manifest.json`).
-3. Click the SyncLocker icon → the popup lets you enable Bookmarks, Tabs, or
+3. Click the TabbySync icon → the popup lets you enable Bookmarks, Tabs, or
    both, and open **Options**.
 
 ## Set up your server (once)
 
 You host a tiny endpoint yourself — a single PHP file with a token you choose.
 
-1. SyncLocker → **Options** → **Server & sync** → **Self-hosting**.
-2. Click **Download server files (.zip)** — you get `synclocker-server.zip`
-   containing a `synclocker/` folder (one `synclocker.php` + two `.htaccess`
+1. TabbySync → **Options** → **Server & sync** → **Self-hosting**.
+2. Click **Download server files (.zip)** — you get `tabbysync-server.zip`
+   containing a `tabbysync/` folder (one `tabbysync.php` + two `.htaccess`
    guards) with a fresh random token already baked in.
 3. Upload that whole folder to any PHP web host over HTTPS, e.g.
-   `https://YOURDOMAIN/synclocker/synclocker.php`.
+   `https://YOURDOMAIN/tabbysync/tabbysync.php`.
 4. Back in **Server & sync**, set:
-   - **Server URL** — `https://YOURDOMAIN/synclocker/synclocker.php`
+   - **Server URL** — `https://YOURDOMAIN/tabbysync/tabbysync.php`
    - **Bearer token** — click **Use this token above** so it matches the script
    - **Sync name** — e.g. `work` (same name on every computer you want to share)
 5. **Save & grant access**, then **Test connection** (a `404` is expected until
@@ -52,20 +52,20 @@ You host a tiny endpoint yourself — a single PHP file with a token you choose.
 
 Prefer your own endpoint? Any server that answers `GET`/`PUT` on
 `?name=<file>.json` with `Authorization: Bearer <token>` works; the generated
-`synclocker.php` shows the exact contract (it also honours `ETag` / `If-Match`
+`tabbysync.php` shows the exact contract (it also honours `ETag` / `If-Match`
 for safe concurrent writes).
 
 ## No server? Free alternatives
 
-Self-hosting is the recommended way to use SyncLocker — your data never
+Self-hosting is the recommended way to use TabbySync — your data never
 leaves a server you control. If that's not realistic for you, **Server &
 sync → Sync method** offers two free, no-server backends instead:
 
-- **GitHub Gist** — SyncLocker creates a private ("secret") gist for you and
+- **GitHub Gist** — TabbySync creates a private ("secret") gist for you and
   stores each engine's file inside it. You just need a GitHub personal access
   token scoped to Gists (classic token with the `gist` scope, or a
   fine-grained token with the "Gists" account permission).
-- **JSONBin.io** — SyncLocker creates a bin per engine for you. You just need
+- **JSONBin.io** — TabbySync creates a bin per engine for you. You just need
   a free JSONBin API key.
 
 Both are meaningfully **less private than self-hosting**: your data (or its
@@ -104,14 +104,13 @@ The extension lives at the repo root:
 | `shared/config.js` | Single source of truth for the shared config keys |
 | `shared/providers.js` | Pluggable sync backends: self-hosted, GitHub Gist, JSONBin.io |
 | `shared/status.js` | One combined toolbar badge |
-| `shared/server-files.js` | Generates the `synclocker.php` bundle |
+| `shared/server-files.js` | Generates the `tabbysync.php` bundle |
 | `bookmarks/` | Bookmark engine (`background-core.js` + `lib/`) |
 | `tabs/` | Tab engine (`background-core.js`, `storage.js`, `tablist.*`) |
 
 The two original extensions were kept as self-contained engines under
 `bookmarks/` and `tabs/`; the shared layer gives them one config, one endpoint,
-one token and one toolbar action. `bookmarkstash.zip` / `tabstash.zip` at the
-repo root are the original sources, kept for reference.
+one token and one toolbar action.
 
 ## Icons & logo
 

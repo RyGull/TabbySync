@@ -1,12 +1,12 @@
-// status.js — combined toolbar badge for SyncLocker.
+// status.js — combined toolbar badge for TabbySync.
 //
-// SyncLocker has two sync engines (bookmarks + tabs) but only one toolbar
+// TabbySync has two sync engines (bookmarks + tabs) but only one toolbar
 // action, so they can't each own the icon. Instead both report their state
 // here and this module renders a single badge dot that reflects the worst of
 // the two:  amber = something syncing, red = an error, green = all good,
 // cleared = nothing configured / both disabled.
 //
-// Loaded for its side effect (sets self.SyncLockerStatus). Safe to import from
+// Loaded for its side effect (sets self.TabbySyncStatus). Safe to import from
 // the module service worker and to reference from classic scripts.
 (function () {
   "use strict";
@@ -41,7 +41,7 @@
     } catch (e) { /* action API not available in this context */ }
   }
 
-  self.SyncLockerStatus = {
+  self.TabbySyncStatus = {
     // module: "bookmarks" | "tabs" ; kind: "ok" | "error" | "syncing" | "none"
     report: function (module, kind) {
       if (module in state) { state[module] = kind || "none"; render(); }

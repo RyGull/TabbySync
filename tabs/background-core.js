@@ -1,10 +1,10 @@
-/* SyncLocker — tabs engine service-worker logic.
+/* TabbySync — tabs engine service-worker logic.
  *
- * Runs inside the shared module worker. `TabStash` comes from storage.js
+ * Runs inside the shared module worker. `TabbySync` comes from storage.js
  * (imported at the top of the worker), and the shared config + badge come from
- * self.SyncLockerConfig / self.SyncLockerStatus.
+ * self.TabbySyncConfig / self.TabbySyncStatus.
  *
- * The toolbar action opens the SyncLocker popup, so tabs are stashed from the
+ * The toolbar action opens the TabbySync popup, so tabs are stashed from the
  * popup button, the keyboard command, or the context menu — not an icon click.
  */
 (function () {
@@ -14,7 +14,7 @@
   var POLL_ALARM = "sl.tab.poll";
 
   function tabsEnabled() {
-    return self.SyncLockerConfig.getConfig().then(function (c) { return c.tabs.enabled; });
+    return self.TabbySyncConfig.getConfig().then(function (c) { return c.tabs.enabled; });
   }
 
   function isStashableTab(tab) {
@@ -45,7 +45,7 @@
   }
 
   function openOrFocusList() {
-    return TabStash.getSettings().then(function (settings) {
+    return TabbySync.getSettings().then(function (settings) {
       var pin = !!settings.pinList;
       return chrome.tabs.query({ url: LIST_URL + "*" }).then(function (existing) {
         if (existing && existing.length) {
@@ -68,17 +68,17 @@
       if (!enabled) return openOrFocusList();
       return collectTabs(mode).then(function (tabs) {
         if (!tabs.length) return openOrFocusList();
-        return Promise.all([TabStash.getSettings(), TabStash.getState()]).then(function (r) {
+        return Promise.all([TabbySync.getSettings(), TabbySync.getState()]).then(function (r) {
           var settings = r[0], state = r[1];
-          var toStash = TabStash.dedupeTabsForStash(state, tabs, settings.dedupe);
+          var toStash = TabbySync.dedupeTabsForStash(state, tabs, settings.dedupe);
           var saved = toStash.length
-            ? (TabStash.addGroup(state, toStash, ""), TabStash.saveState(state))
+            ? (TabbySync.addGroup(state, toStash, ""), TabbySync.saveState(state))
             : Promise.resolve();
           return saved.then(openOrFocusList).then(function () {
             var ids = tabs.map(function (t) { return t.id; })
               .filter(function (id) { return typeof id === "number"; });
             return chrome.tabs.remove(ids).catch(function (e) {
-              console.warn("[SyncLocker] could not close some tabs:", e && e.message);
+              console.warn("[TabbySync] could not close some tabs:", e && e.message);
             });
           });
         });
@@ -90,17 +90,17 @@
 
   chrome.commands.onCommand.addListener(function (cmd) {
     if (cmd === "send-all-tabs") stash("all");
-    else if (cmd === "open-tabstash") openOrFocusList();
+    else if (cmd === "open-tabbysync") openOrFocusList();
   });
 
   var MENU = [
-    { id: "sl-stash-all", title: "Send all tabs to SyncLocker" },
-    { id: "sl-stash-this", title: "Send only this tab to SyncLocker" },
-    { id: "sl-stash-others", title: "Send all other tabs to SyncLocker" },
+    { id: "sl-stash-all", title: "Send all tabs to TabbySync" },
+    { id: "sl-stash-this", title: "Send only this tab to TabbySync" },
+    { id: "sl-stash-others", title: "Send all other tabs to TabbySync" },
     { id: "sl-stash-left", title: "Send tabs to the left" },
     { id: "sl-stash-right", title: "Send tabs to the right" },
     { id: "sl-sep", type: "separator" },
-    { id: "sl-open-list", title: "Open the SyncLocker tab list" }
+    { id: "sl-open-list", title: "Open the TabbySync tab list" }
   ];
 
   function buildMenus() {
@@ -132,7 +132,7 @@
   // ---- periodic server polling --------------------------------------------
 
   function rescheduleAlarm() {
-    return TabStash.getSettings().then(function (settings) {
+    return TabbySync.getSettings().then(function (settings) {
       return chrome.alarms.clear(POLL_ALARM).then(function () {
         if (settings.syncEnabled && settings.autoSyncMinutes > 0) {
           chrome.alarms.create(POLL_ALARM, { periodInMinutes: Math.max(1, settings.autoSyncMinutes) });
@@ -143,33 +143,33 @@
 
   chrome.alarms.onAlarm.addListener(function (alarm) {
     if (alarm.name !== POLL_ALARM) return;
-    TabStash.syncNow()
-      .then(function () { chrome.runtime.sendMessage({ type: "tabstash-refresh" }).catch(function () {}); })
+    TabbySync.syncNow()
+      .then(function () { chrome.runtime.sendMessage({ type: "tabbysync-refresh" }).catch(function () {}); })
       .catch(function () {});
   });
 
   chrome.runtime.onInstalled.addListener(function () {
     buildMenus();
-    rescheduleAlarm().then(function () { return TabStash.syncNow(); }).catch(function () {});
+    rescheduleAlarm().then(function () { return TabbySync.syncNow(); }).catch(function () {});
   });
 
   chrome.runtime.onStartup.addListener(function () {
     buildMenus();
-    rescheduleAlarm().then(function () { return TabStash.syncNow(); }).catch(function () {});
+    rescheduleAlarm().then(function () { return TabbySync.syncNow(); }).catch(function () {});
   });
 
   // React to config changes: server settings, the interval, or the feature
   // toggle. Rebuild menus + reschedule + refresh the badge.
   chrome.storage.onChanged.addListener(function (changes, area) {
     if (area !== "local") return;
-    var K = self.SyncLockerConfig.KEYS;
+    var K = self.TabbySyncConfig.KEYS;
     var touched = [K.tabEnabled, K.tabInterval].some(function (k) { return k in changes; }) ||
-      self.SyncLockerConfig.serverChanged(changes);
+      self.TabbySyncConfig.serverChanged(changes);
     if (!touched) return;
     if (K.tabEnabled in changes) buildMenus();
     rescheduleAlarm()
-      .then(function () { return TabStash.syncNow(); })
-      .then(function () { chrome.runtime.sendMessage({ type: "tabstash-refresh" }).catch(function () {}); })
+      .then(function () { return TabbySync.syncNow(); })
+      .then(function () { chrome.runtime.sendMessage({ type: "tabbysync-refresh" }).catch(function () {}); })
       .catch(function () {});
   });
 
@@ -177,13 +177,13 @@
 
   chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
     if (!msg) return;
-    if (msg.type === "tabstash-sync") {
-      TabStash.syncNow(true)
+    if (msg.type === "tabbysync-sync") {
+      TabbySync.syncNow(true)
         .then(function () { sendResponse({ ok: true }); })
         .catch(function (e) { sendResponse({ ok: false, error: e && e.message }); });
       return true;
     }
-    if (msg.type === "tabstash-reschedule") {
+    if (msg.type === "tabbysync-reschedule") {
       rescheduleAlarm().then(function () { sendResponse({ ok: true }); });
       return true;
     }
@@ -197,7 +197,7 @@
       return true;
     }
     if (msg.type === "sl-tab-status") {
-      Promise.all([TabStash.getSettings(), TabStash.getState(), TabStash.getSyncStatus()])
+      Promise.all([TabbySync.getSettings(), TabbySync.getState(), TabbySync.getSyncStatus()])
         .then(function (r) {
           var settings = r[0], state = r[1], status = r[2];
           var groups = (state.groups || []).length;
@@ -205,7 +205,7 @@
           (state.groups || []).forEach(function (g) { links += (g.tabs || []).length; });
           sendResponse({
             enabled: settings.syncEnabled,
-            configured: self.SyncLockerProviders.isConfigured(settings),
+            configured: self.TabbySyncProviders.isConfigured(settings),
             syncName: settings.syncKey,
             encrypted: !!settings.passphrase,
             intervalMin: settings.autoSyncMinutes,

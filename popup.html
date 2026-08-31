@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>SyncLocker</title>
+  <title>TabbySync</title>
   <style>
     /* light palette (default) */
     :root {
@@ -146,8 +146,8 @@
 <body>
  <div id="mainView">
   <div class="head">
-    <img class="logo logo-light" src="icons/logo-light.png" alt="SyncLocker">
-    <img class="logo logo-dark" src="icons/logo-dark.png" alt="SyncLocker">
+    <img class="logo logo-light" src="icons/logo-light.png" alt="TabbySync">
+    <img class="logo logo-dark" src="icons/logo-dark.png" alt="TabbySync">
     <span class="ver" id="ver"></span>
     <span id="sl-theme"></span>
   </div>
@@ -194,7 +194,7 @@
         <div class="kv" id="tabErrRow" hidden><span>Error</span><span class="v err" id="tabErr"></span></div>
       </div>
       <div class="acts">
-        <button class="primary grow" id="tabStash">Stash all tabs</button>
+        <button class="primary grow" id="stashAllTabs">Stash all tabs</button>
         <button id="tabOpen">Open list</button>
         <button id="tabSync">Sync</button>
       </div>
@@ -221,21 +221,21 @@
 
  <div id="feedbackView" hidden>
    <div class="dv-head">
-     <button class="dv-back" id="feedbackBack" aria-label="Back to SyncLocker">←</button>
+     <button class="dv-back" id="feedbackBack" aria-label="Back to TabbySync">←</button>
      <span class="dv-title">✉️ Send Feedback</span>
    </div>
    <div class="fv-body">
      <p class="dv-msg">Found a bug, have an idea, or just want to say hi? Send it straight to the
        developer.</p>
-     <iframe id="feedbackFrame" class="fv-frame" title="SyncLocker feedback form"></iframe>
+     <iframe id="feedbackFrame" class="fv-frame" title="TabbySync feedback form"></iframe>
      <p class="fv-fallback">Form not loading? <a id="feedbackTab">Open it in a new tab</a>.</p>
    </div>
  </div>
 
  <div id="donateView" hidden>
    <div class="dv-head">
-     <button class="dv-back" id="donateBack" aria-label="Back to SyncLocker">←</button>
-     <span class="dv-title">❤️ Support SyncLocker</span>
+     <button class="dv-back" id="donateBack" aria-label="Back to TabbySync">←</button>
+     <span class="dv-title">❤️ Support TabbySync</span>
    </div>
    <div class="dv-body">
      <p class="dv-msg">If this extension saves you time or makes your browsing better, consider

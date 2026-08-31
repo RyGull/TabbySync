@@ -1,4 +1,4 @@
-// sync.js — transport to the shared SyncLocker sync destination.
+// sync.js — transport to the shared TabbySync sync destination.
 // Reads/writes bookmarks-<syncName>.json via shared/providers.js, which
 // abstracts over whichever backend is configured (self-hosted endpoint,
 // GitHub Gist, or JSONBin.io). Optional AES-GCM on top, same as before.
@@ -14,14 +14,14 @@ function fileName(cfg) {
   // Sanitize defensively here too, not just at the Options save point — this
   // is what actually reaches the server/Gist/bin, so it needs to be
   // filename-safe regardless of how syncName ended up in config.
-  return FILE_PREFIX + self.SyncLockerConfig.sanitizeSyncName(cfg.syncName) + '.json';
+  return FILE_PREFIX + self.TabbySyncConfig.sanitizeSyncName(cfg.syncName) + '.json';
 }
 
 // Returns the remote bookmark tree, or null if nothing stored yet.
 export async function getRemote(cfg) {
   let r;
   try {
-    r = await self.SyncLockerProviders.get(cfg, fileName(cfg));
+    r = await self.TabbySyncProviders.get(cfg, fileName(cfg));
   } catch (e) {
     throw new Error(e.message || `Network error contacting the sync destination: ${e}`);
   }
@@ -41,7 +41,7 @@ export async function getRemote(cfg) {
 export async function putRemote(cfg, tree) {
   const body = cfg.passphrase ? await encryptJSON(tree, cfg.passphrase) : tree;
   try {
-    await self.SyncLockerProviders.put(cfg, fileName(cfg), JSON.stringify(body));
+    await self.TabbySyncProviders.put(cfg, fileName(cfg), JSON.stringify(body));
   } catch (e) {
     throw new Error(e.message || `Network error writing to the sync destination: ${e}`);
   }

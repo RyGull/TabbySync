@@ -1,17 +1,17 @@
-// options.js — SyncLocker's unified options page (module).
+// options.js — TabbySync's unified options page (module).
 //
-// The shared "Server & sync" card writes the shared config (self.SyncLockerConfig).
+// The shared "Server & sync" card writes the shared config (self.TabbySyncConfig).
 // The Bookmarks and Tabs cards write their own slice of that config and drive
 // each engine's import/export. Bookmark import/export uses the bookmarks libs
-// (imported below); tab import/export uses the global TabStash (storage.js).
+// (imported below); tab import/export uses the global TabbySync (storage.js).
 
 import { buildHtml, parseNetscape } from './bookmarks/lib/bookmarks-io.js';
 import { encryptJSON, decryptJSON, isEncrypted } from './bookmarks/lib/crypto.js';
 import { readLiveModel, importTopLevel } from './bookmarks/lib/import-merge.js';
 
-const SL = self.SyncLockerConfig;
-const SF = self.SyncLockerServerFiles;
-const SP = self.SyncLockerProviders;
+const SL = self.TabbySyncConfig;
+const SF = self.TabbySyncServerFiles;
+const SP = self.TabbySyncProviders;
 const $ = (id) => document.getElementById(id);
 
 function send(msg) {
@@ -233,10 +233,10 @@ $('srv-save').addEventListener('click', async () => {
   status('srv-status', 'Saving…');
   await SL.setConfig({ provider, serverUrl, token, syncName });
   const granted = await grantAccess(provider, serverUrl);
-  await send({ type: 'tabstash-reschedule' });
+  await send({ type: 'tabbysync-reschedule' });
   // Nudge both engines (they also auto-sync from the config change).
   send({ type: 'syncNow' });
-  send({ type: 'tabstash-sync' });
+  send({ type: 'tabbysync-sync' });
   preview();
   status('srv-status', granted
     ? 'Saved — syncing the enabled tools now.'
@@ -274,7 +274,7 @@ $('srv-test').addEventListener('click', async () => {
       const res = await fetch('https://api.github.com/gists?per_page=1',
         { headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' } });
       if (res.status === 401 || res.status === 403) status('srv-status', 'GitHub rejected the token — check it has the “Gists” scope.', 'bad');
-      else if (res.ok) status('srv-status', 'Token works. Save to create (or reuse) your SyncLocker gist.', 'ok');
+      else if (res.ok) status('srv-status', 'Token works. Save to create (or reuse) your TabbySync gist.', 'ok');
       else status('srv-status', `GitHub responded HTTP ${res.status}.`, 'bad');
     } catch (e) {
       status('srv-status', `Could not reach GitHub: ${e.message}`, 'bad');
@@ -295,13 +295,13 @@ async function applyPassphrase(newPass) {
   const c = await SL.getConfig();
   const configured = SP.isConfigured({ ...c, baseUrl: c.serverUrl });
   if (configured && c.bookmarks.enabled) await send({ type: 'syncNow' });
-  if (configured && c.tabs.enabled) await send({ type: 'tabstash-sync' });
+  if (configured && c.tabs.enabled) await send({ type: 'tabbysync-sync' });
 
   await SL.setConfig({ passphrase: newPass });
 
   if (configured && c.bookmarks.enabled) await send({ type: 'bmOverwrite' });
   if (configured && c.tabs.enabled) {
-    try { await self.TabStash.pushLocalOverwrite(); } catch { /* nothing to push yet */ }
+    try { await self.TabbySync.pushLocalOverwrite(); } catch { /* nothing to push yet */ }
   }
 }
 
@@ -339,10 +339,10 @@ $('gen-download').addEventListener('click', async () => {
     const blob = SF.buildServerZip(token);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'synclocker-server.zip';
+    a.href = url; a.download = 'tabbysync-server.zip';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
-    flash('gen-status', 'Downloaded synclocker-server.zip — upload its contents to your server, then click “Use this token above”.', 'ok');
+    flash('gen-status', 'Downloaded tabbysync-server.zip — upload its contents to your server, then click “Use this token above”.', 'ok');
   } catch (e) { flash('gen-status', 'Could not build the bundle: ' + e.message, 'bad'); }
 });
 
@@ -377,7 +377,7 @@ async function bmSyncAfterImport() { try { await send({ type: 'syncNow' }); } ca
 $('bm-exp-html').addEventListener('click', async () => {
   try {
     const model = await readLiveModel();
-    download(`synclocker-bookmarks-${await bmSlug()}-${todayStamp()}.html`, buildHtml(model), 'text/html');
+    download(`tabbysync-bookmarks-${await bmSlug()}-${todayStamp()}.html`, buildHtml(model), 'text/html');
     flash('bm-io-status', 'Exported bookmarks as HTML.', 'ok');
   } catch (e) { status('bm-io-status', 'Export failed: ' + e.message, 'bad'); }
 });
@@ -398,7 +398,7 @@ $('bm-exp-enc').addEventListener('click', async () => {
   if (!pass) { status('bm-io-status', 'Enter a backup passphrase first.', 'bad'); return; }
   try {
     const env = await encryptJSON(await readLiveModel(), pass);
-    download(`synclocker-bookmarks-${await bmSlug()}-backup-${todayStamp()}.enc.json`, JSON.stringify(env), 'application/json');
+    download(`tabbysync-bookmarks-${await bmSlug()}-backup-${todayStamp()}.enc.json`, JSON.stringify(env), 'application/json');
     flash('bm-io-status', 'Exported encrypted bookmark backup.', 'ok');
   } catch (e) { status('bm-io-status', 'Backup failed: ' + e.message, 'bad'); }
 });
@@ -419,9 +419,9 @@ $('bm-imp-enc').addEventListener('click', async () => {
 });
 
 // ---------------------------------------------------------------------------
-// Tabs card (uses the global TabStash)
+// Tabs card (uses the global TabbySync)
 // ---------------------------------------------------------------------------
-const TabStash = self.TabStash;
+const TabbySync = self.TabbySync;
 
 async function saveTabs() {
   await SL.setConfig({ tabs: {
@@ -433,7 +433,7 @@ async function saveTabs() {
     pinList: $('tab-pin-list').checked,
   } });
   updateCardsDisabled();
-  await send({ type: 'tabstash-reschedule' });
+  await send({ type: 'tabbysync-reschedule' });
 }
 ['tab-enable', 'tab-interval', 'tab-dedupe', 'tab-restore-group',
  'tab-remove-restore', 'tab-pin-list'].forEach((id) =>
@@ -443,11 +443,11 @@ $('tab-backup-pass').addEventListener('change', () =>
 
 $('tab-dedupe-now').addEventListener('click', async () => {
   try {
-    const state = await TabStash.getState();
+    const state = await TabbySync.getState();
     let before = 0; state.groups.forEach((g) => before += g.tabs.length);
-    TabStash.removeDuplicates(state);
+    TabbySync.removeDuplicates(state);
     let after = 0; state.groups.forEach((g) => after += g.tabs.length);
-    await TabStash.saveState(state);
+    await TabbySync.saveState(state);
     const removed = before - after;
     flash('tab-dedupe-status', removed
       ? `Removed ${removed} duplicate tab${removed === 1 ? '' : 's'}.`
@@ -456,17 +456,17 @@ $('tab-dedupe-now').addEventListener('click', async () => {
 });
 
 async function tabExport(encrypted) {
-  const [settings, state] = await Promise.all([TabStash.getSettings(), TabStash.getState()]);
-  const name = TabStash.slugify(settings.syncKey) || 'list';
-  const plaintext = TabStash.exportJSON(settings, state);
+  const [settings, state] = await Promise.all([TabbySync.getSettings(), TabbySync.getState()]);
+  const name = TabbySync.slugify(settings.syncKey) || 'list';
+  const plaintext = TabbySync.exportJSON(settings, state);
   if (encrypted) {
     const pass = $('tab-backup-pass').value;
     if (!pass) { status('tab-io-status', 'Enter a backup passphrase first.', 'bad'); return; }
-    const env = await TabStash.encryptString(pass, plaintext);
-    download(`synclocker-tabs-${name}-backup-${todayStamp()}.enc.json`, JSON.stringify(env, null, 2), 'application/json');
+    const env = await TabbySync.encryptString(pass, plaintext);
+    download(`tabbysync-tabs-${name}-backup-${todayStamp()}.enc.json`, JSON.stringify(env, null, 2), 'application/json');
     flash('tab-io-status', 'Exported encrypted tab backup.', 'ok');
   } else {
-    download(`synclocker-tabs-${name}-${todayStamp()}.json`, plaintext, 'application/json');
+    download(`tabbysync-tabs-${name}-${todayStamp()}.json`, plaintext, 'application/json');
     flash('tab-io-status', 'Exported tabs as JSON.', 'ok');
   }
 }
@@ -485,10 +485,10 @@ $('tab-file').addEventListener('change', async () => {
   const useEnc = tabImportEnc;
   try {
     const text = await file.text();
-    const state = await TabStash.getState();
+    const state = await TabbySync.getState();
     const pass = useEnc ? $('tab-backup-pass').value : '';
-    const res = await TabStash.importBackupMerge(state, text, pass);
-    await TabStash.saveState(state);
+    const res = await TabbySync.importBackupMerge(state, text, pass);
+    await TabbySync.saveState(state);
     flash('tab-io-status',
       `Imported ${res.added} link${res.added === 1 ? '' : 's'} into ${res.groups} list${res.groups === 1 ? '' : 's'}` +
       (res.skipped ? ` · skipped ${res.skipped} duplicate${res.skipped === 1 ? '' : 's'}` : '') + '.', 'ok');

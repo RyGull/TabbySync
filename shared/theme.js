@@ -1,4 +1,4 @@
-// theme.js — shared Light / Dark / System theme control for all SyncLocker
+// theme.js — shared Light / Dark / System theme control for all TabbySync
 // extension pages (popup, options, tab list).
 //
 // The choice is stored in localStorage, which every extension page shares (same
@@ -144,5 +144,5 @@
     if (m) mount(m);
   });
 
-  self.SyncLockerTheme = { get: get, set: set, apply: apply, mount: mount };
+  self.TabbySyncTheme = { get: get, set: set, apply: apply, mount: mount };
 })();

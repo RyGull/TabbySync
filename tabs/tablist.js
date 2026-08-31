@@ -1,8 +1,8 @@
-/* SyncLocker — tab-list page (single list per install). */
+/* TabbySync — tab-list page (single list per install). */
 (function () {
   "use strict";
 
-  var state = TabStash.emptyState();
+  var state = TabbySync.emptyState();
   var settings = null;
 
   var listEl = document.getElementById("list");
@@ -28,7 +28,7 @@
     return { tabs: tabs, groups: state.groups.length };
   }
   function groupById(id) { return state.groups.find(function (g) { return g.id === id; }); }
-  function sortedGroups() { return state.groups.slice().sort(TabStash.compareGroups); }
+  function sortedGroups() { return state.groups.slice().sort(TabbySync.compareGroups); }
 
   // ---- persistence ---------------------------------------------------------
 
@@ -38,7 +38,7 @@
     // meaningful "sync" status. The status block reflects the real remote
     // sync outcome instead (see renderStatusBlock), which lands a moment
     // later via the debounced background push.
-    TabStash.saveState(state).catch(function () {})
+    TabbySync.saveState(state).catch(function () {})
       .finally(function () { setTimeout(function () { suppressReload = false; }, 200); });
   }
 
@@ -49,7 +49,7 @@
     if (settings && settings.syncKey) return settings.syncKey;
     // No sync name set (e.g. JSONBin, which has one profile per key) — fall
     // back to naming the sync method instead of showing a blank name.
-    try { return self.SyncLockerProviders.providerMeta(settings && settings.provider).label; }
+    try { return self.TabbySyncProviders.providerMeta(settings && settings.provider).label; }
     catch (e) { return "Profile"; }
   }
   function countsLabel() {
@@ -63,12 +63,12 @@
     if (c) c.textContent = text;
   }
   // Rebuilds the whole status block from the real, persisted sync status
-  // (TabStash.getSyncStatus()) plus current settings — not from whether the
+  // (TabbySync.getSyncStatus()) plus current settings — not from whether the
   // last local edit merely saved, which is a different (and always-succeeds)
   // thing.
   function renderStatusBlock() {
     if (!statusEl) return;
-    TabStash.getSyncStatus().then(function (st) {
+    TabbySync.getSyncStatus().then(function (st) {
       var kind = st.status === "ok" ? "ok" : st.status === "error" ? "err" : "";
       var syncText = st.status === "ok" ? "Synced" : st.status === "error" ? "Sync error" : "Never synced";
       statusEl.className = "status-block" + (kind ? " " + kind : "");
@@ -149,8 +149,8 @@
   function removeTabAfterRestore(gid, index) {
     var g = groupById(gid); if (!g || g.locked) return;
     if (!removeOnRestore()) return;
-    g.tabs.splice(index, 1); TabStash.touchGroup(g);
-    if (!g.tabs.length) TabStash.removeGroup(state, gid);
+    g.tabs.splice(index, 1); TabbySync.touchGroup(g);
+    if (!g.tabs.length) TabbySync.removeGroup(state, gid);
     persist(); render();
   }
 
@@ -170,7 +170,7 @@
       : !!(settings && settings.restoreAsGroup);
     if (asGroup) openTabsGrouped(urls, groupLabel(g));
     else openTabs(urls, false);
-    if (!g.locked && removeOnRestore()) { TabStash.removeGroup(state, gid); persist(); render(); }
+    if (!g.locked && removeOnRestore()) { TabbySync.removeGroup(state, gid); persist(); render(); }
   }
   function copyTab(t) { return { url: t.url, title: t.title || t.url, favIconUrl: t.favIconUrl || "" }; }
   function groupLabelSafe(g) { return g.name || formatDate(g.createdAt); }
@@ -178,19 +178,19 @@
   function deleteTab(gid, index) {
     var g = groupById(gid); if (!g || g.locked) return; // locked groups are protected
     var tab = g.tabs[index];
-    if (tab) TabStash.trashAdd(state, [{ kind: "tab", name: tab.title || tab.url, sourceName: groupLabelSafe(g), tabs: [copyTab(tab)] }]);
-    g.tabs.splice(index, 1); TabStash.touchGroup(g);
-    if (!g.tabs.length) TabStash.removeGroup(state, gid);
+    if (tab) TabbySync.trashAdd(state, [{ kind: "tab", name: tab.title || tab.url, sourceName: groupLabelSafe(g), tabs: [copyTab(tab)] }]);
+    g.tabs.splice(index, 1); TabbySync.touchGroup(g);
+    if (!g.tabs.length) TabbySync.removeGroup(state, gid);
     persist(); render();
   }
   function deleteGroup(gid) {
     var g = groupById(gid); if (!g || g.locked) return; // must unlock first
-    TabStash.trashAdd(state, [{ kind: "group", name: groupLabelSafe(g), tabs: g.tabs.map(copyTab) }]);
-    TabStash.removeGroup(state, gid); persist(); render();
+    TabbySync.trashAdd(state, [{ kind: "group", name: groupLabelSafe(g), tabs: g.tabs.map(copyTab) }]);
+    TabbySync.removeGroup(state, gid); persist(); render();
   }
   function toggleLock(gid) {
     var g = groupById(gid); if (!g) return;
-    g.locked = !g.locked; TabStash.touchGroup(g); persist(); render();
+    g.locked = !g.locked; TabbySync.touchGroup(g); persist(); render();
   }
   function togglePin(gid) {
     var g = groupById(gid); if (!g) return;
@@ -198,15 +198,15 @@
     // place it at the top of the section it just joined
     var minOrder = 0;
     state.groups.forEach(function (x) {
-      if (x.id !== gid && !!x.pinned === !!g.pinned) minOrder = Math.min(minOrder, TabStash.orderVal(x));
+      if (x.id !== gid && !!x.pinned === !!g.pinned) minOrder = Math.min(minOrder, TabbySync.orderVal(x));
     });
     g.order = minOrder - 1;
-    TabStash.touchGroup(g); persist(); render();
+    TabbySync.touchGroup(g); persist(); render();
   }
   function renameGroup(gid, name) {
     var g = groupById(gid); if (!g) return;
     if (g.name === name) return;
-    g.name = name; TabStash.touchGroup(g); persist();
+    g.name = name; TabbySync.touchGroup(g); persist();
   }
   function restoreAll() {
     if (!state.groups.length) return;
@@ -232,7 +232,7 @@
     if (!unlocked.length) return;
     if (!confirm("Delete all " + unlocked.length + " unlocked list" + (unlocked.length === 1 ? "" : "s") +
       "? Locked lists are kept, and you can recover these from Trash.")) return;
-    TabStash.trashAdd(state, unlocked.map(function (g) {
+    TabbySync.trashAdd(state, unlocked.map(function (g) {
       return { kind: "group", name: groupLabelSafe(g), tabs: g.tabs.map(copyTab) };
     }));
     var locked = state.groups.filter(function (g) { return g.locked; });
@@ -286,7 +286,7 @@
     var insertAt = ti + (below ? 1 : 0);
     section.splice(insertAt, 0, moved);
     section.forEach(function (g, i) {
-      if (g.order !== i) { g.order = i; TabStash.touchGroup(g); }
+      if (g.order !== i) { g.order = i; TabbySync.touchGroup(g); }
     });
     persist(); render();
   }
@@ -344,8 +344,8 @@
     src.tabs.splice(dragCtx.idx, 1);
     if (destGid === dragCtx.gid && destIndex > dragCtx.idx) destIndex -= 1;
     dest.tabs.splice(destIndex, 0, moving);
-    TabStash.touchGroup(src); TabStash.touchGroup(dest);
-    if (!src.tabs.length) TabStash.removeGroup(state, src.id);
+    TabbySync.touchGroup(src); TabbySync.touchGroup(dest);
+    if (!src.tabs.length) TabbySync.removeGroup(state, src.id);
     dragCtx = null; persist(); render();
   }
   function onDragEnd() {
@@ -372,7 +372,7 @@
       empty.appendChild(el("h2", null, "Nothing stashed"));
       var p = el("p");
       p.innerHTML =
-        "Click the SyncLocker toolbar icon and choose <b>Stash all tabs</b> (or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd>) " +
+        "Click the TabbySync toolbar icon and choose <b>Stash all tabs</b> (or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd>) " +
         "to send this window's tabs here and free up memory.";
       empty.appendChild(p);
       listEl.appendChild(empty);
@@ -583,7 +583,7 @@
 
   function exportObject(groups) {
     return {
-      app: "SyncLocker", version: 1,
+      app: "TabbySync", version: 1,
       exportedAt: new Date().toISOString(),
       key: (settings && settings.syncKey) || "",
       groups: groups
@@ -619,7 +619,7 @@
       if (hasPass && modalEncrypt.checked) {
         modalHelp.textContent = "Encrypted with your passphrase — importing needs the same passphrase.";
         modalText.value = "Encrypting…";
-        TabStash.encryptString(settings.passphrase, plaintext).then(function (env) {
+        TabbySync.encryptString(settings.passphrase, plaintext).then(function (env) {
           modalText.value = JSON.stringify(env, null, 2);
         });
       } else {
@@ -650,7 +650,7 @@
     modalPrimary.onclick = function () {
       var text = modalText.value.trim();
       if (!text) return;
-      TabStash.importBackup(state, text, settings).then(function () {
+      TabbySync.importBackup(state, text, settings).then(function () {
         persist(); render();
         overlay.classList.remove("show");
       }).catch(function (e) { modalHelp.textContent = "Could not import: " + e.message; });
@@ -714,7 +714,7 @@
     var rm = el("button", "btn ghost", "Remove");
     rm.title = "Delete permanently from trash";
     rm.addEventListener("click", function () {
-      TabStash.trashRemove(state, entry.tid); persist(); renderTrashList();
+      TabbySync.trashRemove(state, entry.tid); persist(); renderTrashList();
     });
     actions.appendChild(restore); actions.appendChild(rm);
     row.appendChild(actions);
@@ -722,8 +722,8 @@
   }
 
   function restoreFromTrash(entry) {
-    TabStash.addGroup(state, entry.tabs, entry.kind === "tab" ? "" : entry.name);
-    TabStash.trashRemove(state, entry.tid);
+    TabbySync.addGroup(state, entry.tabs, entry.kind === "tab" ? "" : entry.name);
+    TabbySync.trashRemove(state, entry.tid);
     persist(); render(); renderTrashList();
   }
 
@@ -735,7 +735,7 @@
   });
   document.getElementById("trash-empty").addEventListener("click", function () {
     if (!confirm("Permanently empty the trash? This can't be undone.")) return;
-    TabStash.trashEmpty(state); persist(); renderTrashList();
+    TabbySync.trashEmpty(state); persist(); renderTrashList();
   });
 
   // ---- toolbar wiring ------------------------------------------------------
@@ -754,20 +754,20 @@
   });
   document.getElementById("sync-now").addEventListener("click", function () {
     setSyncBusy(true);
-    chrome.runtime.sendMessage({ type: "tabstash-sync" }).then(function () {
+    chrome.runtime.sendMessage({ type: "tabbysync-sync" }).then(function () {
       reload();
     }).catch(function () { renderStatusBlock(); });
   });
   document.getElementById("remove-on-restore").addEventListener("change", function (e) {
     var on = e.target.checked;
     if (settings) settings.removeOnRestore = on;
-    TabStash.setSettings({ removeOnRestore: on });
+    TabbySync.setSettings({ removeOnRestore: on });
   });
 
   // ---- load / live updates -------------------------------------------------
 
   function reload() {
-    return Promise.all([TabStash.getState(), TabStash.getSettings()]).then(function (r) {
+    return Promise.all([TabbySync.getState(), TabbySync.getSettings()]).then(function (r) {
       state = r[0]; settings = r[1];
       var rr = document.getElementById("remove-on-restore");
       if (rr) rr.checked = !!settings.removeOnRestore;
@@ -779,19 +779,19 @@
 
   chrome.storage.onChanged.addListener(function (changes, area) {
     if (area !== "local") return;
-    if (changes[TabStash.STATE_KEY] && !suppressReload) { reload(); return; }
+    if (changes[TabbySync.STATE_KEY] && !suppressReload) { reload(); return; }
     // The real sync outcome can change from elsewhere (the background alarm,
     // another open copy of this page) — keep the status block live.
-    if (changes[TabStash.STATUS_KEY]) { renderStatusBlock(); }
+    if (changes[TabbySync.STATUS_KEY]) { renderStatusBlock(); }
     // Reload if any tab-relevant setting changed (shared config keys).
-    var K = self.SyncLockerConfig.KEYS;
+    var K = self.TabbySyncConfig.KEYS;
     if ([K.tabRestoreGroup, K.tabDedupe, K.syncName, K.passphrase, K.tabRemoveOnRestore, K.provider].some(function (k) {
       return k in changes;
     })) { reload(); }
   });
 
   chrome.runtime.onMessage.addListener(function (msg) {
-    if (msg && msg.type === "tabstash-refresh") reload();
+    if (msg && msg.type === "tabbysync-refresh") reload();
   });
 
   // Just render what's already stored — syncing stays on the "Sync now"

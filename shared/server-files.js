@@ -1,14 +1,14 @@
 // server-files.js — generates the self-hosting server bundle in the browser.
 //
-// SyncLocker uses ONE endpoint + ONE token for both engines. Files are
+// TabbySync uses ONE endpoint + ONE token for both engines. Files are
 // namespaced by prefix (bookmarks-<name>.json / tabs-<name>.json) so they
 // share the same PHP script and data/ folder without ever colliding.
 //
-// Produces a downloadable synclocker-server.zip with a fresh token baked in,
+// Produces a downloadable tabbysync-server.zip with a fresh token baked in,
 // two .htaccess guards and a plain-text INSTALL guide. Store-only ZIP writer,
 // no dependencies.
 //
-// Classic IIFE -> self.SyncLockerServerFiles.
+// Classic IIFE -> self.TabbySyncServerFiles.
 (function () {
   "use strict";
 
@@ -27,21 +27,21 @@
   function phpFile(token) {
     return "<?php\n" +
 "/**\n" +
-" * synclocker.php — self-hosted sync endpoint for the SyncLocker extension.\n" +
+" * tabbysync.php — self-hosted sync endpoint for the TabbySync extension.\n" +
 " *\n" +
-" * SINGLE self-contained file, shared by BOTH SyncLocker engines:\n" +
+" * SINGLE self-contained file, shared by BOTH TabbySync engines:\n" +
 " *   - bookmarks sync  -> data/bookmarks-<name>.json\n" +
 " *   - tab-list sync   -> data/tabs-<name>.json\n" +
 " * One token, one folder. It routes by a query parameter, so it can even sit\n" +
 " * in a directory alongside another app without conflict.\n" +
 " *\n" +
 " * Contract:\n" +
-" *   GET  synclocker.php?name=bookmarks-<name>.json  -> stored JSON (404 if none)\n" +
-" *   PUT  synclocker.php?name=tabs-<name>.json       -> stores the body\n" +
+" *   GET  tabbysync.php?name=bookmarks-<name>.json  -> stored JSON (404 if none)\n" +
+" *   PUT  tabbysync.php?name=tabs-<name>.json       -> stores the body\n" +
 " * Both require:  Authorization: Bearer <TOKEN>\n" +
 " *\n" +
 " * Deploy: put this file in its OWN directory on your server, e.g.\n" +
-" *   https://your-server.example/synclocker/synclocker.php\n" +
+" *   https://your-server.example/tabbysync/tabbysync.php\n" +
 " * Then put that URL + the TOKEN below into the extension's Options.\n" +
 " * A ./data/ folder is created automatically next to this file.\n" +
 " */\n" +
@@ -142,7 +142,7 @@
   }
 
   function rootHtaccess() {
-    return "# synclocker — protection for this directory (its own folder, so it never\n" +
+    return "# tabbysync — protection for this directory (its own folder, so it never\n" +
 "# affects anything else on your server).\n" +
 "\n" +
 "# Don't allow directory listing.\n" +
@@ -168,14 +168,14 @@
   }
 
   function installReadme(token) {
-    return "SyncLocker — self-hosting your own sync server\n" +
+    return "TabbySync — self-hosting your own sync server\n" +
 "==============================================\n" +
 "\n" +
-"This one bundle serves BOTH SyncLocker engines — bookmark sync and tab-list\n" +
+"This one bundle serves BOTH TabbySync engines — bookmark sync and tab-list\n" +
 "sync — from a single endpoint with a single token. It is completely\n" +
 "self-contained: one PHP script plus two .htaccess guards. No database.\n" +
 "\n" +
-"Your token (already baked into synclocker.php):\n" +
+"Your token (already baked into tabbysync.php):\n" +
 "\n" +
 "    " + token + "\n" +
 "\n" +
@@ -183,21 +183,21 @@
 "write your bookmarks and tab lists.\n" +
 "\n" +
 "1. Upload\n" +
-"   Create a directory named \"synclocker\" on your web server (FTP, cPanel File\n" +
+"   Create a directory named \"tabbysync\" on your web server (FTP, cPanel File\n" +
 "   Manager, SSH — whatever you use) and upload the CONTENTS of this bundle\n" +
 "   into it, keeping the layout:\n" +
 "\n" +
-"       synclocker/synclocker.php\n" +
-"       synclocker/.htaccess\n" +
-"       synclocker/data/.htaccess      (the data/ folder holds your synced files)\n" +
+"       tabbysync/tabbysync.php\n" +
+"       tabbysync/.htaccess\n" +
+"       tabbysync/data/.htaccess      (the data/ folder holds your synced files)\n" +
 "\n" +
 "   Requirements: PHP 7+ and Apache-style .htaccess support (typical shared\n" +
 "   hosting). The web server user must be able to write inside the folder so\n" +
 "   the data/ directory and your JSON files can be created.\n" +
 "\n" +
 "2. Point the extension at it\n" +
-"   Open SyncLocker's Options and, under \"Server\", fill in:\n" +
-"     - Server URL:   https://YOUR-DOMAIN/synclocker/synclocker.php\n" +
+"   Open TabbySync's Options and, under \"Server\", fill in:\n" +
+"     - Server URL:   https://YOUR-DOMAIN/tabbysync/tabbysync.php\n" +
 "     - Bearer token: the token above\n" +
 "     - Sync name:    e.g. \"work\" (same name = shared across devices)\n" +
 "   Click \"Test connection\", then \"Save\".\n" +
@@ -212,10 +212,10 @@
 "\n" +
 "Notes\n" +
 "-----\n" +
-"- Everything this project stores stays inside the synclocker/ directory.\n" +
+"- Everything this project stores stays inside the tabbysync/ directory.\n" +
 "- The data/ folder is blocked from direct web access by the .htaccess guards.\n" +
 "- To rotate the token later: edit the TOKEN value at the top of\n" +
-"  synclocker.php and update it in each device's Options, or just generate a\n" +
+"  tabbysync.php and update it in each device's Options, or just generate a\n" +
 "  fresh bundle from the extension's Options page.\n";
   }
 
@@ -294,16 +294,16 @@
 
   function buildServerZip(token) {
     return makeZip([
-      { name: "synclocker-server/" },
-      { name: "synclocker-server/synclocker.php", text: phpFile(token) },
-      { name: "synclocker-server/.htaccess", text: rootHtaccess() },
-      { name: "synclocker-server/INSTALL.txt", text: installReadme(token) },
-      { name: "synclocker-server/data/" },
-      { name: "synclocker-server/data/.htaccess", text: dataHtaccess() },
+      { name: "tabbysync-server/" },
+      { name: "tabbysync-server/tabbysync.php", text: phpFile(token) },
+      { name: "tabbysync-server/.htaccess", text: rootHtaccess() },
+      { name: "tabbysync-server/INSTALL.txt", text: installReadme(token) },
+      { name: "tabbysync-server/data/" },
+      { name: "tabbysync-server/data/.htaccess", text: dataHtaccess() },
     ]);
   }
 
-  self.SyncLockerServerFiles = {
+  self.TabbySyncServerFiles = {
     randomToken: randomToken,
     phpFile: phpFile,
     buildServerZip: buildServerZip,
