@@ -26,20 +26,20 @@
         <code>bookmarks-&lt;name&gt;.json</code> and tabs as <code>tabs-&lt;name&gt;.json</code>,
         so they never collide.</p>
 
-      <label class="field" for="sync-provider">Sync method</label>
+      <label class="field gold" for="sync-provider">Sync method</label>
       <select id="sync-provider"></select>
       <p class="hint" id="provider-hint"></p>
       <div class="callout" id="provider-disclaimer" hidden></div>
 
-      <label class="field" for="srv-url" id="srv-url-label">Server URL</label>
+      <label class="field gold" for="srv-url" id="srv-url-label">Server URL</label>
       <input type="url" id="srv-url" placeholder="https://example.com/synclocker/synclocker.php" spellcheck="false">
       <p class="hint" id="srv-url-hint">The <code>synclocker.php</code> script (see “Self-hosting” below). Requests route via <code>?name=</code>.</p>
 
-      <label class="field" for="srv-token" id="srv-token-label">Bearer token</label>
+      <label class="field gold" for="srv-token" id="srv-token-label">Bearer token</label>
       <input type="password" id="srv-token" placeholder="the token inside synclocker.php" spellcheck="false" autocomplete="off">
       <p class="hint" id="srv-token-hint">Sent as <code>Authorization: Bearer …</code>. Stored only in this browser profile.</p>
 
-      <label class="field" for="srv-name" id="srv-name-label">Sync name</label>
+      <label class="field gold" for="srv-name" id="srv-name-label">Sync name</label>
       <input type="text" id="srv-name" placeholder="work" spellcheck="false" autocomplete="off" maxlength="40">
       <p class="hint" id="srv-name-hint">This profile's name (e.g. <code>work</code>, <code>home</code>). Use the identical name on your other computers to share the same data; a different name stays separate. Letters, numbers, dots, dashes and underscores only, up to 40 characters — anything else is stripped when you save.</p>
 

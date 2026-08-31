@@ -68,6 +68,10 @@ select:required:invalid { border-color:var(--err); color:var(--muted); }
 .card.off .body { opacity:.5; pointer-events:none; }
 
 label.field { display:block; margin:14px 0 4px; font-weight:600; font-size:13px; }
+/* sync-method field labels (Sync method, Server URL/token/name — whichever
+   labels are showing for the selected method) match the server card's own
+   gold accent. */
+label.field.gold { color:var(--gold); }
 .hint { color:var(--muted); font-size:12px; margin:3px 0 0; font-weight:400; }
 input[type=text], input[type=password], input[type=number], input[type=url], select {
   width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:7px;
