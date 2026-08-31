@@ -97,12 +97,13 @@
 
     <div class="callout">
       <strong>Why your browser's extension page may say more than this:</strong>
-      <code>chrome://extensions</code> (or <code>brave://extensions</code>) shows a
+      <code>chrome://extensions</code> (or the equivalent page in any other
+      Chromium-based browser — Brave, Edge, Opera, Vivaldi, and so on) shows a
       few things that come from the browser itself, not from TabbySync:
       <ul>
         <li>It lists <code>tabs</code> under the scarier label
-          <em>"Read your browsing history."</em> That's Chrome's fixed warning text
-          for that permission — it describes what the permission would technically
+          <em>"Read your browsing history."</em> That's Chromium's fixed warning
+          text for that permission — it describes what the permission would technically
           <em>allow</em>, not what TabbySync does with it. TabbySync never listens
           for page navigation; it only reads your currently open tabs at the moment
           you act — opening the popup, stashing a window, or restoring a saved
@@ -121,7 +122,7 @@
           <code>host_permissions</code>, no content scripts on any page. The only
           way a site ends up in that list is Options → picking a sync method and
           hitting "Save &amp; grant access" (or connecting Gist/JSONBin), which
-          asks Chrome's own native permission prompt, naming that exact site,
+          asks the browser's own native permission prompt, naming that exact site,
           before anything is granted — and it only ever requests the one host
           you just configured (your server's domain, <code>api.github.com</code>,
           or <code>api.jsonbin.io</code>), never a wildcard covering other
