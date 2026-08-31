@@ -153,7 +153,7 @@ $("tabSync").addEventListener("click", async function () {
 var PAYPAL_URL = "https://www.paypal.com/ncp/payment/B25W7V9VRGQG4";
 // The feedback form is hosted on the developer's domain (reCAPTCHA v3 + email
 // can't run inside an MV3 extension page), and embedded here in an iframe.
-var FEEDBACK_URL = "https://propctuner.com/synclocker/feedback.html";
+var FEEDBACK_URL = "https://tabbysync.com/tabbysync/feedback.html";
 
 function showView(view) {
   $("mainView").hidden = view !== "main";
