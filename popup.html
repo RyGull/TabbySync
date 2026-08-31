@@ -104,6 +104,14 @@
     .foot .note .okenc { color:var(--ok); font-weight:600; }
     .foot .opts { margin-left:auto; flex:0 0 auto; background:transparent; border:1px solid var(--line); }
 
+    /* small privacy-policy footer, below the feedback/donate bars */
+    .priv-foot { display:flex; align-items:center; justify-content:space-between; gap:8px;
+      padding:8px 15px 12px; border-top:1px solid var(--line); }
+    .priv-link { font-size:11px; color:var(--muted); cursor:pointer; text-decoration:none; }
+    .priv-link:hover { color:var(--bm); text-decoration:underline; }
+    .priv-badge { font-size:10.5px; font-weight:600; color:var(--muted); background:var(--panel);
+      border:1px solid var(--line); border-radius:20px; padding:2px 9px; white-space:nowrap; cursor:default; }
+
     /* donate bar (bottom of the main view) — opens the donation screen */
     .donate-bar { width:100%; border:0; border-top:1px solid var(--line); border-radius:0; background:transparent;
       color:var(--text); display:flex; align-items:center; justify-content:space-between;
@@ -204,6 +212,11 @@
   <button class="donate-bar" id="donateOpen">
     <span>❤️ Please Donate</span><span class="chev">›</span>
   </button>
+
+  <div class="priv-foot">
+    <a id="privacyLink" class="priv-link">🔒 Privacy Policy</a>
+    <span class="priv-badge" title="No servers of our own, no analytics, no data selling — see the privacy policy for details.">🛡️ No tracking</span>
+  </div>
  </div><!-- /mainView -->
 
  <div id="feedbackView" hidden>

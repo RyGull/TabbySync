@@ -111,6 +111,12 @@ $("opts").addEventListener("click", openOptions);
 $("bmOpts").addEventListener("click", openOptions);
 $("setupLink").addEventListener("click", openOptions);
 
+$("privacyLink").addEventListener("click", function () {
+  var url = chrome.runtime.getURL("privacy.html");
+  try { chrome.tabs.create({ url: url }); }
+  catch (e) { window.open(url, "_blank"); }
+});
+
 $("bmEnable").addEventListener("change", async function () {
   await self.SyncLockerConfig.setConfig({ bookmarks: { enabled: $("bmEnable").checked } });
   await refreshBookmarks();
