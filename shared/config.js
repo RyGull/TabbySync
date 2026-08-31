@@ -133,11 +133,18 @@
   // the generated synclocker.php server itself requires
   // (/^(bookmarks|tabs)-[A-Za-z0-9._-]+\.json$/), so a name that passes here
   // is guaranteed to be accepted there too.
+  // IMPORTANT: never lowercase (or otherwise alter) an already-valid
+  // character here — the server regex explicitly allows mixed case, and
+  // changing an existing name's casing/characters silently produces a
+  // DIFFERENT filename than whatever this profile has been syncing to all
+  // along. The sync engine treats "file not found at the new name" as "the
+  // other device deleted everything," and applies that deletion straight to
+  // the live browser bookmarks — so a change here that isn't a strict no-op
+  // for already-valid names is a data-loss bug, not just a cosmetic one.
   var SYNC_NAME_MAX = 40;
   function sanitizeSyncName(name) {
     return (name || "")
-      .toLowerCase()
-      .replace(/[^a-z0-9._-]+/g, "-")
+      .replace(/[^A-Za-z0-9._-]+/g, "-")
       .slice(0, SYNC_NAME_MAX)
       // Trim leading/trailing separators — including any left dangling right
       // at the cut point by the length limit above.
