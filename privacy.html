@@ -115,6 +115,17 @@
           controls whether <em>your own browser</em> shows you a local button with
           any JavaScript errors the extension has thrown — nothing is uploaded, and
           nothing reaches the developer.</li>
+        <li><strong>"Site access"</strong> and its "Automatically allow access on
+          the following sites" toggle only ever list sites <em>you</em> put there.
+          TabbySync's manifest requests zero host access up front — no
+          <code>host_permissions</code>, no content scripts on any page. The only
+          way a site ends up in that list is Options → picking a sync method and
+          hitting "Save &amp; grant access" (or connecting Gist/JSONBin), which
+          asks Chrome's own native permission prompt, naming that exact site,
+          before anything is granted — and it only ever requests the one host
+          you just configured (your server's domain, <code>api.github.com</code>,
+          or <code>api.jsonbin.io</code>), never a wildcard covering other
+          sites.</li>
       </ul>
     </div>
 
