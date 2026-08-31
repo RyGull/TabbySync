@@ -119,8 +119,8 @@ The brand mark is a lock + sync-arrows glyph. The popup shows the full
 wordmark logo in its top-left, swapped by the light/dark toggle (which remembers
 your choice per device, else follows the system):
 
-- `icons/logo-light.svg` — wordmark for **light** backgrounds (dark text)
-- `icons/logo-dark.svg` — wordmark for **dark** backgrounds (light text)
+- `icons/logo-light.png` — wordmark for **light** backgrounds (dark text)
+- `icons/logo-dark.png` — wordmark for **dark** backgrounds (light text)
 
 The toolbar/extension icons (`icons/icon-16.png` … `icon-256.png`) are just the mark on
 a transparent background, so they sit cleanly on any toolbar. They were
