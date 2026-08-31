@@ -34,6 +34,12 @@ body { margin:0; background:var(--bg); color:var(--text);
 .top h1 { font-size:20px; margin:0; }
 .top .tag { color:var(--muted); font-size:13px; margin-left:auto; }
 .lead { color:var(--muted); margin:0 0 20px; }
+.intro-cards { display:flex; gap:14px; margin:0 0 20px; align-items:stretch; }
+.intro-card { flex:1 1 0; margin-bottom:0; padding:13px 15px; }
+.intro-card p { margin:0; font-size:13px; line-height:1.5; color:var(--muted); }
+.intro-card.warn { border-color:var(--err); box-shadow:0 0 0 3px rgba(220,38,38,.12); }
+.intro-card.warn p { color:var(--err); font-weight:600; }
+@media (max-width:560px) { .intro-cards { flex-direction:column; } }
 /* header logo (swaps with the effective theme) */
 .olo { height:46px; width:auto; display:none; }
 .olo-light { display:block; }
