@@ -205,6 +205,31 @@ $('srv-save').addEventListener('click', async () => {
     return;
   }
 
+  // Renaming an in-use profile doesn't move its data — it starts a new,
+  // separate (empty) file/gist-entry under the new name and leaves the old
+  // one exactly where it was, on the same destination, unmerged. That's
+  // fine when it's deliberate, but it should never happen silently — a
+  // silent version of exactly this (a sanitizer changing an existing name's
+  // case) previously wiped someone's synced bookmarks. Only warn when the
+  // destination itself (provider, and server URL for self-hosted) is
+  // otherwise unchanged, so switching providers/servers doesn't also
+  // trigger it.
+  if (meta.needsSyncName) {
+    const prior = await SL.getConfig();
+    const sameDestination = prior.provider === provider &&
+      (provider !== 'custom' || prior.serverUrl === serverUrl);
+    if (sameDestination && prior.syncName && syncName && prior.syncName !== syncName) {
+      const ok = confirm(
+        `This renames your profile from "${prior.syncName}" to "${syncName}".\n\n` +
+        `That starts a separate, empty profile under the new name — your existing data stays ` +
+        `right where it is under "${prior.syncName}", not moved or merged. If you meant to switch ` +
+        `back to an existing profile instead, make sure the name matches exactly, including ` +
+        `capitalization.\n\nContinue with "${syncName}"?`
+      );
+      if (!ok) { status('srv-status', 'Not saved — sync name left unchanged.', ''); return; }
+    }
+  }
+
   status('srv-status', 'Saving…');
   await SL.setConfig({ provider, serverUrl, token, syncName });
   const granted = await grantAccess(provider, serverUrl);
