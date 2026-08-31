@@ -95,6 +95,29 @@
     content of pages you visit, and does not request permissions beyond what's listed
     above.</p>
 
+    <div class="callout">
+      <strong>Why your browser's extension page may say more than this:</strong>
+      <code>chrome://extensions</code> (or <code>brave://extensions</code>) shows a
+      few things that come from the browser itself, not from TabbySync:
+      <ul>
+        <li>It lists <code>tabs</code> under the scarier label
+          <em>"Read your browsing history."</em> That's Chrome's fixed warning text
+          for that permission — it describes what the permission would technically
+          <em>allow</em>, not what TabbySync does with it. TabbySync never listens
+          for page navigation; it only reads your currently open tabs at the moment
+          you act — opening the popup, stashing a window, or restoring a saved
+          list.</li>
+        <li><strong>"Allow access to file URLs"</strong> and <strong>"Collect
+          errors"</strong> are generic per-extension toggles the browser renders for
+          every extension, independent of what that extension's manifest requests —
+          there's no such thing as a manifest asking for either one. TabbySync never
+          declares <code>file://</code> access anywhere. "Collect errors" only
+          controls whether <em>your own browser</em> shows you a local button with
+          any JavaScript errors the extension has thrown — nothing is uploaded, and
+          nothing reaches the developer.</li>
+      </ul>
+    </div>
+
     <h2>Where your data is stored</h2>
     <ul>
       <li><strong>On your device:</strong> your bookmarks/tab-list data and settings are
