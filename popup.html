@@ -31,10 +31,13 @@
     [hidden] { display:none !important; }
     body { width:320px; margin:0; background:var(--bg); color:var(--text);
       font:13px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
-    .head { display:flex; align-items:center; gap:8px; padding:13px 15px 10px; }
+    .head { display:flex; align-items:center; justify-content:center; padding:13px 15px 8px; }
     .logo { height:44px; width:auto; flex:0 0 auto; display:none; }
     .ver { font-size:11px; font-weight:600; color:var(--muted); align-self:flex-end; margin:0 0 6px 1px; }
     .head .sub { color:var(--muted); font-size:11px; margin-left:auto; }
+    /* theme + Options, centered under the logo — kept off the profile row below
+       so a long profile label / encryption status always has the full row width */
+    .headActions { display:flex; align-items:center; justify-content:center; gap:8px; padding:0 15px 10px; }
     /* logo swaps with the effective theme */
     :root .logo-light { display:block; }
     @media (prefers-color-scheme: dark) {
@@ -94,15 +97,16 @@
     .card.tab button.primary { background:var(--tab); color:#fff; border-color:var(--tab); }
     .grow { flex:1; }
 
-    .foot { display:flex; align-items:center; gap:10px; padding:10px 15px; border-top:1px solid var(--line); }
-    .foot .note { font-size:11.5px; color:var(--muted); line-height:1.35; }
+    /* profile/encryption line now has the whole row to itself, so a long
+       profile label wraps instead of squeezing the theme/Options buttons */
+    .foot { padding:10px 15px; border-top:1px solid var(--line); }
+    .foot .note { display:block; font-size:11.5px; color:var(--muted); line-height:1.4; }
     .foot .note b { color:var(--text); }
     .foot .note .warn { color:#b45309; font-weight:600; }
     :root[data-theme="dark"] .foot .note .warn { color:#f0b357; }
     @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .foot .note .warn { color:#f0b357; } }
     .foot .note a { color:var(--bm); cursor:pointer; text-decoration:underline; }
     .foot .note .okenc { color:var(--ok); font-weight:600; }
-    .foot .opts { flex:0 0 auto; background:transparent; border:1px solid var(--line); }
 
     /* small privacy-policy footer, below the feedback/donate bars */
     .priv-foot { display:flex; align-items:center; justify-content:space-between; gap:8px;
@@ -150,6 +154,10 @@
   <div class="head">
     <img class="logo logo-light" src="icons/logo-light.png" alt="TabbySync">
     <img class="logo logo-dark" src="icons/logo-dark.png" alt="TabbySync">
+  </div>
+  <div class="headActions">
+    <span id="sl-theme"></span>
+    <button class="opts" id="opts">Options</button>
   </div>
 
   <div id="setup" class="banner" hidden>
@@ -203,8 +211,6 @@
 
   <div class="foot">
     <span class="note" id="footNote">One server · one token · one sync name</span>
-    <span id="sl-theme"></span>
-    <button class="opts" id="opts">Options</button>
   </div>
 
   <button class="donate-bar" id="feedbackOpen">
