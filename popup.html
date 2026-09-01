@@ -132,8 +132,10 @@
     .priv-link:hover { color:var(--bm); text-decoration:underline; }
     .priv-right { display:flex; align-items:center; gap:8px; }
     .priv-right .ver { align-self:auto; margin:0; } /* reset .head's bottom-align/margin for this row */
-    .priv-badge { font-size:10.5px; font-weight:600; color:var(--muted); background:var(--panel);
-      border:1px solid var(--line); border-radius:20px; padding:2px 9px; white-space:nowrap; cursor:default; }
+    /* the theme picker (shared/theme.js) normally drops its menu below the
+       button — down here at the very bottom of the popup that would run
+       off the edge, so flip it to open upward instead */
+    .priv-right .sl-theme-menu { top:auto; bottom:calc(100% + 6px); }
 
     /* feedback + donate, side by side — one row instead of two, to save height */
     .donate-row { display:flex; border-top:1px solid var(--line); }
@@ -176,7 +178,6 @@
   </div>
   <div class="headActions">
     <div class="headBox">
-      <span id="sl-theme"></span>
       <button class="opts" id="opts">Options</button>
     </div>
     <div class="headBox syncBox">
@@ -257,7 +258,7 @@
     <a id="privacyLink" class="priv-link">🔒 Privacy Policy</a>
     <span class="priv-right">
       <span class="ver" id="ver"></span>
-      <span class="priv-badge" title="No servers of our own, no analytics, no data selling — see the privacy policy for details.">🛡️ No tracking</span>
+      <span id="sl-theme"></span>
     </span>
   </div>
  </div><!-- /mainView -->
