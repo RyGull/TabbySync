@@ -127,14 +127,18 @@
 
     /* small privacy-policy footer, below the feedback/donate bars */
     .priv-foot { display:flex; align-items:center; justify-content:space-between; gap:8px;
-      padding:8px 15px 12px; border-top:1px solid var(--line); }
+      padding:6px 15px 9px; border-top:1px solid var(--line); }
     .priv-link { font-size:11px; color:var(--muted); cursor:pointer; text-decoration:none; }
     .priv-link:hover { color:var(--bm); text-decoration:underline; }
     .priv-right { display:flex; align-items:center; gap:8px; }
     .priv-right .ver { align-self:auto; margin:0; } /* reset .head's bottom-align/margin for this row */
-    /* the theme picker (shared/theme.js) normally drops its menu below the
-       button — down here at the very bottom of the popup that would run
-       off the edge, so flip it to open upward instead */
+    /* the theme picker (shared/theme.js) defaults to a taller, roomier
+       button than the badge it replaced here — shrink it back down so this
+       footer row doesn't grow (that was tipping the popup into scrolling),
+       and flip its dropdown to open upward since it'd otherwise run off
+       the bottom edge from way down here */
+    .priv-right .sl-theme-btn { height:22px; padding:0 8px; gap:4px; font-size:10.5px; }
+    .priv-right .sl-theme-btn .cx { font-size:9px; }
     .priv-right .sl-theme-menu { top:auto; bottom:calc(100% + 6px); }
 
     /* feedback + donate, side by side — one row instead of two, to save height */
