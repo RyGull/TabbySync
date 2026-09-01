@@ -31,13 +31,13 @@
     [hidden] { display:none !important; }
     body { width:320px; margin:0; background:var(--bg); color:var(--text);
       font:13px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
-    .head { display:flex; align-items:center; justify-content:center; padding:13px 15px 8px; }
+    .head { display:flex; align-items:center; justify-content:center; padding:10px 15px 5px; }
     .logo { height:44px; width:auto; flex:0 0 auto; display:none; }
     .ver { font-size:11px; font-weight:600; color:var(--muted); align-self:flex-end; margin:0 0 6px 1px; }
     .head .sub { color:var(--muted); font-size:11px; margin-left:auto; }
     /* theme + Options, centered under the logo — kept off the profile row below
        so a long profile label / encryption status always has the full row width */
-    .headActions { display:flex; align-items:center; justify-content:center; gap:8px; padding:0 15px 10px; }
+    .headActions { display:flex; align-items:center; justify-content:center; gap:8px; padding:0 15px 7px; }
     /* logo swaps with the effective theme */
     :root .logo-light { display:block; }
     @media (prefers-color-scheme: dark) {
@@ -54,7 +54,6 @@
       background:var(--panel); color:var(--text); border:1px solid var(--line); cursor:pointer; }
     .theme-btn:hover { border-color:var(--muted); }
     .theme-btn .ic { font-size:14px; }
-    #sl-theme { margin-left:auto; }
     .banner { margin:0 15px 8px; padding:8px 10px; border-radius:8px;
       background:var(--panel); border:1px solid var(--line); color:var(--muted); font-size:12px; }
     .banner a { color:var(--bm); cursor:pointer; text-decoration:underline; }
@@ -118,10 +117,12 @@
     .priv-badge { font-size:10.5px; font-weight:600; color:var(--muted); background:var(--panel);
       border:1px solid var(--line); border-radius:20px; padding:2px 9px; white-space:nowrap; cursor:default; }
 
-    /* donate bar (bottom of the main view) — opens the donation screen */
-    .donate-bar { width:100%; border:0; border-top:1px solid var(--line); border-radius:0; background:transparent;
-      color:var(--text); display:flex; align-items:center; justify-content:space-between;
-      padding:12px 15px; font-size:13.5px; font-weight:700; cursor:pointer; }
+    /* feedback + donate, side by side — one row instead of two, to save height */
+    .donate-row { display:flex; border-top:1px solid var(--line); }
+    .donate-bar { flex:1 1 50%; width:100%; border:0; border-radius:0; background:transparent;
+      color:var(--text); display:flex; align-items:center; justify-content:center; gap:6px;
+      padding:11px 10px; font-size:12.5px; font-weight:700; cursor:pointer; }
+    .donate-bar + .donate-bar { border-left:1px solid var(--line); }
     .donate-bar:hover { background:var(--panel); }
     .donate-bar .chev { color:var(--muted); font-size:15px; }
 
@@ -213,12 +214,14 @@
     <span class="note" id="footNote">One server · one token · one sync name</span>
   </div>
 
-  <button class="donate-bar" id="feedbackOpen">
-    <span>✉️ Send Feedback</span><span class="chev">›</span>
-  </button>
-  <button class="donate-bar" id="donateOpen">
-    <span>❤️ Please Donate</span><span class="chev">›</span>
-  </button>
+  <div class="donate-row">
+    <button class="donate-bar" id="feedbackOpen">
+      <span>✉️ Feedback</span><span class="chev">›</span>
+    </button>
+    <button class="donate-bar" id="donateOpen">
+      <span>❤️ Donate</span><span class="chev">›</span>
+    </button>
+  </div>
 
   <div class="priv-foot">
     <a id="privacyLink" class="priv-link">🔒 Privacy Policy</a>
