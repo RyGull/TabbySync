@@ -195,6 +195,21 @@
   function jsonbinHeaders(cfg, extra) {
     return Object.assign({ "X-Master-Key": cfg.token }, extra || {});
   }
+  // JSONBin's error responses carry a useful { message: "..." } body — a bare
+  // "HTTP 400" tells the user nothing about *why*, so pull that message out
+  // (falling back to the raw body, then nothing) and fold it into the error.
+  function jsonbinErrorDetail(res) {
+    return res.text().then(function (t) {
+      if (!t) return "";
+      try { var j = JSON.parse(t); return (j && j.message) ? j.message : t; }
+      catch (e) { return t; }
+    }).catch(function () { return ""; });
+  }
+  function jsonbinFail(res, prefix) {
+    return jsonbinErrorDetail(res).then(function (detail) {
+      throw new Error(prefix + " (HTTP " + res.status + ")" + (detail ? ": " + detail : "") + ".");
+    });
+  }
   function jsonbinCreate(cfg, fileName) {
     var field = jsonbinField(fileName);
     return fetch(JSONBIN_API + "/b", {
@@ -203,7 +218,7 @@
       body: "{}"
     }).then(function (res) {
       if (res.status === 401 || res.status === 403) throw new Error("JSONBin rejected the API key.");
-      if (!res.ok) throw new Error("Could not create a JSONBin bin (HTTP " + res.status + ").");
+      if (!res.ok) return jsonbinFail(res, "Could not create a JSONBin bin");
       return res.json();
     }).then(function (r) {
       var patch = {}; patch[field] = r.metadata.id;
@@ -217,7 +232,7 @@
       .then(function (res) {
         if (res.status === 404) return null;
         if (res.status === 401 || res.status === 403) throw new Error("JSONBin rejected the API key.");
-        if (!res.ok) throw new Error("JSONBin GET failed (HTTP " + res.status + ").");
+        if (!res.ok) return jsonbinFail(res, "JSONBin GET failed");
         return res.json();
       })
       .then(function (r) { return { text: r ? JSON.stringify(r.record) : null, etag: "" }; });
@@ -231,7 +246,7 @@
         body: text
       }).then(function (res) {
         if (res.status === 401 || res.status === 403) throw new Error("JSONBin rejected the API key.");
-        if (!res.ok) throw new Error("JSONBin PUT failed (HTTP " + res.status + ").");
+        if (!res.ok) return jsonbinFail(res, "JSONBin PUT failed");
         return { etag: "" };
       });
     }

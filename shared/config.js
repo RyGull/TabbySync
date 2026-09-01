@@ -21,6 +21,11 @@
     serverUrl: "sl.serverUrl",
     token: "sl.token",
     syncName: "sl.syncName",
+    // Purely cosmetic, local-only label — never sent anywhere and never
+    // embedded in a remote filename. Exists so profiles that have no
+    // functional "sync name" (JSONBin, see needsSyncName in providers.js)
+    // can still be told apart in the popup/Options UI.
+    profileLabel: "sl.profileLabel",
     passphrase: "sl.passphrase",
     genToken: "sl.genToken",
 
@@ -63,6 +68,7 @@
         serverUrl: s[K.serverUrl] || "",
         token: s[K.token] || "",
         syncName: s[K.syncName] || "",
+        profileLabel: s[K.profileLabel] || "",
         passphrase: s[K.passphrase] || "",
         genToken: s[K.genToken] || "",
         provider: s[K.provider] || "custom",       // default: self-hosted
@@ -95,6 +101,7 @@
     if ("serverUrl" in patch) out[K.serverUrl] = patch.serverUrl;
     if ("token" in patch) out[K.token] = patch.token;
     if ("syncName" in patch) out[K.syncName] = patch.syncName;
+    if ("profileLabel" in patch) out[K.profileLabel] = patch.profileLabel;
     if ("passphrase" in patch) out[K.passphrase] = patch.passphrase;
     if ("genToken" in patch) out[K.genToken] = patch.genToken;
     if ("provider" in patch) out[K.provider] = patch.provider;

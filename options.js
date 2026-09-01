@@ -95,6 +95,12 @@ function updateProviderUI() {
   $('srv-name').style.display = meta.needsSyncName ? '' : 'none';
   $('srv-name-hint').style.display = meta.needsSyncName ? '' : 'none';
 
+  // Only offer the cosmetic profile label when the provider has no
+  // functional name of its own to tell profiles apart (currently JSONBin).
+  $('srv-profile-label-label').style.display = meta.needsSyncName ? 'none' : '';
+  $('srv-profile-label').style.display = meta.needsSyncName ? 'none' : '';
+  $('srv-profile-label-hint').style.display = meta.needsSyncName ? 'none' : '';
+
   $('srv-token-label').textContent = meta.tokenLabel;
   $('srv-token').placeholder = meta.tokenPlaceholder;
   $('srv-token-hint').textContent = currentProvider() === 'custom'
@@ -144,6 +150,7 @@ async function load() {
   $('srv-url').value = c.serverUrl;
   $('srv-token').value = c.token;
   $('srv-name').value = c.syncName;
+  $('srv-profile-label').value = c.profileLabel;
   $('enc-pass').value = c.passphrase;
 
   $('bm-enable').checked = c.bookmarks.enabled;
@@ -197,6 +204,7 @@ $('srv-save').addEventListener('click', async () => {
   // exactly what's visible, rather than silently rewriting behind the input.
   const syncName = SL.sanitizeSyncName($('srv-name').value);
   $('srv-name').value = syncName;
+  const profileLabel = $('srv-profile-label').value.trim();
 
   if (meta.needsUrl && !serverUrl) { status('srv-status', 'Server URL is required.', 'bad'); return; }
   if (!token) { status('srv-status', `${meta.tokenLabel} is required.`, 'bad'); return; }
@@ -231,7 +239,7 @@ $('srv-save').addEventListener('click', async () => {
   }
 
   status('srv-status', 'Saving…');
-  await SL.setConfig({ provider, serverUrl, token, syncName });
+  await SL.setConfig({ provider, serverUrl, token, syncName, profileLabel });
   const granted = await grantAccess(provider, serverUrl);
   await send({ type: 'tabbysync-reschedule' });
   // Nudge both engines (they also auto-sync from the config change).

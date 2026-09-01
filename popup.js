@@ -87,7 +87,7 @@ async function refreshBanner() {
     note.textContent = "Not set up yet — open Options to pick a sync method.";
     return configured;
   }
-  var label = c.syncName || self.TabbySyncProviders.providerMeta(c.provider).label;
+  var label = c.syncName || c.profileLabel || self.TabbySyncProviders.providerMeta(c.provider).label;
   var name = "<b>" + esc(label) + "</b>";
   if (c.passphrase) {
     note.innerHTML = "Profile " + name + "<br><span class=\"okenc\">🔒 Encryption on</span>";
