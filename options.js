@@ -564,6 +564,24 @@ async function clearProviderLocal(providerId) {
   await SL.setConfig(patch);
 }
 
+// Puts back exactly what clearProviderLocal cleared, from a config snapshot
+// taken beforehand — used when the remote delete itself fails, so a failed
+// attempt doesn't leave a still-working provider looking disconnected.
+async function restoreProviderLocal(providerId, cfg) {
+  const patch = { routeProvider: providerId };
+  if (providerId === 'custom') {
+    Object.assign(patch, { serverUrl: cfg.serverUrl, token: cfg.customToken, syncName: cfg.customSyncName, passphrase: cfg.customPassphrase });
+  } else if (providerId === 'gist') {
+    Object.assign(patch, { token: cfg.gistToken, syncName: cfg.gistSyncName, passphrase: cfg.gistPassphrase, gistId: cfg.gistId });
+  } else if (providerId === 'jsonbin') {
+    Object.assign(patch, {
+      token: cfg.jsonbinToken, passphrase: cfg.jsonbinPassphrase,
+      jsonbinTabsId: cfg.jsonbinTabsId, jsonbinBookmarksId: cfg.jsonbinBookmarksId, profileLabel: cfg.profileLabel,
+    });
+  }
+  await SL.setConfig(patch);
+}
+
 async function deleteOneProvider(providerId) {
   const label = DANGER_LABELS[providerId];
   const sure = confirm(
@@ -575,16 +593,30 @@ async function deleteOneProvider(providerId) {
   );
   if (!sure) return;
   status('danger-status', `Deleting ${label} data…`);
+  const cfg = await SL.getConfig();
   try {
-    const cfg = await SL.getConfig();
-    const had = await SP.deleteProviderData(cfg, providerId);
+    // Clear local credentials FIRST, before the remote delete even starts.
+    // A remote delete is a real network round-trip — if this provider is
+    // also the one actively syncing and a background sync (periodic timer,
+    // a bookmark edit, a focus switch) fires while the delete is still in
+    // flight, it would otherwise run with still-valid credentials against a
+    // remote that's mid-delete: it can read that back as "the data was
+    // deleted elsewhere" and propagate that deletion onto your ACTUAL
+    // local bookmarks, then push the emptied result back up. Clearing
+    // first makes this provider read as unconfigured immediately, so any
+    // sync attempt during the window below safely does nothing instead.
     await clearProviderLocal(providerId);
+    const had = await SP.deleteProviderData(cfg, providerId);
     await load();
     status('danger-status', had
       ? `Deleted — ${label}'s remote data is gone, and its saved credentials here were cleared.`
       : `Nothing was saved for ${label} — nothing to delete.`, 'ok');
   } catch (e) {
-    status('danger-status', `Error deleting ${label} data: ${e.message}`, 'bad');
+    // The delete failed — put back what we cleared so a failed attempt
+    // doesn't silently disconnect you from a provider that's still fine.
+    await restoreProviderLocal(providerId, cfg);
+    await load();
+    status('danger-status', `Delete failed — nothing was changed: ${e.message}`, 'bad');
   } finally {
     relockDanger();
   }
@@ -609,16 +641,23 @@ $('danger-wipe-all').addEventListener('click', async () => {
   const sure2 = confirm('Really wipe everything? There is no undo.');
   if (!sure2) { relockDanger(); return; }
 
-  status('danger-wipe-status', 'Deleting remote data on every configured provider…');
   const cfg = await SL.getConfig();
+  // Clear local storage FIRST, before attempting any remote deletes — a
+  // remote delete is a real network round-trip per provider, and while
+  // credentials are still valid locally a background sync could race one
+  // of them: read a remote that's mid-delete as "deleted elsewhere", and
+  // propagate that onto your ACTUAL local bookmarks (then push the emptied
+  // result back up). Clearing first means every provider reads as
+  // unconfigured immediately, so nothing can sync during the window below.
+  status('danger-wipe-status', 'Clearing local settings…');
+  await chrome.storage.local.clear();
+
+  status('danger-wipe-status', 'Deleting remote data on every configured provider…');
   const order = ['custom', 'gist', 'jsonbin'];
   const results = await Promise.allSettled(order.map((p) => SP.deleteProviderData(cfg, p)));
   const failures = results
     .map((r, i) => ({ r, name: DANGER_LABELS[order[i]] }))
     .filter((x) => x.r.status === 'rejected');
-
-  status('danger-wipe-status', 'Clearing local settings…');
-  await chrome.storage.local.clear();
 
   if (failures.length) {
     alert(

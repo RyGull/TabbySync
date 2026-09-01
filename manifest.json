@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TabbySync",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Self-hosted sync for your bookmarks and your open tabs — two tools in one extension, sharing one server, one token and one sync name. Use either or both.",
   "permissions": [
     "bookmarks",
