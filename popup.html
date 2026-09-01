@@ -37,7 +37,12 @@
     .logo { height:44px; width:auto; flex:0 0 auto; display:none; }
     .ver { font-size:11px; font-weight:600; color:var(--muted); align-self:flex-end; margin:0 0 6px 1px; }
     .head .sub { color:var(--muted); font-size:11px; margin-left:auto; }
-    .headActions { display:flex; align-items:center; justify-content:center; gap:8px; padding:8px 15px; border-bottom:1px solid var(--line); }
+    /* theme/Options on the left, the active sync method on the right —
+       same two-box pattern as the profile/encryption row below */
+    .headActions { display:flex; align-items:stretch; gap:8px; padding:8px 15px; border-bottom:1px solid var(--line); }
+    .headBox { flex:1 1 50%; min-width:0; display:flex; align-items:center; justify-content:center; gap:8px;
+      padding:5px 8px; border-radius:9px; background:var(--panel); border:1px solid var(--line); }
+    .syncBox { font-size:12px; font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     /* logo swaps with the effective theme */
     :root .logo-light { display:block; }
     @media (prefers-color-scheme: dark) {
@@ -170,8 +175,13 @@
     <img class="logo logo-dark" src="icons/logo-dark.png" alt="TabbySync">
   </div>
   <div class="headActions">
-    <span id="sl-theme"></span>
-    <button class="opts" id="opts">Options</button>
+    <div class="headBox">
+      <span id="sl-theme"></span>
+      <button class="opts" id="opts">Options</button>
+    </div>
+    <div class="headBox syncBox">
+      <span id="syncLabel">Sync: —</span>
+    </div>
   </div>
 
   <div id="setup" class="banner" hidden>

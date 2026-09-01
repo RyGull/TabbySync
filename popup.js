@@ -74,9 +74,20 @@ async function refreshTabs() {
 
 var encBadgeWired = false;
 
+// Short display names for the sync-method box under the logo — the
+// provider metadata's own .label is the longer Options-dropdown text
+// (e.g. "JSONBin.io (free, no server)"), too long for that compact box.
+var SYNC_METHOD_SHORT = { custom: "Self-Hosted", gist: "GitHub Gist", jsonbin: "JSONBin.io" };
+
 async function refreshBanner() {
   var c = await self.TabbySyncConfig.getConfig();
   var configured = self.TabbySyncProviders.isConfigured(Object.assign({}, c, { baseUrl: c.serverUrl }));
+
+  var syncLabel = $("syncLabel");
+  var shortName = SYNC_METHOD_SHORT[c.provider] || self.TabbySyncProviders.providerMeta(c.provider).label;
+  syncLabel.textContent = "Sync: " + shortName;
+  syncLabel.title = self.TabbySyncProviders.providerMeta(c.provider).label;
+
   $("setup").hidden = configured;
   var note = $("footNote");
   var row = $("profileRow");
