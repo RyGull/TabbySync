@@ -215,7 +215,10 @@
     return fetch(JSONBIN_API + "/b", {
       method: "POST",
       headers: jsonbinHeaders(cfg, jsonHeaders({ "X-Bin-Private": "true", "X-Bin-Name": fileName })),
-      body: "{}"
+      // JSONBin rejects a literal "{}" body as blank. This placeholder is
+      // thrown away immediately anyway — jsonbinPut always PUTs the real
+      // content right after creating the bin (see the write() call below).
+      body: "{\"tabbysync\":true}"
     }).then(function (res) {
       if (res.status === 401 || res.status === 403) throw new Error("JSONBin rejected the API key.");
       if (!res.ok) return jsonbinFail(res, "Could not create a JSONBin bin");
