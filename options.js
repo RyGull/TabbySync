@@ -103,7 +103,7 @@ function updateProviderUI() {
       ? 'Sent as Authorization: Bearer …. Stored only in this browser profile — treat it like a password.'
       : 'Sent as the X-Master-Key header. Stored only in this browser profile — treat it like a password.';
 
-  $('provider-hint').textContent = meta.setupHint || '';
+  $('provider-hint').innerHTML = meta.setupHint || '';
   const disc = $('provider-disclaimer');
   if (meta.disclaimer) { disc.textContent = meta.disclaimer; disc.hidden = false; }
   else { disc.textContent = ''; disc.hidden = true; }

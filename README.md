@@ -63,10 +63,13 @@ sync → Sync method** offers two free, no-server backends instead:
 
 - **GitHub Gist** — TabbySync creates a private ("secret") gist for you and
   stores each engine's file inside it. You just need a GitHub personal access
-  token scoped to Gists (classic token with the `gist` scope, or a
-  fine-grained token with the "Gists" account permission).
+  token scoped to Gists — create one at
+  [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new)
+  (fine-grained token, scoped to just "Gists: Read and write"), or a classic
+  token with the `gist` scope.
 - **JSONBin.io** — TabbySync creates a bin per engine for you. You just need
-  a free JSONBin API key.
+  a free JSONBin API key — sign up and grab one at
+  [jsonbin.io](https://jsonbin.io).
 
 Both are meaningfully **less private than self-hosting**: your data (or its
 ciphertext, if you turn on encryption) sits on a third party's servers under
