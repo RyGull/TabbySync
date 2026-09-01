@@ -35,7 +35,13 @@
     // functional "sync name" (JSONBin, see needsSyncName in providers.js)
     // can still be told apart in the popup/Options UI.
     profileLabel: "sl.profileLabel",
+    // Encryption passphrase — also per-provider, same reasoning as
+    // token/syncName above: you might use one passphrase for a self-hosted
+    // setup and a different one for a JSONBin profile, and switching
+    // methods shouldn't overwrite one with the other.
     passphrase: "sl.passphrase",
+    gistPassphrase: "sl.gist.passphrase",
+    jsonbinPassphrase: "sl.jsonbin.passphrase",
     genToken: "sl.genToken",
 
     // Which sync backend applies right now — "custom" (the default) is the
@@ -67,22 +73,24 @@
   // Changing any of these should kick an immediate re-sync on both engines.
   var SERVER_KEYS = [
     K.serverUrl, K.token, K.syncName, K.gistToken, K.gistSyncName, K.jsonbinToken,
-    K.passphrase, K.provider, K.gistId, K.jsonbinTabsId, K.jsonbinBookmarksId,
+    K.passphrase, K.gistPassphrase, K.jsonbinPassphrase,
+    K.provider, K.gistId, K.jsonbinTabsId, K.jsonbinBookmarksId,
   ];
 
   function num(v, d) { var n = Number(v); return isNaN(n) ? d : n; }
 
   // Read the whole shared config as a nested object with defaults applied.
   //
-  // "token" and "syncName" here are resolved to whichever provider is
-  // currently active, so every existing caller (the sync engines, the
-  // popup, the tab-list page) keeps working unchanged — they just always
-  // get "this provider's" credentials. The Options page additionally needs
-  // each PROVIDER's own remembered value (so switching the sync-method
-  // dropdown can restore what you last saved for it, instead of showing
-  // whatever's left over from the provider you were just editing), so the
-  // raw per-provider fields are exposed too: customToken, customSyncName,
-  // gistToken, gistSyncName, jsonbinToken.
+  // "token", "syncName" and "passphrase" here are resolved to whichever
+  // provider is currently active, so every existing caller (the sync
+  // engines, the popup, the tab-list page) keeps working unchanged — they
+  // just always get "this provider's" credentials. The Options page
+  // additionally needs each PROVIDER's own remembered value (so switching
+  // the sync-method dropdown can restore what you last saved for it,
+  // instead of showing whatever's left over from the provider you were
+  // just editing), so the raw per-provider fields are exposed too:
+  // customToken, customSyncName, customPassphrase, gistToken,
+  // gistSyncName, gistPassphrase, jsonbinToken, jsonbinPassphrase.
   function getConfig() {
     return chrome.storage.local.get(ALL).then(function (s) {
       var provider = s[K.provider] || "custom";
@@ -102,9 +110,15 @@
       var jsonbinToken = (K.jsonbinToken in s) ? s[K.jsonbinToken] : (provider === "jsonbin" ? customToken : "");
       gistToken = gistToken || ""; gistSyncName = gistSyncName || ""; jsonbinToken = jsonbinToken || "";
 
+      var customPassphrase = s[K.passphrase] || "";
+      var gistPassphrase = (K.gistPassphrase in s) ? s[K.gistPassphrase] : (provider === "gist" ? customPassphrase : "");
+      var jsonbinPassphrase = (K.jsonbinPassphrase in s) ? s[K.jsonbinPassphrase] : (provider === "jsonbin" ? customPassphrase : "");
+      gistPassphrase = gistPassphrase || ""; jsonbinPassphrase = jsonbinPassphrase || "";
+
       var token = provider === "gist" ? gistToken : provider === "jsonbin" ? jsonbinToken : customToken;
       // JSONBin has no sync name of its own (needsSyncName: false).
       var syncName = provider === "gist" ? gistSyncName : customSyncName;
+      var passphrase = provider === "gist" ? gistPassphrase : provider === "jsonbin" ? jsonbinPassphrase : customPassphrase;
 
       return {
         serverUrl: s[K.serverUrl] || "",
@@ -116,7 +130,10 @@
         gistSyncName: gistSyncName,
         jsonbinToken: jsonbinToken,
         profileLabel: s[K.profileLabel] || "",
-        passphrase: s[K.passphrase] || "",
+        passphrase: passphrase,
+        customPassphrase: customPassphrase,
+        gistPassphrase: gistPassphrase,
+        jsonbinPassphrase: jsonbinPassphrase,
         genToken: s[K.genToken] || "",
         provider: provider,
         gistId: s[K.gistId] || "",
@@ -144,12 +161,12 @@
   // Write a partial config. Accepts the same nested shape as getConfig()
   // returns; only provided fields are written.
   //
-  // "token"/"syncName" route to whichever provider's slot "provider" (in
-  // this same patch) names, so saving one provider's credentials never
-  // touches another's — that's the whole point of the per-provider slots
-  // above. A patch with token/syncName but no "provider" (there's no such
-  // caller today) falls back to the self-hosted slot, matching this
-  // module's behavior before Gist/JSONBin got their own slots.
+  // "token"/"syncName"/"passphrase" route to whichever provider's slot
+  // "provider" (in this same patch) names, so saving one provider's
+  // credentials never touches another's — that's the whole point of the
+  // per-provider slots above. A patch with one of these but no "provider"
+  // (there's no such caller today) falls back to the self-hosted slot,
+  // matching this module's behavior before Gist/JSONBin got their own.
   function setConfig(patch) {
     var out = {};
     if ("serverUrl" in patch) out[K.serverUrl] = patch.serverUrl;
@@ -167,7 +184,12 @@
       }
     }
     if ("profileLabel" in patch) out[K.profileLabel] = patch.profileLabel;
-    if ("passphrase" in patch) out[K.passphrase] = patch.passphrase;
+    if ("passphrase" in patch) {
+      var pp = patch.provider;
+      if (pp === "gist") out[K.gistPassphrase] = patch.passphrase;
+      else if (pp === "jsonbin") out[K.jsonbinPassphrase] = patch.passphrase;
+      else out[K.passphrase] = patch.passphrase;
+    }
     if ("genToken" in patch) out[K.genToken] = patch.genToken;
     if ("provider" in patch) out[K.provider] = patch.provider;
     if ("gistId" in patch) out[K.gistId] = patch.gistId;
