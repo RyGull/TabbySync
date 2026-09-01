@@ -175,6 +175,9 @@
         token: c.token,
         syncKey: c.syncName,             // shared profile name, e.g. "work"
         syncName: c.syncName,            // same value, name expected by shared/providers.js
+        // local-only, cosmetic label for providers with no functional sync
+        // name of their own (currently JSONBin) — see shared/config.js
+        profileLabel: c.profileLabel,
         customUrl: "",                    // (no per-engine override in TabbySync)
         // which sync backend the fields above apply to (see shared/providers.js)
         provider: c.provider,

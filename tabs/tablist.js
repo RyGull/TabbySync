@@ -47,8 +47,10 @@
   function encryptionOn() { return !!(settings && settings.passphrase); }
   function profileLabel() {
     if (settings && settings.syncKey) return settings.syncKey;
-    // No sync name set (e.g. JSONBin, which has one profile per key) — fall
+    // No functional sync name (e.g. JSONBin, which has one profile per key)
+    // — prefer the cosmetic profile label the user set for it, then fall
     // back to naming the sync method instead of showing a blank name.
+    if (settings && settings.profileLabel) return settings.profileLabel;
     try { return self.TabbySyncProviders.providerMeta(settings && settings.provider).label; }
     catch (e) { return "Profile"; }
   }
@@ -785,7 +787,7 @@
     if (changes[TabbySync.STATUS_KEY]) { renderStatusBlock(); }
     // Reload if any tab-relevant setting changed (shared config keys).
     var K = self.TabbySyncConfig.KEYS;
-    if ([K.tabRestoreGroup, K.tabDedupe, K.syncName, K.passphrase, K.tabRemoveOnRestore, K.provider].some(function (k) {
+    if ([K.tabRestoreGroup, K.tabDedupe, K.syncName, K.profileLabel, K.passphrase, K.tabRemoveOnRestore, K.provider].some(function (k) {
       return k in changes;
     })) { reload(); }
   });
