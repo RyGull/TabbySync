@@ -66,12 +66,14 @@
     },
     jsonbin: {
       id: "jsonbin",
-      label: "JSONBin.io (free, no server, no account needed elsewhere)",
+      label: "JSONBin.io (free, no server)",
       tokenLabel: "JSONBin X-Master-Key",
       tokenPlaceholder: "your JSONBin API key",
       needsUrl: false,
       needsSyncName: false,
-      setupHint: "Free account at <a href=\"https://jsonbin.io\" target=\"_blank\" rel=\"noopener\">jsonbin.io</a> → API Keys → create a key, paste it here. " +
+      setupHint: "Requires a free JSONBin.io account — sign up / log in at " +
+        "<a href=\"https://jsonbin.io/login\" target=\"_blank\" rel=\"noopener\">jsonbin.io</a>, then open " +
+        "<b>API Keys</b> from your account menu, create a key (the <b>X-Master-Key</b>), and paste it here. " +
         "TabbySync creates the bin(s) for you the first time you save. One profile per key " +
         "(no separate “sync name”) — use self-hosting or GitHub Gist if you need more than one.",
       disclaimer: "⚠️ Least private option: your data is stored on JSONBin's free " +

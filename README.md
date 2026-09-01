@@ -67,9 +67,10 @@ sync → Sync method** offers two free, no-server backends instead:
   [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new)
   (fine-grained token, scoped to just "Gists: Read and write"), or a classic
   token with the `gist` scope.
-- **JSONBin.io** — TabbySync creates a bin per engine for you. You just need
-  a free JSONBin API key — sign up and grab one at
-  [jsonbin.io](https://jsonbin.io).
+- **JSONBin.io** — TabbySync creates a bin per engine for you. This one does
+  require a free JSONBin.io account: sign up / log in at
+  [jsonbin.io](https://jsonbin.io/login), then open **API Keys** from your
+  account menu and create a key (the `X-Master-Key`) to paste into TabbySync.
 
 Both are meaningfully **less private than self-hosting**: your data (or its
 ciphertext, if you turn on encryption) sits on a third party's servers under
