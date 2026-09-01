@@ -72,31 +72,42 @@ async function refreshTabs() {
 
 // ---- server-configured banner ---------------------------------------------
 
-function esc(s) {
-  return String(s).replace(/[&<>"]/g, function (ch) {
-    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch];
-  });
-}
+var encBadgeWired = false;
 
 async function refreshBanner() {
   var c = await self.TabbySyncConfig.getConfig();
   var configured = self.TabbySyncProviders.isConfigured(Object.assign({}, c, { baseUrl: c.serverUrl }));
   $("setup").hidden = configured;
   var note = $("footNote");
+  var row = $("profileRow");
   if (!configured) {
+    note.hidden = false;
+    row.hidden = true;
     note.textContent = "Not set up yet — open Options to pick a sync method.";
     return configured;
   }
+  note.hidden = true;
+  row.hidden = false;
+
   var label = c.syncName || c.profileLabel || self.TabbySyncProviders.providerMeta(c.provider).label;
-  var name = "<b>" + esc(label) + "</b>";
+  var nameEl = $("profileName");
+  nameEl.textContent = "Profile: " + label;
+  nameEl.title = label;
+
+  var badge = $("encBadge");
   if (c.passphrase) {
-    note.innerHTML = "Profile " + name + "<br><span class=\"okenc\">🔒 Encryption on</span>";
+    badge.className = "encBadge on";
+    badge.textContent = "🔒 Encryption on";
+    badge.title = "Encryption is on. Click to manage it in Options.";
   } else {
-    note.innerHTML = "Profile " + name +
-      "<br><span class=\"warn\">Encryption off</span> — <a id=\"encLink\">turn it on</a> for better security.";
-    var link = document.getElementById("encLink");
-    if (link) link.addEventListener("click", openOptions);
+    badge.className = "encBadge off";
+    badge.textContent = "⚠️ Encryption off";
+    badge.title = "Encryption is off — click to turn it on in Options.";
   }
+  // The badge itself never changes identity, so wire the click once rather
+  // than re-binding a fresh listener on every refresh.
+  if (!encBadgeWired) { badge.addEventListener("click", openOptions); encBadgeWired = true; }
+
   return configured;
 }
 

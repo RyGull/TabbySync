@@ -96,16 +96,23 @@
     .card.tab button.primary { background:var(--tab); color:#fff; border-color:var(--tab); }
     .grow { flex:1; }
 
-    /* profile/encryption line now has the whole row to itself, so a long
-       profile label wraps instead of squeezing the theme/Options buttons */
-    .foot { padding:10px 15px; border-top:1px solid var(--line); }
+    /* profile/encryption row: profile name on the left (truncates with an
+       ellipsis + title tooltip rather than squeezing the badge), encryption
+       status as a badge on the right that opens Options either way */
+    .foot { padding:9px 15px; border-top:1px solid var(--line); }
     .foot .note { display:block; font-size:11.5px; color:var(--muted); line-height:1.4; }
-    .foot .note b { color:var(--text); }
-    .foot .note .warn { color:#b45309; font-weight:600; }
-    :root[data-theme="dark"] .foot .note .warn { color:#f0b357; }
-    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .foot .note .warn { color:#f0b357; } }
-    .foot .note a { color:var(--bm); cursor:pointer; text-decoration:underline; }
-    .foot .note .okenc { color:var(--ok); font-weight:600; }
+    .profileRow { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .profileName { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+      font-size:11.5px; color:var(--muted); }
+    .profileName b { color:var(--text); font-weight:700; }
+    .encBadge { flex:0 0 auto; display:inline-flex; align-items:center; gap:4px; font-size:10.5px;
+      font-weight:700; border-radius:20px; padding:4px 10px; cursor:pointer;
+      border:1px solid var(--line); background:var(--panel); color:var(--text); }
+    .encBadge:hover { background:var(--bg); }
+    .encBadge.on { color:var(--ok); border-color:var(--ok); }
+    .encBadge.off { color:#b45309; border-color:#b45309; }
+    :root[data-theme="dark"] .encBadge.off { color:#f0b357; border-color:#f0b357; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .encBadge.off { color:#f0b357; border-color:#f0b357; } }
 
     /* small privacy-policy footer, below the feedback/donate bars */
     .priv-foot { display:flex; align-items:center; justify-content:space-between; gap:8px;
@@ -211,7 +218,11 @@
   </div>
 
   <div class="foot">
-    <span class="note" id="footNote">One server · one token · one sync name</span>
+    <span class="note" id="footNote" hidden>One server · one token · one sync name</span>
+    <div class="profileRow" id="profileRow" hidden>
+      <span class="profileName" id="profileName"></span>
+      <button class="encBadge" id="encBadge" type="button"></button>
+    </div>
   </div>
 
   <div class="donate-row">
