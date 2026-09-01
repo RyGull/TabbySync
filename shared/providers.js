@@ -46,7 +46,7 @@
       tokenPlaceholder: "the token inside tabbysync.php",
       needsUrl: true,
       needsSyncName: true,
-      setupHint: "Your own server — see “Self-hosting” below if you don't have one yet.",
+      setupHint: "Your own server — see <a href=\"#selfhostCard\">“Self-hosting” below</a> if you don't have one yet.",
       disclaimer: ""
     },
     gist: {
@@ -56,8 +56,8 @@
       tokenPlaceholder: "github_pat_…",
       needsUrl: false,
       needsSyncName: true,
-      setupHint: "Create a token at github.com → Settings → Developer settings → " +
-        "Personal access tokens → Fine-grained tokens, scoped to just “Gists: Read and write”. " +
+      setupHint: "Create a token at <a href=\"https://github.com/settings/personal-access-tokens/new\" target=\"_blank\" rel=\"noopener\">github.com → Settings → Developer settings → " +
+        "Personal access tokens → Fine-grained tokens</a>, scoped to just “Gists: Read and write”. " +
         "TabbySync creates one private gist for you the first time you save.",
       disclaimer: "⚠️ Less private than self-hosting: your data is stored on GitHub's " +
         "servers in a “secret” gist. That means it's unlisted, not truly access-controlled — " +
@@ -71,7 +71,7 @@
       tokenPlaceholder: "your JSONBin API key",
       needsUrl: false,
       needsSyncName: false,
-      setupHint: "Free account at jsonbin.io → API Keys → create a key, paste it here. " +
+      setupHint: "Free account at <a href=\"https://jsonbin.io\" target=\"_blank\" rel=\"noopener\">jsonbin.io</a> → API Keys → create a key, paste it here. " +
         "TabbySync creates the bin(s) for you the first time you save. One profile per key " +
         "(no separate “sync name”) — use self-hosting or GitHub Gist if you need more than one.",
       disclaimer: "⚠️ Least private option: your data is stored on JSONBin's free " +
