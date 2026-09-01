@@ -94,6 +94,9 @@
     button:disabled { opacity:.5; cursor:default; }
     .card.bm button.primary { background:var(--bm); color:#fff; border-color:var(--bm); }
     .card.tab button.primary { background:var(--tab); color:#fff; border-color:var(--tab); }
+    /* secondary action, highlighted with the tab card's orange instead of filled */
+    .card.tab button.accent { color:var(--tab); border-color:var(--tab); }
+    .card.tab button.accent:hover:not(:disabled) { background:var(--tab-soft); }
     .grow { flex:1; }
 
     /* profile/encryption row: a box on the left (small centered "Profile"
@@ -213,8 +216,8 @@
         <div class="kv" id="tabErrRow" hidden><span>Error</span><span class="v err" id="tabErr"></span></div>
       </div>
       <div class="acts">
-        <button class="primary grow" id="stashAllTabs">Stash all tabs</button>
-        <button id="tabOpen">Open list</button>
+        <button class="primary grow" id="stashAllTabs">Stash tabs</button>
+        <button class="accent" id="tabOpen">Open tabs</button>
         <button id="tabSync">Sync</button>
       </div>
     </section>
