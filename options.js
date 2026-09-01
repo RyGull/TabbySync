@@ -72,6 +72,23 @@ function updateCardsDisabled() {
 
 function currentProvider() { return $('sync-provider').value || 'custom'; }
 
+// Cache of the last config we read/saved, so switching the "Sync method"
+// dropdown can restore that provider's OWN remembered token/sync name
+// (see fieldsForProvider below) without a fresh storage read on every
+// change event.
+let lastConfig = null;
+
+// Each provider keeps its own token/sync name (shared/config.js), so
+// switching providers here should show what's actually saved for the one
+// just selected — not whatever text is still sitting in the field from
+// the provider you were previously looking at.
+function fieldsForProvider(cfg, provider) {
+  if (!cfg) return { token: '', syncName: '' };
+  if (provider === 'gist') return { token: cfg.gistToken || '', syncName: cfg.gistSyncName || '' };
+  if (provider === 'jsonbin') return { token: cfg.jsonbinToken || '', syncName: '' };
+  return { token: cfg.customToken || '', syncName: cfg.customSyncName || '' };
+}
+
 // Populate the provider <select> once from the shared metadata.
 function populateProviderSelect() {
   const sel = $('sync-provider');
@@ -94,6 +111,13 @@ function updateProviderUI() {
   $('srv-name-label').style.display = meta.needsSyncName ? '' : 'none';
   $('srv-name').style.display = meta.needsSyncName ? '' : 'none';
   $('srv-name-hint').style.display = meta.needsSyncName ? '' : 'none';
+
+  // Swap in THIS provider's own remembered token/sync name, so switching
+  // methods shows what's actually saved for it instead of leftover text
+  // from whichever provider you were just editing.
+  const f = fieldsForProvider(lastConfig, currentProvider());
+  $('srv-token').value = f.token;
+  $('srv-name').value = f.syncName;
 
   // Only offer the cosmetic profile label when the provider has no
   // functional name of its own to tell profiles apart (currently JSONBin).
@@ -145,11 +169,12 @@ function preview() {
 
 async function load() {
   const c = await SL.getConfig();
+  lastConfig = c;
   populateProviderSelect();
   $('sync-provider').value = c.provider;
   $('srv-url').value = c.serverUrl;
-  $('srv-token').value = c.token;
-  $('srv-name').value = c.syncName;
+  // srv-token/srv-name are populated by updateProviderUI() below, from
+  // lastConfig, per the currently selected provider.
   $('srv-profile-label').value = c.profileLabel;
   $('enc-pass').value = c.passphrase;
 
@@ -240,6 +265,9 @@ $('srv-save').addEventListener('click', async () => {
 
   status('srv-status', 'Saving…');
   await SL.setConfig({ provider, serverUrl, token, syncName, profileLabel });
+  // Refresh the cache so switching providers afterward (without reloading
+  // the page) restores what was just saved, not stale pre-save values.
+  lastConfig = await SL.getConfig();
   const granted = await grantAccess(provider, serverUrl);
   await send({ type: 'tabbysync-reschedule' });
   // Nudge both engines (they also auto-sync from the config change).

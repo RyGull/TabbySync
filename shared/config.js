@@ -19,8 +19,17 @@
   // else — go through this module.
   var K = {
     serverUrl: "sl.serverUrl",
+    // "token" and "syncName" are the SELF-HOSTED provider's own credential
+    // slots (kept under their original, pre-multi-provider key names).
+    // Gist and JSONBin get their own separate slots below — each provider
+    // remembers its own credentials independently, so switching the sync
+    // method in Options and back doesn't clobber whatever you had saved
+    // for the others. See the migration note in getConfig() below.
     token: "sl.token",
     syncName: "sl.syncName",
+    gistToken: "sl.gist.token",
+    gistSyncName: "sl.gist.syncName",
+    jsonbinToken: "sl.jsonbin.token",
     // Purely cosmetic, local-only label — never sent anywhere and never
     // embedded in a remote filename. Exists so profiles that have no
     // functional "sync name" (JSONBin, see needsSyncName in providers.js)
@@ -29,9 +38,11 @@
     passphrase: "sl.passphrase",
     genToken: "sl.genToken",
 
-    // Which sync backend "serverUrl"/"token" above apply to. "custom" (the
-    // default) is the self-hosted tabbysync.php endpoint; "gist" and
-    // "jsonbin" are free no-server alternatives (see shared/providers.js).
+    // Which sync backend applies right now — "custom" (the default) is the
+    // self-hosted tabbysync.php endpoint; "gist" and "jsonbin" are free
+    // no-server alternatives (see shared/providers.js). getConfig() below
+    // resolves "token"/"syncName" to whichever of the slots above matches
+    // this.
     provider: "sl.provider",
     gistId: "sl.gist.id",
     jsonbinTabsId: "sl.jsonbin.tabsId",
@@ -55,23 +66,59 @@
 
   // Changing any of these should kick an immediate re-sync on both engines.
   var SERVER_KEYS = [
-    K.serverUrl, K.token, K.syncName, K.passphrase,
-    K.provider, K.gistId, K.jsonbinTabsId, K.jsonbinBookmarksId,
+    K.serverUrl, K.token, K.syncName, K.gistToken, K.gistSyncName, K.jsonbinToken,
+    K.passphrase, K.provider, K.gistId, K.jsonbinTabsId, K.jsonbinBookmarksId,
   ];
 
   function num(v, d) { var n = Number(v); return isNaN(n) ? d : n; }
 
   // Read the whole shared config as a nested object with defaults applied.
+  //
+  // "token" and "syncName" here are resolved to whichever provider is
+  // currently active, so every existing caller (the sync engines, the
+  // popup, the tab-list page) keeps working unchanged — they just always
+  // get "this provider's" credentials. The Options page additionally needs
+  // each PROVIDER's own remembered value (so switching the sync-method
+  // dropdown can restore what you last saved for it, instead of showing
+  // whatever's left over from the provider you were just editing), so the
+  // raw per-provider fields are exposed too: customToken, customSyncName,
+  // gistToken, gistSyncName, jsonbinToken.
   function getConfig() {
     return chrome.storage.local.get(ALL).then(function (s) {
+      var provider = s[K.provider] || "custom";
+      var customToken = s[K.token] || "";
+      var customSyncName = s[K.syncName] || "";
+
+      // One-time migration: before Gist/JSONBin had their own credential
+      // slots, they shared "token"/"syncName" with self-hosting — whichever
+      // provider happened to be active. If this provider has never been
+      // given its own slot yet (key never written), and it's the one
+      // that's currently active, seed its slot from that shared value so
+      // an already-working setup doesn't go blank after this update. Once
+      // anything is saved through the new per-provider slots, this no
+      // longer applies.
+      var gistToken = (K.gistToken in s) ? s[K.gistToken] : (provider === "gist" ? customToken : "");
+      var gistSyncName = (K.gistSyncName in s) ? s[K.gistSyncName] : (provider === "gist" ? customSyncName : "");
+      var jsonbinToken = (K.jsonbinToken in s) ? s[K.jsonbinToken] : (provider === "jsonbin" ? customToken : "");
+      gistToken = gistToken || ""; gistSyncName = gistSyncName || ""; jsonbinToken = jsonbinToken || "";
+
+      var token = provider === "gist" ? gistToken : provider === "jsonbin" ? jsonbinToken : customToken;
+      // JSONBin has no sync name of its own (needsSyncName: false).
+      var syncName = provider === "gist" ? gistSyncName : customSyncName;
+
       return {
         serverUrl: s[K.serverUrl] || "",
-        token: s[K.token] || "",
-        syncName: s[K.syncName] || "",
+        token: token,
+        syncName: syncName,
+        customToken: customToken,
+        customSyncName: customSyncName,
+        gistToken: gistToken,
+        gistSyncName: gistSyncName,
+        jsonbinToken: jsonbinToken,
         profileLabel: s[K.profileLabel] || "",
         passphrase: s[K.passphrase] || "",
         genToken: s[K.genToken] || "",
-        provider: s[K.provider] || "custom",       // default: self-hosted
+        provider: provider,
         gistId: s[K.gistId] || "",
         jsonbinTabsId: s[K.jsonbinTabsId] || "",
         jsonbinBookmarksId: s[K.jsonbinBookmarksId] || "",
@@ -96,11 +143,29 @@
 
   // Write a partial config. Accepts the same nested shape as getConfig()
   // returns; only provided fields are written.
+  //
+  // "token"/"syncName" route to whichever provider's slot "provider" (in
+  // this same patch) names, so saving one provider's credentials never
+  // touches another's — that's the whole point of the per-provider slots
+  // above. A patch with token/syncName but no "provider" (there's no such
+  // caller today) falls back to the self-hosted slot, matching this
+  // module's behavior before Gist/JSONBin got their own slots.
   function setConfig(patch) {
     var out = {};
     if ("serverUrl" in patch) out[K.serverUrl] = patch.serverUrl;
-    if ("token" in patch) out[K.token] = patch.token;
-    if ("syncName" in patch) out[K.syncName] = patch.syncName;
+    if ("token" in patch || "syncName" in patch) {
+      var p = patch.provider;
+      if (p === "gist") {
+        if ("token" in patch) out[K.gistToken] = patch.token;
+        if ("syncName" in patch) out[K.gistSyncName] = patch.syncName;
+      } else if (p === "jsonbin") {
+        // JSONBin has no functional sync name — nothing to route it to.
+        if ("token" in patch) out[K.jsonbinToken] = patch.token;
+      } else {
+        if ("token" in patch) out[K.token] = patch.token;
+        if ("syncName" in patch) out[K.syncName] = patch.syncName;
+      }
+    }
     if ("profileLabel" in patch) out[K.profileLabel] = patch.profileLabel;
     if ("passphrase" in patch) out[K.passphrase] = patch.passphrase;
     if ("genToken" in patch) out[K.genToken] = patch.genToken;

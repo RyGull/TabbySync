@@ -787,7 +787,8 @@
     if (changes[TabbySync.STATUS_KEY]) { renderStatusBlock(); }
     // Reload if any tab-relevant setting changed (shared config keys).
     var K = self.TabbySyncConfig.KEYS;
-    if ([K.tabRestoreGroup, K.tabDedupe, K.syncName, K.profileLabel, K.passphrase, K.tabRemoveOnRestore, K.provider].some(function (k) {
+    if ([K.tabRestoreGroup, K.tabDedupe, K.syncName, K.gistToken, K.gistSyncName, K.jsonbinToken,
+      K.profileLabel, K.passphrase, K.tabRemoveOnRestore, K.provider].some(function (k) {
       return k in changes;
     })) { reload(); }
   });
