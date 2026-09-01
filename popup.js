@@ -91,7 +91,7 @@ async function refreshBanner() {
 
   var label = c.syncName || c.profileLabel || self.TabbySyncProviders.providerMeta(c.provider).label;
   var nameEl = $("profileName");
-  nameEl.textContent = "Profile: " + label;
+  nameEl.textContent = label;
   nameEl.title = label;
 
   var badge = $("encBadge");
