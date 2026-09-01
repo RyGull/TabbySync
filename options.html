@@ -37,7 +37,9 @@
 
       <label class="field gold" for="sync-provider">Sync method</label>
       <select id="sync-provider"></select>
-      <p class="hint" id="provider-hint"></p>
+      <!-- a div, not a <p> — the gist hint below needs an <ol> in it, which
+           isn't valid inside a paragraph -->
+      <div class="hint" id="provider-hint"></div>
       <div class="callout" id="provider-disclaimer" hidden></div>
 
       <label class="field gold" for="srv-profile-label" id="srv-profile-label-label">Sync name</label>

@@ -57,7 +57,15 @@
       needsUrl: false,
       needsSyncName: true,
       setupHint: "Create a token at <a href=\"https://github.com/settings/personal-access-tokens/new\" target=\"_blank\" rel=\"noopener\">github.com → Settings → Developer settings → " +
-        "Personal access tokens → Fine-grained tokens</a>, scoped to just “Gists: Read and write”. " +
+        "Personal access tokens → Fine-grained tokens</a>:" +
+        "<ol style=\"margin:6px 0 0 18px;padding:0;line-height:1.6\">" +
+        "<li><b>Expiration</b> — “No expiration” is fine here. TabbySync can't refresh a token on its own, " +
+        "so an expiring one just means sync quietly stops until you generate a new one and paste it back in.</li>" +
+        "<li><b>Repository access</b> — leave the default (“Public repositories”). Gists aren't repository-scoped, " +
+        "so this setting doesn't matter either way.</li>" +
+        "<li><b>Permissions</b> — under <b>Account</b>, click “Add permissions” → <b>Gists</b> → set it to " +
+        "“Read and write”. That's the only permission this token needs.</li>" +
+        "</ol>" +
         "TabbySync creates one private gist for you the first time you save.",
       disclaimer: "⚠️ Less private than self-hosting: your data is stored on GitHub's " +
         "servers in a “secret” gist. That means it's unlisted, not truly access-controlled — " +
