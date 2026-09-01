@@ -123,3 +123,15 @@ button.btn:hover { border-color:var(--muted); }
 .btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
 .btn.outline { background:transparent; color:var(--accent); border-color:var(--accent); }
 input[type=file] { display:none; }
+
+/* danger zone — delete synced data */
+.card.danger { border:2px solid var(--err); box-shadow:0 0 0 4px rgba(220,38,38,.12); }
+.card.danger h2 { color:var(--err); }
+.card.danger h2 .ic { background:rgba(220,38,38,.14); }
+.card.danger h3 { color:var(--err); }
+#danger-unlock { border-color:var(--err); }
+.btn.danger { background:transparent; color:var(--err); border-color:var(--err); }
+.btn.danger:hover:not(:disabled) { background:rgba(220,38,38,.08); }
+.btn.danger:disabled { opacity:.45; cursor:not-allowed; }
+.btn.danger.solid { background:var(--err); color:#fff; }
+.btn.danger.solid:hover:not(:disabled) { background:#b91c1c; border-color:#b91c1c; }

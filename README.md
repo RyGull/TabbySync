@@ -53,7 +53,9 @@ You host a tiny endpoint yourself — a single PHP file with a token you choose.
 Prefer your own endpoint? Any server that answers `GET`/`PUT` on
 `?name=<file>.json` with `Authorization: Bearer <token>` works; the generated
 `tabbysync.php` shows the exact contract (it also honours `ETag` / `If-Match`
-for safe concurrent writes).
+for safe concurrent writes). It also answers `DELETE`, which Options →
+**Delete data** uses — that part is optional, only needed if you want to use
+that button against your own endpoint.
 
 ## No server? Free alternatives
 
@@ -85,6 +87,18 @@ tools with AES-256-GCM in your browser before anything is uploaded, so the
 stored files are unreadable even to your host. The passphrase never leaves your
 device — enter the same one on every computer. **If you forget it, the data
 can't be recovered.**
+
+## Deleting your synced data
+
+Options → **Delete data**, at the very bottom of the page. Type `DELETE` to
+unlock the buttons (a plain click does nothing on its own), then confirm —
+each one still asks you to confirm again before it does anything. Per-provider
+buttons remove that provider's remote file(s)/gist/bins and clear its saved
+credentials here; the reset button additionally attempts this for every
+provider you've ever configured and then wipes every TabbySync setting in this
+browser back to a fresh install. None of this touches your actual bookmarks or
+open tabs in this browser, or uninstalls the extension — only the remote data
+and TabbySync's own local settings.
 
 ## Everyday use
 

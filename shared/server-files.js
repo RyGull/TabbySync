@@ -36,9 +36,10 @@
 " * in a directory alongside another app without conflict.\n" +
 " *\n" +
 " * Contract:\n" +
-" *   GET  tabbysync.php?name=bookmarks-<name>.json  -> stored JSON (404 if none)\n" +
-" *   PUT  tabbysync.php?name=tabs-<name>.json       -> stores the body\n" +
-" * Both require:  Authorization: Bearer <TOKEN>\n" +
+" *   GET    tabbysync.php?name=bookmarks-<name>.json  -> stored JSON (404 if none)\n" +
+" *   PUT    tabbysync.php?name=tabs-<name>.json       -> stores the body\n" +
+" *   DELETE tabbysync.php?name=tabs-<name>.json       -> removes the file (404 if none)\n" +
+" * All require:  Authorization: Bearer <TOKEN>\n" +
 " *\n" +
 " * Deploy: put this file in its OWN directory on your server, e.g.\n" +
 " *   https://your-server.example/tabbysync/tabbysync.php\n" +
@@ -54,7 +55,7 @@
 "// ----------------------------------------------------------------------------\n" +
 "\n" +
 "header('Access-Control-Allow-Origin: *');\n" +
-"header('Access-Control-Allow-Methods: GET, PUT, OPTIONS');\n" +
+"header('Access-Control-Allow-Methods: GET, PUT, DELETE, OPTIONS');\n" +
 "header('Access-Control-Allow-Headers: Authorization, Content-Type, If-Match');\n" +
 "header('Access-Control-Expose-Headers: ETag');\n" +
 "header('X-Content-Type-Options: nosniff');\n" +
@@ -135,6 +136,13 @@
 "    header('Content-Type: application/json');\n" +
 "    header('ETag: \"' . md5($body) . '\"');\n" +
 "    echo json_encode(['ok' => true, 'name' => $name, 'bytes' => strlen($body)]);\n" +
+"    exit;\n" +
+"}\n" +
+"\n" +
+"if ($method === 'DELETE') {\n" +
+"    if (!is_file($path)) fail(404, 'Not found.');\n" +
+"    if (!unlink($path)) fail(500, 'Delete failed.');\n" +
+"    http_response_code(204);\n" +
 "    exit;\n" +
 "}\n" +
 "\n" +

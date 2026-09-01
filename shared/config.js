@@ -162,20 +162,25 @@
   // returns; only provided fields are written.
   //
   // "token"/"syncName"/"passphrase" route to whichever provider's slot
-  // "provider" (in this same patch) names, so saving one provider's
-  // credentials never touches another's — that's the whole point of the
-  // per-provider slots above. A patch with one of these but no "provider"
-  // (there's no such caller today) falls back to the self-hosted slot,
-  // matching this module's behavior before Gist/JSONBin got their own.
+  // "routeProvider" (or, if that's absent, "provider" — see below) in this
+  // same patch names, so saving one provider's credentials never touches
+  // another's — that's the whole point of the per-provider slots above.
+  //
+  // "provider" changes which sync method is ACTIVE (K.provider) as well as
+  // routing — that's what every normal save wants (you pick a method, you
+  // save its credentials, it becomes active). "routeProvider" routes
+  // WITHOUT switching the active method — for clearing one provider's
+  // saved credentials (e.g. the Options "Delete synced data" section)
+  // without disturbing whichever provider is currently selected.
   function setConfig(patch) {
     var out = {};
     if ("serverUrl" in patch) out[K.serverUrl] = patch.serverUrl;
+    var route = "routeProvider" in patch ? patch.routeProvider : patch.provider;
     if ("token" in patch || "syncName" in patch) {
-      var p = patch.provider;
-      if (p === "gist") {
+      if (route === "gist") {
         if ("token" in patch) out[K.gistToken] = patch.token;
         if ("syncName" in patch) out[K.gistSyncName] = patch.syncName;
-      } else if (p === "jsonbin") {
+      } else if (route === "jsonbin") {
         // JSONBin has no functional sync name — nothing to route it to.
         if ("token" in patch) out[K.jsonbinToken] = patch.token;
       } else {
@@ -185,9 +190,8 @@
     }
     if ("profileLabel" in patch) out[K.profileLabel] = patch.profileLabel;
     if ("passphrase" in patch) {
-      var pp = patch.provider;
-      if (pp === "gist") out[K.gistPassphrase] = patch.passphrase;
-      else if (pp === "jsonbin") out[K.jsonbinPassphrase] = patch.passphrase;
+      if (route === "gist") out[K.gistPassphrase] = patch.passphrase;
+      else if (route === "jsonbin") out[K.jsonbinPassphrase] = patch.passphrase;
       else out[K.passphrase] = patch.passphrase;
     }
     if ("genToken" in patch) out[K.genToken] = patch.genToken;

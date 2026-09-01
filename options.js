@@ -535,4 +535,101 @@ $('tab-file').addEventListener('change', async () => {
   $('tab-file').value = '';
 });
 
+// ---------------------------------------------------------------------------
+// Danger zone — delete synced data
+// ---------------------------------------------------------------------------
+const DANGER_LABELS = { custom: 'Self-Hosted', gist: 'GitHub Gist', jsonbin: 'JSONBin.io' };
+const dangerButtons = () => [$('danger-custom'), $('danger-gist'), $('danger-jsonbin'), $('danger-wipe-all')];
+
+// Buttons stay disabled until the exact phrase is typed — a stray click on
+// this section can't do anything by itself. Each button still confirms
+// again before actually deleting anything.
+$('danger-unlock').addEventListener('input', () => {
+  const unlocked = $('danger-unlock').value.trim().toUpperCase() === 'DELETE';
+  dangerButtons().forEach((b) => { b.disabled = !unlocked; });
+});
+function relockDanger() {
+  $('danger-unlock').value = '';
+  dangerButtons().forEach((b) => { b.disabled = true; });
+}
+
+// Clears what THIS provider has saved locally (credentials + any
+// auto-created gist/bin IDs), without touching any other provider's saved
+// values or which sync method is currently selected.
+async function clearProviderLocal(providerId) {
+  const patch = { routeProvider: providerId, token: '', syncName: '', passphrase: '' };
+  if (providerId === 'gist') patch.gistId = '';
+  if (providerId === 'jsonbin') { patch.jsonbinTabsId = ''; patch.jsonbinBookmarksId = ''; patch.profileLabel = ''; }
+  if (providerId === 'custom') patch.serverUrl = '';
+  await SL.setConfig(patch);
+}
+
+async function deleteOneProvider(providerId) {
+  const label = DANGER_LABELS[providerId];
+  const sure = confirm(
+    `Permanently delete your ${label} data?\n\n` +
+    `This removes the synced file(s) from ${label} itself and clears the credentials TabbySync has saved ` +
+    `for it here. Any other device sharing this profile will lose access to that data. Your bookmarks and ` +
+    `open tabs in THIS browser are not touched — only the remote copy.\n\n` +
+    `This can't be undone. Continue?`
+  );
+  if (!sure) return;
+  status('danger-status', `Deleting ${label} data…`);
+  try {
+    const cfg = await SL.getConfig();
+    const had = await SP.deleteProviderData(cfg, providerId);
+    await clearProviderLocal(providerId);
+    await load();
+    status('danger-status', had
+      ? `Deleted — ${label}'s remote data is gone, and its saved credentials here were cleared.`
+      : `Nothing was saved for ${label} — nothing to delete.`, 'ok');
+  } catch (e) {
+    status('danger-status', `Error deleting ${label} data: ${e.message}`, 'bad');
+  } finally {
+    relockDanger();
+  }
+}
+$('danger-custom').addEventListener('click', () => deleteOneProvider('custom'));
+$('danger-gist').addEventListener('click', () => deleteOneProvider('gist'));
+$('danger-jsonbin').addEventListener('click', () => deleteOneProvider('jsonbin'));
+
+$('danger-wipe-all').addEventListener('click', async () => {
+  const sure1 = confirm(
+    'Wipe EVERYTHING?\n\n' +
+    'This attempts to delete your remote data on every sync method you have ever saved credentials for here ' +
+    '(Self-Hosted, GitHub Gist, JSONBin.io — whichever apply), then erases every TabbySync setting stored in ' +
+    'this browser and starts over as if freshly installed.\n\n' +
+    "This does NOT uninstall the extension, and does not touch your actual bookmarks or open tabs in this " +
+    'browser — only TabbySync\'s own settings and whatever it synced remotely.\n\n' +
+    'This cannot be undone. Continue?'
+  );
+  if (!sure1) return;
+  // The single most destructive action in the app gets one more, more
+  // deliberate confirmation on top of the usual one.
+  const sure2 = confirm('Really wipe everything? There is no undo.');
+  if (!sure2) { relockDanger(); return; }
+
+  status('danger-wipe-status', 'Deleting remote data on every configured provider…');
+  const cfg = await SL.getConfig();
+  const order = ['custom', 'gist', 'jsonbin'];
+  const results = await Promise.allSettled(order.map((p) => SP.deleteProviderData(cfg, p)));
+  const failures = results
+    .map((r, i) => ({ r, name: DANGER_LABELS[order[i]] }))
+    .filter((x) => x.r.status === 'rejected');
+
+  status('danger-wipe-status', 'Clearing local settings…');
+  await chrome.storage.local.clear();
+
+  if (failures.length) {
+    alert(
+      'Local settings are cleared, but some remote deletes failed — you may need to remove these manually:\n\n' +
+      failures.map((f) => `• ${f.name}: ${f.r.reason && f.r.reason.message ? f.r.reason.message : f.r.reason}`).join('\n')
+    );
+  }
+  status('danger-wipe-status', failures.length
+    ? 'Local settings cleared, with some remote deletes failed (see the popup). Reloading…'
+    : 'Done — everything deleted and reset. Reloading…', failures.length ? 'bad' : 'ok');
+  setTimeout(() => location.reload(), 1200);
+});
+
 load();

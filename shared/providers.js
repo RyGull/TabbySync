@@ -135,6 +135,21 @@
       return { etag: res.headers.get("ETag") || "" };
     });
   }
+  // Only a freshly-generated tabbysync.php (from this version's Options ->
+  // Self-hosting) understands DELETE — an older, already-deployed copy
+  // will reject it with 405, which the caller surfaces as a clear "you
+  // need to re-upload the server script" error rather than a bare failure.
+  function customDelete(cfg, fileName) {
+    var url = customEndpoint(cfg, fileName);
+    if (!url) return Promise.resolve();
+    return fetch(url, { method: "DELETE", headers: customAuth(cfg) }).then(function (res) {
+      if (res.status === 404) return; // already gone
+      if (res.status === 401 || res.status === 403) throw new Error("Server rejected the token (auth failed).");
+      if (res.status === 405) throw new Error("Your server script doesn't support deleting yet — download a fresh " +
+        "copy from Options → Self-hosting and re-upload it (it'll keep working with your existing token/data), then try again.");
+      if (!res.ok) throw new Error("Server DELETE failed (HTTP " + res.status + ").");
+    });
+  }
 
   // ---- GitHub Gist ------------------------------------------------------------
   // One private ("secret") gist holds every file for every engine/profile —
@@ -191,6 +206,16 @@
     }
     if (cfg.gistId) return write(cfg.gistId);
     return gistCreate(cfg, fileName).then(write);
+  }
+  // Deletes the WHOLE gist — both engines' files live in the one gist, so
+  // there's no such thing as deleting just one of them here.
+  function gistDelete(cfg) {
+    if (!cfg.gistId) return Promise.resolve();
+    return fetch(GIST_API + "/gists/" + cfg.gistId, { method: "DELETE", headers: ghHeaders(cfg) }).then(function (res) {
+      if (res.status === 404) return; // already gone
+      if (res.status === 401 || res.status === 403) throw new Error("GitHub rejected the token (check it has the “Gists” scope).");
+      if (!res.ok) throw new Error("Could not delete the Gist (HTTP " + res.status + ").");
+    });
   }
 
   // ---- JSONBin.io ---------------------------------------------------------
@@ -265,6 +290,50 @@
     if (id) return write(id);
     return jsonbinCreate(cfg, fileName).then(write);
   }
+  function jsonbinDeleteBin(cfg, id) {
+    if (!id) return Promise.resolve();
+    return fetch(JSONBIN_API + "/b/" + id, { method: "DELETE", headers: jsonbinHeaders(cfg) }).then(function (res) {
+      if (res.status === 404) return; // already gone
+      if (res.status === 401 || res.status === 403) throw new Error("JSONBin rejected the API key.");
+      if (!res.ok) return jsonbinFail(res, "Could not delete JSONBin bin");
+    });
+  }
+
+  // ---- delete (used by Options' "Delete synced data" section) ---------------
+  // Unlike get/put (which always act on whichever provider is currently
+  // ACTIVE), these each take the FULL shared config (shared/config.js's
+  // getConfig() result, with its raw per-provider fields) and act on a
+  // SPECIFIC provider's own saved credentials — so a provider that isn't
+  // the one currently selected can still have its leftover remote data
+  // cleaned up. Each resolves to true if there was something to delete,
+  // false if that provider was never configured (nothing to do).
+  function customDeleteAll(fullCfg) {
+    var name = shared().sanitizeSyncName(fullCfg.customSyncName || "");
+    if (!fullCfg.serverUrl || !fullCfg.customToken || !name) return Promise.resolve(false);
+    var cfg = { baseUrl: fullCfg.serverUrl, token: fullCfg.customToken };
+    return Promise.all([
+      customDelete(cfg, "bookmarks-" + name + ".json"),
+      customDelete(cfg, "tabs-" + name + ".json")
+    ]).then(function () { return true; });
+  }
+  function gistDeleteAll(fullCfg) {
+    if (!fullCfg.gistId || !fullCfg.gistToken) return Promise.resolve(false);
+    return gistDelete({ token: fullCfg.gistToken, gistId: fullCfg.gistId }).then(function () { return true; });
+  }
+  function jsonbinDeleteAll(fullCfg) {
+    if (!fullCfg.jsonbinToken || (!fullCfg.jsonbinTabsId && !fullCfg.jsonbinBookmarksId)) return Promise.resolve(false);
+    var cfg = { token: fullCfg.jsonbinToken };
+    return Promise.all([
+      jsonbinDeleteBin(cfg, fullCfg.jsonbinTabsId),
+      jsonbinDeleteBin(cfg, fullCfg.jsonbinBookmarksId)
+    ]).then(function () { return true; });
+  }
+  var DELETE_ALL = { custom: customDeleteAll, gist: gistDeleteAll, jsonbin: jsonbinDeleteAll };
+  function deleteProviderData(fullCfg, providerId) {
+    var fn = DELETE_ALL[providerId];
+    if (!fn) return Promise.reject(new Error("Unknown provider."));
+    return fn(fullCfg);
+  }
 
   // ---- dispatch ---------------------------------------------------------
   var IMPL = {
@@ -290,6 +359,7 @@
     providerMeta: providerMeta,
     get: get,
     put: put,
-    isConfigured: isConfigured
+    isConfigured: isConfigured,
+    deleteProviderData: deleteProviderData
   };
 })();

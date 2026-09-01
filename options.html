@@ -197,6 +197,36 @@
         <p><code>Alt</code>+<code>Shift</code>+<code>O</code> — send all tabs. Right-click the toolbar icon for more (this tab, others, left, right). Rebind at <code>chrome://extensions/shortcuts</code>.</p>
       </div>
     </section>
+
+    <!-- ================= DANGER ZONE ================= -->
+    <section class="card danger" id="dangerCard">
+      <h2><span class="ic">⚠️</span> Delete data</h2>
+      <p><b>This permanently deletes your synced data from wherever it's stored</b> — your self-hosted
+        server, GitHub Gist, or JSONBin.io. It does <b>not</b> touch your actual bookmarks or open tabs in
+        this browser, only the remote copy TabbySync has been syncing to. There's no undo — once it's gone
+        from the provider, it's gone.</p>
+
+      <label class="field" for="danger-unlock">Type <code>DELETE</code> to unlock the buttons below</label>
+      <input type="text" id="danger-unlock" placeholder="DELETE" spellcheck="false" autocomplete="off">
+      <p class="hint">Each button below still asks you to confirm before it does anything — this just
+        keeps a stray click from getting that far.</p>
+
+      <div class="row">
+        <button class="btn danger" id="danger-custom" type="button" disabled>Delete Self-Hosted data</button>
+        <button class="btn danger" id="danger-gist" type="button" disabled>Delete GitHub Gist data</button>
+        <button class="btn danger" id="danger-jsonbin" type="button" disabled>Delete JSONBin.io data</button>
+      </div>
+      <div class="status" id="danger-status"></div>
+
+      <h3>Reset everything</h3>
+      <p>Deletes remote data on <b>every</b> sync method you've ever saved credentials for here — self-hosted,
+        Gist and JSONBin, whichever apply — then erases every TabbySync setting stored in this browser and
+        starts over as if freshly installed. This does <b>not</b> uninstall the extension.</p>
+      <div class="row">
+        <button class="btn danger solid" id="danger-wipe-all" type="button" disabled>Wipe everything &amp; reset the extension</button>
+      </div>
+      <div class="status" id="danger-wipe-status"></div>
+    </section>
   </div>
 
   <script src="shared/config.js"></script>
