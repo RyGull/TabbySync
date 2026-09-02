@@ -216,3 +216,34 @@ is, with no warranty of any kind, and the author accepts no liability for lost
 or damaged bookmarks or tabs. **Keep your own backups, and keep your own
 encryption passphrase — a forgotten passphrase cannot be recovered.** See
 [LICENSE](LICENSE) sections 7 and 8.
+
+## Tests
+
+The bookmark merge engine is the highest-consequence code in the project — it
+is what decides whether a bookmark survives a sync — so it has a test suite.
+It needs no dependencies and no browser:
+
+```
+npm test          # or: node --test test/*.test.js
+```
+
+`test/merge.test.js` covers the properties that matter most, first among them
+the ones that guard against data loss:
+
+- a first sync (no common base) **unions** both sides and can never delete
+- a lost or corrupted base snapshot degrades to a union — duplicates at worst
+- an edited bookmark survives its folder being deleted on another device
+- move cycles are broken by reattaching, never by discarding
+- a type conflict keeps the folder, so its subtree isn't dropped
+- 200 generated tree shapes, asserting no URL is ever lost
+
+plus deletion semantics (`deleteWins` on and off), duplicate suppression via
+URL/folder-title matching, last-writer-wins conflicts, folder ordering by
+`orderRev`, and convergence — merging is stable, doesn't mutate its inputs, and
+reaches the same data whichever machine is "local".
+
+`test/tree.test.js` covers the pure tree helpers underneath (`normUrl`,
+`semanticKey`, `flatten`, `sameFields`, `stats`).
+
+`package.json` exists only for this test harness. The extension itself never
+reads it and still has zero dependencies.
