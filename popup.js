@@ -174,16 +174,20 @@ $("tabSync").addEventListener("click", async function () {
   await refreshTabs();
 });
 
-// ---- donation + feedback (each swaps the whole popup to its own screen) -----
+// ---- donation + feedback ---------------------------------------------------
 var PAYPAL_URL = "https://www.paypal.com/ncp/payment/B25W7V9VRGQG4";
-// The feedback form is hosted on the developer's domain (reCAPTCHA v3 + email
-// can't run inside an MV3 extension page), and embedded here in an iframe.
-var FEEDBACK_URL = "https://tabbysync.com/tabbysync/feedback.html";
+
+// Feedback is a plain mail link, deliberately. It used to be a web form
+// embedded in an iframe, which meant merely opening this screen contacted the
+// developer's web host and Google reCAPTCHA before you had typed anything.
+// Handing the address to your own mail client instead means TabbySync itself
+// contacts no server the developer operates, ever — which is a promise that
+// can be verified by reading this file rather than taken on trust.
+// The address comes from shared/contact.js, which assembles it at runtime.
 
 function showView(view) {
   $("mainView").hidden = view !== "main";
   $("donateView").hidden = view !== "donate";
-  $("feedbackView").hidden = view !== "feedback";
 }
 $("donateOpen").addEventListener("click", function () { showView("donate"); });
 $("donateBack").addEventListener("click", function () { showView("main"); });
@@ -193,14 +197,12 @@ $("donateBtn").addEventListener("click", function () {
 });
 
 $("feedbackOpen").addEventListener("click", function () {
-  var f = $("feedbackFrame");
-  if (!f.getAttribute("src")) f.setAttribute("src", FEEDBACK_URL); // lazy-load on first open
-  showView("feedback");
-});
-$("feedbackBack").addEventListener("click", function () { showView("main"); });
-$("feedbackTab").addEventListener("click", function () {
-  try { chrome.tabs.create({ url: FEEDBACK_URL }); }
-  catch (e) { window.open(FEEDBACK_URL, "_blank"); }
+  // Subject only — nothing about the user's setup is prefilled. Whatever they
+  // choose to type is all that is ever sent, and their own mail client sends it.
+  var url = self.TabbySyncContact.mailto(
+    "TabbySync feedback (v" + chrome.runtime.getManifest().version + ")");
+  try { chrome.tabs.create({ url: url }); }
+  catch (e) { window.open(url, "_blank"); }
 });
 
 // On open: just render the last-known status for whatever is enabled +

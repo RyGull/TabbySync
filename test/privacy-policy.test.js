@@ -10,8 +10,7 @@
 // explicitly says it never touches.
 //
 // They check the code against the policy. They cannot check the policy against
-// reality beyond that -- what the feedback page at tabbysync.com does with a
-// submitted message is outside this repository.
+// reality beyond that -- what happens to an email you send is outside any test.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -144,7 +143,6 @@ test('the only hosts the extension can reach are the ones the policy names', () 
   const allowed = [
     'https://api.github.com',      // GitHub Gist backend, disclosed
     'https://api.jsonbin.io',      // JSONBin backend, disclosed
-    'https://tabbysync.com',       // feedback page, disclosed, click-gated
     'https://www.paypal.com',      // donate link, disclosed, click-gated
     'https://github.com',          // token-setup help link in Options
     'https://jsonbin.io',          // account help link in Options
@@ -178,14 +176,74 @@ test('no extension page loads a remote script, style, image or frame', () => {
   }
 });
 
-test('the feedback frame carries no data about you in its URL', () => {
+test('the extension reaches no server operated by its developer', () => {
+  // The strongest claim in the policy, and the reason the embedded feedback
+  // form was removed: TabbySync contacts only the sync destination the user
+  // configures, plus GitHub/JSONBin if they pick one of those. Any http(s)
+  // reference to the developer's own domain would break that.
+  for (const file of [...jsFiles, ...htmlFiles]) {
+    assert.doesNotMatch(read(file), /https?:\/\/[^\s"'`]*tabbysync\.com/,
+      `${file} reaches the developer's own domain`);
+  }
+});
+
+test('no page embeds a frame at all', () => {
+  // An iframe is how the old feedback form contacted two servers before the
+  // user had typed anything. There should now be none.
+  for (const file of htmlFiles) {
+    assert.doesNotMatch(read(file), /<iframe\b/i, `${file} contains an iframe`);
+  }
+});
+
+test('feedback hands off to the user\'s mail client with no data attached', () => {
   const popupJs = read('popup.js');
-  const url = (popupJs.match(/FEEDBACK_URL\s*=\s*"([^"]+)"/) || [])[1];
-  assert.ok(url, 'FEEDBACK_URL not found');
-  assert.equal(url.includes('?'), false, 'the feedback URL carries a query string');
-  assert.equal(url.includes('#'), false, 'the feedback URL carries a fragment');
-  // And it is only set on click, not at popup load.
-  assert.match(popupJs, /feedbackOpen[\s\S]{0,200}setAttribute\("src", FEEDBACK_URL\)/);
+  const handler = popupJs.slice(popupJs.indexOf('$("feedbackOpen")'));
+  const fn = handler.slice(0, handler.indexOf('\n});'));
+
+  assert.match(fn, /TabbySyncContact\.mailto/, 'feedback should build a mail link');
+  // A subject naming the version is all it may carry: no body, and nothing
+  // drawn from the user's settings or synced state.
+  assert.equal(/body=/.test(fn), false, 'the mail link prefills a body');
+  for (const leak of ['settings', 'token', 'passphrase', 'baseUrl', 'syncName', 'getState', 'bookmarks']) {
+    assert.equal(fn.includes(leak), false, `the mail link includes "${leak}"`);
+  }
+});
+
+test('the contact address is never written out in the source', () => {
+  // It ships in readable JS and, once the repo is public, sits on GitHub. This
+  // will not stop anyone who reads the code -- it stops the regex harvesters
+  // that make up almost all address scraping. Anything stronger is not
+  // available to a client-side extension; the durable defence is a rotatable
+  // alias plus mail filtering.
+  const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
+  for (const file of [...jsFiles, ...htmlFiles, 'manifest.json']) {
+    const hit = read(file).match(EMAIL);
+    assert.equal(hit, null, `${file} contains a harvestable address: ${hit && hit[0]}`);
+  }
+});
+
+test('the assembled address is a real, complete mail address', () => {
+  // Obfuscation is worthless if it silently produces a broken address, which
+  // would send every bug report and security report into the void.
+  const src = read('shared/contact.js');
+  const sandbox = { self: {}, String };
+  new Function('self', 'String', src)(sandbox.self, String);
+  const C = sandbox.self.TabbySyncContact;
+
+  assert.match(C.address(), /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/);
+  assert.equal(C.address(), 'contact' + String.fromCharCode(64) + 'tabbysync.com');
+  assert.match(C.mailto('Hi there'), /^mailto:.+\?subject=Hi%20there$/);
+  assert.equal(C.mailto(''), 'mailto:' + C.address(), 'no empty subject parameter');
+});
+
+test('the policy shows a readable fallback if scripting is off', () => {
+  // The address must never become unreachable just because it is obfuscated.
+  const spans = policy.match(/<span data-contact[^>]*>([^<]*)<\/span>/g) || [];
+  assert.ok(spans.length >= 2, 'expected the policy to carry contact placeholders');
+  for (const span of spans) {
+    assert.match(span, /tabbysync/i, `placeholder is not human-readable: ${span}`);
+  }
+  assert.match(policy, /shared\/contact\.js/, 'the policy must load the script that renders them');
 });
 
 test('no analytics or beacon primitive appears anywhere', () => {

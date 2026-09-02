@@ -59,6 +59,7 @@
   footer { margin-top:40px; color:var(--muted); font-size:13px; }
 </style>
 <script src="shared/theme.js"></script>
+<script src="shared/contact.js"></script>
 </head>
 <body>
   <div class="wrap">
@@ -209,28 +210,30 @@
     </ul>
 
     <h2>Feedback and donations (optional, separate from syncing)</h2>
-    <p>The popup includes two optional links that are unrelated to bookmark/tab syncing
-    and only activate if you click them:</p>
+    <p>The popup has two optional buttons, unrelated to syncing, that do nothing unless
+    you click them:</p>
     <ul>
-      <li><strong>Feedback</strong> opens a form hosted at
-        <code>tabbysync.com/tabbysync/feedback.html</code> in an embedded frame (or a
-        new tab). It is a separate web page operated by the developer, outside the
-        extension itself, and it collects whatever message and email address you choose
-        to submit.
-        <br><br>
-        Be aware that <em>opening</em> the Feedback screen already loads that page, before
-        you type or send anything. As with visiting any website, that request tells the
-        developer's web host your IP address, browser and operating system. The page also
-        uses Google reCAPTCHA for spam protection, so Google receives the same kind of
-        request data and may set its own cookies. Nothing about your bookmarks, tabs,
-        settings, tokens or sync destination is sent — the frame is loaded with no
-        information about you attached — and none of this happens unless you open that
-        screen. Submitted feedback is kept only as long as needed to answer it; to have a
-        message deleted, say so in the message or in a follow-up.</li>
+      <li><strong>Feedback</strong> opens your own email program with a blank message
+        addressed to <span data-contact>contact [at] tabbysync [dot] com</span> and a subject line naming the
+        TabbySync version. Nothing else is filled in: no bookmarks, tabs, settings,
+        tokens, sync destination, or identifier of any kind. Whatever you choose to type
+        is the entirety of what is sent, and your own mail client sends it — TabbySync
+        does not transmit it and does not see it leave. Messages are kept only as long
+        as needed to answer them; ask in the message, or in a follow-up, to have one
+        deleted.</li>
       <li><strong>Donate</strong> opens a PayPal payment page in a new tab. TabbySync
         does not process, see, or store any payment information — that's handled
         entirely by PayPal under its own privacy policy.</li>
     </ul>
+    <div class="callout">
+      <strong>TabbySync never contacts a server operated by its developer.</strong>
+      Not for feedback, not for updates, not for licence checks, not for anything. The
+      only servers it ever connects to are the sync destination <em>you</em> configure
+      and, if you choose one of the no-server options, GitHub or JSONBin.io. Earlier
+      versions embedded a feedback web form inside the popup, which meant opening that
+      screen contacted the developer's web host and Google reCAPTCHA before you had
+      typed anything. That form has been removed for exactly this reason.
+    </div>
 
     <h2>Children's privacy</h2>
     <p>TabbySync is not directed at children and does not knowingly collect data from
@@ -242,16 +245,15 @@
 
     <h2>Who is responsible for this</h2>
     <p>TabbySync is developed and published by Ryan Gulliver, an individual developer, who
-    is responsible for this policy and for the feedback page at
-    <code>tabbysync.com</code>. There is no company, no team and no third party with
-    access to anything TabbySync stores. Because TabbySync operates no sync server, the
-    only personal data reaching the developer at all is what you type into the feedback
-    form and the request data described above.</p>
+    is responsible for this policy. There is no company, no team and no third party with
+    access to anything TabbySync stores. Because TabbySync operates no server of any kind,
+    the only personal data that ever reaches the developer is an email you choose to send.</p>
 
     <h2>Contact</h2>
-    <p>Questions about this policy or your data can be sent through the
-    <strong>Feedback</strong> option in the TabbySync popup, or via
-    <a href="https://tabbysync.com/tabbysync/feedback.html" target="_blank" rel="noopener">tabbysync.com/tabbysync/feedback.html</a>.</p>
+    <p>Questions about this policy or your data — including a request to delete a message
+    you have sent — go to
+    <span data-contact data-contact-subject="TabbySync privacy">contact [at] tabbysync [dot] com</span>,
+    which is also what the <strong>Feedback</strong> button in the popup opens.</p>
 
     <footer>TabbySync — self-hosted-first bookmark &amp; tab sync.</footer>
   </div>

@@ -70,6 +70,24 @@ reachable, no page loads a remote asset, no analytics primitive exists, storage
 is local rather than browser cloud sync, and no secret enters an uploaded
 payload.
 
+**Removed the embedded feedback form.** It was the only part of TabbySync that
+contacted a server operated by the developer, and the only part whose behaviour
+could not be verified from this repository.
+
+- The popup's Feedback screen and its iframe are gone. Feedback now opens your
+  own email client with a blank message and a subject naming the version.
+  Nothing is prefilled — no bookmarks, tabs, settings, tokens or identifiers.
+- TabbySync therefore contacts **no server operated by its developer, ever**:
+  not for feedback, updates, licence checks or anything else. The only hosts it
+  can reach are your configured sync destination and, if you choose one,
+  GitHub or JSONBin.io. This is now enforced by a test.
+- Google reCAPTCHA is no longer involved anywhere in the product.
+- The contact address is assembled at runtime (`shared/contact.js`) rather than
+  written out, so it does not sit in the shipped bundle or the published policy
+  as something an address harvester's regex will match. This is friction, not
+  protection — anyone reading the source can reconstruct it — so the address
+  should be a forwarding alias that can be rotated.
+
 **Fixes.**
 
 - `providers.put` and `storage.pushRemote` reported a missing configuration by
