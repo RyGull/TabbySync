@@ -1,4 +1,5 @@
-TabbySync — Proprietary License (Source-Available, No Redistribution)
+TabbySync — Proprietary License
+(Source-Available, Non-Commercial, No Redistribution)
 
 Copyright (c) 2026 Ryan Gulliver. All rights reserved.
 
@@ -10,23 +11,40 @@ place it in the public domain and does not grant any right to redistribute it.
 
 Read this document as "the License", the software in this repository
 (including the extension and the server files it generates) as "the Software",
-and Ryan Gulliver as "the Licensor". "You" is any person or organization
-exercising the permissions below.
+and Ryan Gulliver as "the Licensor". "You" is any person exercising the
+permissions below.
+
+
+0. DEFINITIONS
+
+"Personal Use" means use by You as an individual, for Your own private
+purposes, on devices and servers You own or control.
+
+"Commercial Purpose" means any use primarily intended for or directed toward
+commercial advantage or monetary compensation. This includes, without
+limitation: use by or on behalf of a company, business, firm, agency or other
+organization in the course of its activities; use by an employee, contractor or
+volunteer in the course of their work for such an organization; use to provide
+a product or service to others; and use in the production of goods or services
+that are sold or licensed.
+
+Use by a natural person for their own private purposes is not a Commercial
+Purpose merely because that person is also employed, self-employed or paid by
+someone else.
 
 
 1. GRANT OF PERMISSION
 
 Subject to the conditions and restrictions in this License, the Licensor grants
 You a worldwide, royalty-free, non-exclusive, non-transferable, non-sublicensable
-licence to:
+licence, for Personal Use only and for no Commercial Purpose, to:
 
   a) download, install and run the Software, at no charge, on any number of
-     devices You own or control, for any lawful purpose, including use inside a
-     business or other organization;
+     devices You own or control;
 
   b) deploy and run the self-hosted server component that the Software
      generates (tabbysync.php and its accompanying files) on any server You own
-     or control, for your own use;
+     or control, for Your own use;
 
   c) modify the Software for Your own private use, and run those modifications
      on devices and servers You own or control; and
@@ -36,35 +54,44 @@ licence to:
 No fee is or will be charged for these permissions. Voluntary donations, where
 offered, are gifts and buy no additional rights.
 
+Reading, studying and auditing the published source code is permitted to
+anyone, for any purpose. Only the permissions in (a) to (d) above are limited
+to Personal Use.
+
 
 2. RESTRICTIONS
 
 Except as expressly permitted in Section 1, You may NOT:
 
-  a) distribute, publish, share, transmit, upload, host for download, or
+  a) use the Software for any Commercial Purpose;
+
+  b) distribute, publish, share, transmit, upload, host for download, or
      otherwise make the Software available to any third party, whether modified
      or unmodified, whether in source or packaged form, and whether or not for a
      fee;
 
-  b) publish or submit the Software, or any work derived from it, to any
+  c) publish or submit the Software, or any work derived from it, to any
      extension store, add-on marketplace, app store, package registry or similar
      distribution channel, including but not limited to the Chrome Web Store,
      Microsoft Edge Add-ons, Firefox Add-ons and the Opera add-ons catalogue;
 
-  c) sell, rent, lease, lend, sublicense, or offer the Software as part of a
+  d) sell, rent, lease, lend, sublicense, or offer the Software as part of a
      paid or commercial product or service;
 
-  d) offer the Software to third parties as a hosted or managed service;
+  e) offer the Software to third parties as a hosted or managed service;
 
-  e) remove, obscure or alter any copyright notice, licence notice, attribution
+  f) remove, obscure or alter any copyright notice, licence notice, attribution
      or branding contained in the Software; or
 
-  f) use the TabbySync name, logo or brand marks other than to refer accurately
+  g) use the TabbySync name, logo or brand marks other than to refer accurately
      to the Software.
 
 Nothing in this Section restricts any use You are entitled to make under
 applicable law regardless of contract, including any statutory right to
 decompile or study the Software for interoperability.
+
+If You want to use the Software for a Commercial Purpose, contact the Licensor.
+Separate terms may be granted at the Licensor's discretion.
 
 
 3. NO CONTRIBUTIONS ACCEPTED
@@ -138,4 +165,4 @@ the minimum extent necessary to make it enforceable, and the remaining
 provisions remain in full force.
 
 Questions about permissions beyond the scope of this License, including requests
-for redistribution rights, should be directed to the Licensor.
+for redistribution or commercial-use rights, should be directed to the Licensor.

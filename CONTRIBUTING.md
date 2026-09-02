@@ -26,6 +26,7 @@ sending one costs you nothing and grants nothing.
 
 ## What you may do with the code
 
-Read it, audit it, run it, and modify your own copy for your own use. You may
-not redistribute it, modified or not, or publish it to any extension store. See
-[LICENSE](LICENSE) for the exact terms.
+Read it and audit it — anyone may, for any purpose. You may also run it and
+modify your own copy, free of charge, for your own personal use. You may not use
+it for a commercial purpose, redistribute it (modified or not), or publish it to
+any extension store. See [LICENSE](LICENSE) for the exact terms.

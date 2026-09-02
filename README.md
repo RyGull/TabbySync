@@ -175,14 +175,21 @@ bookmarks, your open tabs and your sync credentials, and you shouldn't have to
 take my word for what it does with them. That's the point of publishing it. It
 is not a grant to redistribute it.
 
-**You may**, free of charge and for any lawful purpose including at work:
+**You may**, free of charge, for your own personal use:
 
 - install and run the extension on as many of your own devices as you like
 - run the generated `tabbysync.php` on your own server
-- modify your own copy, and read/audit every line
+- modify your own copy for yourself
 
-**You may not** redistribute it (modified or not), publish it to the Chrome Web
-Store or any other add-on marketplace, sell it, or offer it as a hosted service.
+**Anyone may read, study and audit the source**, for any purpose. That right
+isn't limited — it's why the code is public.
+
+**You may not** use it for any commercial purpose (including inside a company or
+as part of your job), redistribute it (modified or not), publish it to the
+Chrome Web Store or any other add-on marketplace, sell it, or offer it as a
+hosted service.
+
+Want to use it commercially? Ask — separate terms can be arranged.
 
 TabbySync is free and always will be. If it's useful to you, a donation is
 appreciated but never required — it buys no extra rights, and nothing in the
