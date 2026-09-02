@@ -200,3 +200,19 @@ extension is gated behind one.
 **Not accepted.** Pull requests will be closed without merging. Bug reports and
 feature suggestions are very welcome — see [CONTRIBUTING.md](CONTRIBUTING.md)
 for why, and for what to include in a report.
+
+### Trademarks
+
+TabbySync is not affiliated with, endorsed by, or sponsored by any of the
+services it can sync to. Chrome and Chromium are trademarks of Google LLC;
+GitHub and Gist are trademarks of GitHub, Inc.; PayPal is a trademark of PayPal,
+Inc.; JSONBin.io is the property of its owner. They are named here only to
+describe what TabbySync interoperates with.
+
+### Disclaimer
+
+TabbySync synchronises, encrypts and deletes your own data. It is provided as
+is, with no warranty of any kind, and the author accepts no liability for lost
+or damaged bookmarks or tabs. **Keep your own backups, and keep your own
+encryption passphrase — a forgotten passphrase cannot be recovered.** See
+[LICENSE](LICENSE) sections 7 and 8.
