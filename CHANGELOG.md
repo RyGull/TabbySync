@@ -88,6 +88,41 @@ could not be verified from this repository.
   protection — anyone reading the source can reconstruct it — so the address
   should be a forwarding alias that can be rotated.
 
+**Marketing site.** Added `website/`, a responsive PHP landing page for
+tabbysync.com. Separate deployable, not part of the extension bundle and not
+loaded by it -- see website/README.md.
+
+- No third-party requests of any kind: system fonts, hand-drawn inline SVG,
+  no analytics, no icon CDN. A "no tracking" extension's own website making
+  third-party requests would undercut the claim.
+- The contact address is assembled from parts at request time and rendered
+  as HTML numeric character references rather than a literal string, so it
+  isn't a plain match for a scraper's regex -- friction, not protection, the
+  same caveat as the extension's own shared/contact.js.
+- Content is visible with JavaScript disabled. The scroll-reveal animation
+  only hides an element that JS has confirmed both ran and found off-screen;
+  nothing is hidden unconditionally in CSS.
+- No Chrome Web Store link yet, because there isn't a listing yet -- the
+  primary CTA points at the GitHub source instead of a link to nowhere.
+- Links straight to privacy.html on GitHub rather than duplicating the
+  policy, so there is exactly one copy for test/privacy-policy.test.js to
+  keep honest.
+- Verified rendered, not just linted: served with PHP's built-in server and
+  exercised with Playwright (real viewport emulation, not raw headless-Chrome
+  flags, which turned out to misrepresent mobile layout entirely) across
+  desktop, mobile and dark mode, with JavaScript disabled, and under both a
+  slow real-scroll simulation and a straight jump to the bottom of the page.
+  One genuine bug surfaced this way and was fixed before shipping: content
+  below the fold was invisible without JavaScript. A second suspected bug
+  (a heading that stayed invisible after simulated scrolling) turned out to
+  be a test-harness artifact -- CSS `scroll-behavior: smooth` interrupting a
+  synthetic scroll loop, confirmed by forcing an instant jump in the test and
+  seeing it disappear; real wheel/trackpad input is unaffected by that CSS
+  property.
+- `test/privacy-policy.test.js`'s file scan explicitly excludes `website/`,
+  which is a separate deployable with a different threat model (external
+  links are normal on a marketing page).
+
 **Fixes.**
 
 - `providers.put` and `storage.pushRemote` reported a missing configuration by

@@ -144,6 +144,13 @@ a transparent background, so they sit cleanly on any toolbar. They were
 rasterized from the mark; if you change the logo, regenerate the PNGs at those
 four sizes (Chrome requires PNG for toolbar icons — it doesn't accept SVG).
 
+## Marketing site
+
+`website/` is a separate, fancy, responsive PHP landing page for
+tabbysync.com — not part of the extension bundle, not loaded by it, and not
+loading it. See [website/README.md](website/README.md) for what it is and
+how to deploy it.
+
 ## Changelog
 
 Notable changes are recorded in [CHANGELOG.md](CHANGELOG.md).

@@ -24,7 +24,13 @@ const policy = read('privacy.html');
 
 /** Every extension source file, excluding tests and tooling. */
 function sourceFiles(exts) {
-  const skip = new Set(['.git', 'node_modules', 'test', '.github', 'icons', 'scripts', '.githooks']);
+  // 'website' is the marketing site (website/README.md), a separate PHP
+  // deployable with its own threat model -- external links (GitHub, PayPal,
+  // the license) are normal there and none of it ships inside the extension
+  // bundle. None of its files currently match the .js/.html extensions this
+  // scanner walks anyway (it's .php/.css), but excluded explicitly so that
+  // stays true by design rather than by accident if that ever changes.
+  const skip = new Set(['.git', 'node_modules', 'test', '.github', 'icons', 'scripts', '.githooks', 'website']);
   const out = [];
   (function walk(dir, rel) {
     for (const name of readdirSync(dir)) {
