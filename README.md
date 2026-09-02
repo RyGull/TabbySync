@@ -219,9 +219,8 @@ encryption passphrase — a forgotten passphrase cannot be recovered.** See
 
 ## Tests
 
-The bookmark merge engine is the highest-consequence code in the project — it
-is what decides whether a bookmark survives a sync — so it has a test suite.
-It needs no dependencies and no browser:
+The code that decides whether your data survives a sync is covered by tests.
+They need no dependencies and no browser:
 
 ```
 npm test          # or: node --test test/*.test.js
@@ -244,6 +243,31 @@ reaches the same data whichever machine is "local".
 
 `test/tree.test.js` covers the pure tree helpers underneath (`normUrl`,
 `semanticKey`, `flatten`, `sameFields`, `stats`).
+
+`test/crypto.test.js` holds the encryption promise to account: round trips,
+a wrong passphrase failing loudly, tampered ciphertext/salt/IV being rejected
+rather than decrypted, a fresh salt and IV per write, and — the claim the
+privacy policy makes — that the stored envelope leaks none of the plaintext.
+
+`test/import-merge.test.js` covers importing against a fake `chrome.bookmarks`:
+imports only ever add, never remove; duplicates are suppressed by normalised
+URL (including within the imported file itself); same-named folders are reused
+and merged all the way down; other browsers' root names (`Bookmarks Toolbar`,
+`Favorites Bar`, `Other Favorites`, …) route to the right root; and re-importing
+a file you just exported adds nothing.
+
+`test/providers.test.js` covers the sync backends against a scripted `fetch`:
+request shape and bearer auth, a missing file reading as "nothing stored yet"
+rather than an error, `ETag`/`If-Match` conditional writes, `412` being flagged
+as a **conflict** so a concurrent write from another device is re-merged
+instead of clobbered, a truncated GitHub Gist being re-fetched in full, and
+auth failures surfacing rather than looking like empty data.
+
+Every suite has been mutation-tested: deliberate bugs were seeded into the
+source (delete-wins flipped, first sync deleting, conflict detection dropped,
+import de-duplication removed, the encryption salt fixed, the AES-GCM
+authentication failure swallowed, and others) and each one was caught by a
+failing test before being reverted.
 
 `package.json` exists only for this test harness. The extension itself never
 reads it and still has zero dependencies.
