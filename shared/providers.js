@@ -128,7 +128,7 @@
   }
   function customPut(cfg, fileName, text, etag) {
     var url = customEndpoint(cfg, fileName);
-    if (!url) throw new Error("No server URL configured (need a base URL + sync name).");
+    if (!url) return Promise.reject(new Error("No server URL configured (need a base URL + sync name)."));
     var headers = customAuth(cfg, { "Content-Type": "application/json" });
     if (etag) headers["If-Match"] = etag;
     return fetch(url, { method: "PUT", headers: headers, body: text }).then(function (res) {

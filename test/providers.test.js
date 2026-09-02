@@ -166,24 +166,37 @@ test('write failures are reported rather than silently swallowed', async () => {
   });
 });
 
-test('writing with no server URL fails instead of pretending to succeed', async () => {
-  // Note: customPut raises this one synchronously, while every other error in
-  // the module arrives as a rejected promise. Both current call sites are safe
-  // (sync.js awaits inside try/catch; storage.js calls it inside a .then, which
-  // turns a sync throw into a rejection), but a future caller doing
-  // `put(...).catch(...)` would miss it. This test accepts either form, so it
-  // keeps passing if that is ever made consistent.
+test('writing with no server URL rejects instead of pretending to succeed', async () => {
   await withFetch([], async (calls) => {
-    let raised = null;
-    try {
-      await P.put({ ...CUSTOM, baseUrl: '' }, FILE, '{}', '');
-    } catch (e) {
-      raised = e;
-    }
-    assert.ok(raised, 'a missing server URL must not look like a successful write');
-    assert.match(raised.message, /No server URL/);
+    await assert.rejects(() => P.put({ ...CUSTOM, baseUrl: '' }, FILE, '{}', ''), /No server URL/);
     assert.equal(calls.length, 0, 'no request attempted');
   });
+});
+
+test('every put failure arrives as a rejected promise, never as a sync throw', async () => {
+  // A caller writing `put(...).catch(...)` rather than awaiting inside a
+  // try/catch must still see the error. A synchronous throw would escape it.
+  const cases = [
+    ['no server URL', { ...CUSTOM, baseUrl: '' }, []],
+    ['auth rejected', CUSTOM, [reply({ status: 403 })]],
+    ['conflict', CUSTOM, [reply({ status: 412 })]],
+    ['server error', CUSTOM, [reply({ status: 500 })]],
+  ];
+
+  for (const [name, cfg, replies] of cases) {
+    await withFetch(replies, async () => {
+      let sawSyncThrow = false;
+      let caught = null;
+      try {
+        // Deliberately not awaited here: this is the `.catch()` style.
+        await P.put(cfg, FILE, '{}', 'W/"e"').catch((e) => { caught = e; });
+      } catch (e) {
+        sawSyncThrow = true;
+      }
+      assert.equal(sawSyncThrow, false, `${name} threw synchronously`);
+      assert.ok(caught, `${name} produced no error at all`);
+    });
+  }
 });
 
 // ---------------------------------------------------------------------------

@@ -367,7 +367,7 @@
   }
 
   function pushRemote(settings, state, etag) {
-    if (!providers().isConfigured(settings)) throw new Error("No sync destination configured — pick one in Options.");
+    if (!providers().isConfigured(settings)) return Promise.reject(new Error("No sync destination configured — pick one in Options."));
     var bodyPromise = settings.passphrase
       ? encryptString(settings.passphrase, serialize(settings, state))
           .then(function (env) { return JSON.stringify(env); })

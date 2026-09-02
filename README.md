@@ -144,6 +144,10 @@ a transparent background, so they sit cleanly on any toolbar. They were
 rasterized from the mark; if you change the logo, regenerate the PNGs at those
 four sizes (Chrome requires PNG for toolbar icons — it doesn't accept SVG).
 
+## Changelog
+
+Notable changes are recorded in [CHANGELOG.md](CHANGELOG.md).
+
 ## Versioning
 
 The extension version lives in `manifest.json`. A git hook auto-increments the
@@ -268,6 +272,9 @@ source (delete-wins flipped, first sync deleting, conflict detection dropped,
 import de-duplication removed, the encryption salt fixed, the AES-GCM
 authentication failure swallowed, and others) and each one was caught by a
 failing test before being reverted.
+
+CI runs the suite on every push (`.github/workflows/test.yml`), along with a
+`php -l` check on the generated `tabbysync.php`.
 
 `package.json` exists only for this test harness. The extension itself never
 reads it and still has zero dependencies.
