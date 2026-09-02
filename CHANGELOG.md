@@ -42,6 +42,34 @@ there.
 - Added GitHub Actions CI running the suite, plus a `php -l` check on the
   generated `tabbysync.php`.
 
+**Privacy policy.** Audited against the code, then corrected. Seven gaps were
+found; none were false claims, all were omissions or overstatements.
+
+- Documented the **Delete data** feature, which shipped without any mention in
+  the policy, including its limits: it does not touch your actual bookmarks or
+  tabs, and a provider may keep its own backups after honouring a deletion.
+- Stated what encryption does **not** hide: the file name contains your sync
+  name in plain text, and the file's size and write times remain visible to
+  whoever hosts it.
+- Disclosed that merely *opening* the Feedback screen loads the page, so the
+  developer's host and Google reCAPTCHA see a request (IP, browser, OS) before
+  anything is submitted. Nothing about your bookmarks, tabs or settings is sent.
+- Warned that a plain `http://` sync endpoint is accepted but travels the
+  network unencrypted.
+- Disclosed that an unencrypted local export writes readable JSON to disk.
+- Named the responsible individual and added a retention/deletion route for
+  feedback messages.
+- Corrected the stale "Last updated" date.
+
+Added `test/privacy-policy.test.js`, which checks the policy against the code on
+every push: the permission table matches the manifest in both directions, every
+requested permission is actually used, no history/webRequest/cookies/scripting
+API is touched, nothing listens for tab navigation, host access is requested one
+origin at a time and never as a wildcard, no host outside the disclosed set is
+reachable, no page loads a remote asset, no analytics primitive exists, storage
+is local rather than browser cloud sync, and no secret enters an uploaded
+payload.
+
 **Fixes.**
 
 - `providers.put` and `storage.pushRemote` reported a missing configuration by
