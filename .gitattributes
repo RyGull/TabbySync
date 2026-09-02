@@ -1,8 +1,9 @@
-# merge.js and the crypto tests contain deliberate NUL characters (used as
-# key delimiters and as test input). Without this, git detects them as binary
-# and stops producing readable diffs for them.
-*.js text
-*.json text
-*.html text
-*.css text
-*.md text
+# merge.js contains four deliberate NUL characters, used as delimiters in the
+# merge's tie-break keys. Git's own heuristic reads a NUL as "this is binary"
+# and stops producing diffs. `diff` forces a textual diff regardless; `text`
+# normalises line endings.
+*.js   text diff
+*.json text diff
+*.html text diff
+*.css  text diff
+*.md   text diff
