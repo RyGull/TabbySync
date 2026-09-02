@@ -1,3 +1,6 @@
+// TabbySync — Copyright (c) 2026 Ryan Gulliver. All rights reserved.
+// Personal, non-commercial use only. No redistribution. See LICENSE.
+
 /* TabbySync — tab-list page (single list per install). */
 (function () {
   "use strict";

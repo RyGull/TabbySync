@@ -1,3 +1,6 @@
+// TabbySync — Copyright (c) 2026 Ryan Gulliver. All rights reserved.
+// Personal, non-commercial use only. No redistribution. See LICENSE.
+
 // crypto.js — optional end-to-end encryption of the bookmark blob.
 // AES-256-GCM with a key derived from the passphrase via PBKDF2-SHA256.
 // The stored envelope is self-describing so any device with the passphrase

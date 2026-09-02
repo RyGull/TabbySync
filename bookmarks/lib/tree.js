@@ -1,3 +1,6 @@
+// TabbySync — Copyright (c) 2026 Ryan Gulliver. All rights reserved.
+// Personal, non-commercial use only. No redistribution. See LICENSE.
+
 // tree.js — pure bookmark-tree model helpers (no chrome APIs; Node-testable).
 //
 // Model node shape:

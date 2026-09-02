@@ -1,3 +1,6 @@
+// TabbySync — Copyright (c) 2026 Ryan Gulliver. All rights reserved.
+// Personal, non-commercial use only. No redistribution. See LICENSE.
+
 // server-files.js — generates the self-hosting server bundle in the browser.
 //
 // TabbySync uses ONE endpoint + ONE token for both engines. Files are

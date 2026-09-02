@@ -1,3 +1,6 @@
+// TabbySync — Copyright (c) 2026 Ryan Gulliver. All rights reserved.
+// Personal, non-commercial use only. No redistribution. See LICENSE.
+
 // engine.js — orchestrates one sync cycle:
 //   read live bookmarks -> fetch remote -> three-way merge -> apply locally
 //   -> push merged to server -> save cache + mappings.

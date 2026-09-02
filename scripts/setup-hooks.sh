@@ -1,4 +1,6 @@
 #!/bin/sh
+# TabbySync — Copyright (c) 2026 Ryan Gulliver. All rights reserved.
+# Personal, non-commercial use only. No redistribution. See LICENSE.
 # One-time setup: point git at the repo's version-controlled hooks so the
 # manifest.json patch version auto-increments on every commit.
 #

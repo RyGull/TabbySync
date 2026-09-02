@@ -1,3 +1,6 @@
+// TabbySync — Copyright (c) 2026 Ryan Gulliver. All rights reserved.
+// Personal, non-commercial use only. No redistribution. See LICENSE.
+
 // import-merge.js — apply an imported model tree to the live bookmarks by
 // MERGING (no duplicates: bookmarks matched by URL, folders by name), and read
 // the live bookmarks back into a plain model. Uses chrome.bookmarks; no DOM, so

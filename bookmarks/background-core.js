@@ -1,3 +1,6 @@
+// TabbySync — Copyright (c) 2026 Ryan Gulliver. All rights reserved.
+// Personal, non-commercial use only. No redistribution. See LICENSE.
+
 // background-core.js — the bookmarks sync engine, running inside TabbySync's
 // shared module service worker. Runs syncs on: bookmark changes (debounced),
 // a periodic alarm, and manual requests from the popup/options.

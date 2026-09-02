@@ -1,3 +1,6 @@
+// TabbySync — Copyright (c) 2026 Ryan Gulliver. All rights reserved.
+// Personal, non-commercial use only. No redistribution. See LICENSE.
+
 // options.js — TabbySync's unified options page (module).
 //
 // The shared "Server & sync" card writes the shared config (self.TabbySyncConfig).

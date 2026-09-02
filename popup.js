@@ -1,3 +1,6 @@
+// TabbySync — Copyright (c) 2026 Ryan Gulliver. All rights reserved.
+// Personal, non-commercial use only. No redistribution. See LICENSE.
+
 // popup.js — TabbySync hub. Shows both engines side by side, lets you enable
 // either or both, and triggers their actions. Shared config for the toggles;
 // messages to the worker for status + actions.

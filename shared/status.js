@@ -1,3 +1,6 @@
+// TabbySync — Copyright (c) 2026 Ryan Gulliver. All rights reserved.
+// Personal, non-commercial use only. No redistribution. See LICENSE.
+
 // status.js — combined toolbar status dot for TabbySync.
 //
 // TabbySync has two sync engines (bookmarks + tabs) but only one toolbar

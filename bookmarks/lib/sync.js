@@ -1,3 +1,6 @@
+// TabbySync — Copyright (c) 2026 Ryan Gulliver. All rights reserved.
+// Personal, non-commercial use only. No redistribution. See LICENSE.
+
 // sync.js — transport to the shared TabbySync sync destination.
 // Reads/writes bookmarks-<syncName>.json via shared/providers.js, which
 // abstracts over whichever backend is configured (self-hosted endpoint,

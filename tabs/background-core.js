@@ -1,3 +1,6 @@
+// TabbySync — Copyright (c) 2026 Ryan Gulliver. All rights reserved.
+// Personal, non-commercial use only. No redistribution. See LICENSE.
+
 /* TabbySync — tabs engine service-worker logic.
  *
  * Runs inside the shared module worker. `TabbySync` comes from storage.js

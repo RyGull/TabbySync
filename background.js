@@ -1,3 +1,6 @@
+// TabbySync — Copyright (c) 2026 Ryan Gulliver. All rights reserved.
+// Personal, non-commercial use only. No redistribution. See LICENSE.
+
 // background.js — TabbySync's shared service worker (MV3, module type).
 //
 // It hosts BOTH engines behind one toolbar action and one options page:

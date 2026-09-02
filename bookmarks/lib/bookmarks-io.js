@@ -1,3 +1,6 @@
+// TabbySync — Copyright (c) 2026 Ryan Gulliver. All rights reserved.
+// Personal, non-commercial use only. No redistribution. See LICENSE.
+
 // bookmarks-io.js — build/parse the Netscape bookmark HTML format that all
 // browsers import/export. Pure (no chrome APIs), Node-testable.
 //

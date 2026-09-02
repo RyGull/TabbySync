@@ -1,4 +1,6 @@
 #!/bin/sh
+# TabbySync — Copyright (c) 2026 Ryan Gulliver. All rights reserved.
+# Personal, non-commercial use only. No redistribution. See LICENSE.
 # TabbySync pre-commit hook: auto-increment the manifest.json patch version.
 #
 # On every commit the third (patch) number in manifest.json's "version" is

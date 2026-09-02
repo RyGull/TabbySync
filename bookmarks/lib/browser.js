@@ -1,3 +1,6 @@
+// TabbySync — Copyright (c) 2026 Ryan Gulliver. All rights reserved.
+// Personal, non-commercial use only. No redistribution. See LICENSE.
+
 // browser.js — bridge between chrome.bookmarks and the stable-id model.
 //   readBrowserTree(): current bookmarks -> model tree (stable ids), stamping a
 //     fresh mtime on anything changed since the last sync (the cache), so the
