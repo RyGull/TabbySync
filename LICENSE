@@ -1,0 +1,141 @@
+TabbySync — Proprietary License (Source-Available, No Redistribution)
+
+Copyright (c) 2026 Ryan Gulliver. All rights reserved.
+
+TabbySync is source-available software, NOT open source. The source code is
+published so that anyone can read and audit it — TabbySync handles your
+bookmarks, your open tabs and your sync credentials, and you should be able to
+verify for yourself what it does with them. Publishing the source does not
+place it in the public domain and does not grant any right to redistribute it.
+
+Read this document as "the License", the software in this repository
+(including the extension and the server files it generates) as "the Software",
+and Ryan Gulliver as "the Licensor". "You" is any person or organization
+exercising the permissions below.
+
+
+1. GRANT OF PERMISSION
+
+Subject to the conditions and restrictions in this License, the Licensor grants
+You a worldwide, royalty-free, non-exclusive, non-transferable, non-sublicensable
+licence to:
+
+  a) download, install and run the Software, at no charge, on any number of
+     devices You own or control, for any lawful purpose, including use inside a
+     business or other organization;
+
+  b) deploy and run the self-hosted server component that the Software
+     generates (tabbysync.php and its accompanying files) on any server You own
+     or control, for your own use;
+
+  c) modify the Software for Your own private use, and run those modifications
+     on devices and servers You own or control; and
+
+  d) make backup copies for Your own use.
+
+No fee is or will be charged for these permissions. Voluntary donations, where
+offered, are gifts and buy no additional rights.
+
+
+2. RESTRICTIONS
+
+Except as expressly permitted in Section 1, You may NOT:
+
+  a) distribute, publish, share, transmit, upload, host for download, or
+     otherwise make the Software available to any third party, whether modified
+     or unmodified, whether in source or packaged form, and whether or not for a
+     fee;
+
+  b) publish or submit the Software, or any work derived from it, to any
+     extension store, add-on marketplace, app store, package registry or similar
+     distribution channel, including but not limited to the Chrome Web Store,
+     Microsoft Edge Add-ons, Firefox Add-ons and the Opera add-ons catalogue;
+
+  c) sell, rent, lease, lend, sublicense, or offer the Software as part of a
+     paid or commercial product or service;
+
+  d) offer the Software to third parties as a hosted or managed service;
+
+  e) remove, obscure or alter any copyright notice, licence notice, attribution
+     or branding contained in the Software; or
+
+  f) use the TabbySync name, logo or brand marks other than to refer accurately
+     to the Software.
+
+Nothing in this Section restricts any use You are entitled to make under
+applicable law regardless of contract, including any statutory right to
+decompile or study the Software for interoperability.
+
+
+3. NO CONTRIBUTIONS ACCEPTED
+
+The Licensor does not accept code contributions, patches or pull requests to
+this project. Any pull request will be closed without merging.
+
+Do not send code. If You send code, snippets, patches or other material
+anyway, You grant the Licensor a perpetual, irrevocable, worldwide,
+royalty-free, sublicensable licence to use it in any way and under any licence
+terms, without obligation, attribution or compensation. This exists solely so
+that unsolicited material cannot cloud ownership of the project; it is not an
+invitation to send any.
+
+Bug reports and feature suggestions are welcome and are not contributions for
+the purpose of this Section.
+
+
+4. RESERVATION OF RIGHTS
+
+All rights not expressly granted in Section 1 are reserved by the Licensor.
+The Software is licensed, not sold. No ownership passes to You.
+
+
+5. FUTURE VERSIONS AND RELICENSING
+
+The Licensor may release future versions of the Software under different terms,
+including more permissive terms, and may distribute the Software under separate
+commercial terms to anyone. A change of licence applies only to the versions
+released under it; the permissions granted to You in Section 1 for a version You
+already received under this License continue for that version.
+
+
+6. TERMINATION
+
+This License terminates automatically if You breach Section 2. On termination
+You must stop using the Software and destroy all copies in Your possession.
+Sections 3, 4, 7 and 8 survive termination. The Licensor may reinstate the
+licence at their discretion.
+
+
+7. NO WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, TITLE AND NONINFRINGEMENT.
+
+TabbySync synchronises and deletes data, and can encrypt data with a passphrase
+that only You hold. You are responsible for maintaining Your own backups and
+for keeping Your own passphrase. THE LICENSOR DOES NOT WARRANT THAT THE SOFTWARE
+WILL BE UNINTERRUPTED OR ERROR-FREE, OR THAT DATA SYNCHRONISED, ENCRYPTED OR
+DELETED BY IT WILL BE PRESERVED, RECOVERABLE OR CORRECT.
+
+
+8. LIMITATION OF LIABILITY
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE
+LICENSOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE, INCLUDING
+WITHOUT LIMITATION ANY LOSS OF OR DAMAGE TO DATA, BOOKMARKS OR TABS.
+
+Nothing in this License excludes or limits liability that cannot lawfully be
+excluded or limited.
+
+
+9. GENERAL
+
+If any provision of this License is held unenforceable, it shall be modified to
+the minimum extent necessary to make it enforceable, and the remaining
+provisions remain in full force.
+
+Questions about permissions beyond the scope of this License, including requests
+for redistribution rights, should be directed to the Licensor.

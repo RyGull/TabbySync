@@ -162,3 +162,34 @@ sh scripts/setup-hooks.sh          # or: git config core.hooksPath .githooks
 
 Reloading the unpacked extension on `chrome://extensions` is what makes the
 new version show up in the browser.
+
+## License
+
+**TabbySync is source-available, not open source.**
+
+Copyright © 2026 Ryan Gulliver. All rights reserved. See [LICENSE](LICENSE) for
+the full terms.
+
+The source is published so anyone can audit it — TabbySync handles your
+bookmarks, your open tabs and your sync credentials, and you shouldn't have to
+take my word for what it does with them. That's the point of publishing it. It
+is not a grant to redistribute it.
+
+**You may**, free of charge and for any lawful purpose including at work:
+
+- install and run the extension on as many of your own devices as you like
+- run the generated `tabbysync.php` on your own server
+- modify your own copy, and read/audit every line
+
+**You may not** redistribute it (modified or not), publish it to the Chrome Web
+Store or any other add-on marketplace, sell it, or offer it as a hosted service.
+
+TabbySync is free and always will be. If it's useful to you, a donation is
+appreciated but never required — it buys no extra rights, and nothing in the
+extension is gated behind one.
+
+### Contributions
+
+**Not accepted.** Pull requests will be closed without merging. Bug reports and
+feature suggestions are very welcome — see [CONTRIBUTING.md](CONTRIBUTING.md)
+for why, and for what to include in a report.
