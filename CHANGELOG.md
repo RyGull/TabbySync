@@ -22,6 +22,12 @@ Versions before 1.3.0 predate this changelog; their history is in the git log.
   shown is no longer the bare word "conflict" — it now says what happened
   (another device wrote to the list at the same time), kept to one short
   line since it lands in the popup's narrow, non-truncating error row.
+- A conflict that survives all of the above no longer just waits for the
+  next scheduled sync (which can be minutes away) — the background worker
+  now follows up again a minute later, up to 3 times, before falling back
+  to the normal interval. Applies to automatic syncs and to a manual
+  "Sync now" that still fails (it follows up in the background too, in
+  case you don't retry it yourself).
 
 ## 1.3.0 — 2026-09-02
 
