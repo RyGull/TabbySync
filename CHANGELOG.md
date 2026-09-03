@@ -20,8 +20,8 @@ Versions before 1.3.0 predate this changelog; their history is in the git log.
   instant don't just collide again on the retry.
 - If it still can't get a clean write in after those retries, the error
   shown is no longer the bare word "conflict" — it now says what happened
-  (another device wrote to the list at the same time) and what to do about
-  it (try "Sync now" again; it's normally transient).
+  (another device wrote to the list at the same time), kept to one short
+  line since it lands in the popup's narrow, non-truncating error row.
 
 ## 1.3.0 — 2026-09-02
 

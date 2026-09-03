@@ -557,7 +557,7 @@
               // row, so it stays as short as its neighbors there (see the
               // "auth failed" / "wrong passphrase" messages above).
               if (e.conflict) {
-                var e2 = new Error("Sync conflict — another device wrote to this list just now. Try Sync now again.");
+                var e2 = new Error("Sync conflict — another device wrote to this list just now.");
                 e2.conflict = true;
                 throw e2;
               }
