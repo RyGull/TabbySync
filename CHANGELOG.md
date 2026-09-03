@@ -6,7 +6,7 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
-## Unreleased
+## 1.3.1 — 2026-09-03
 
 **Tabs sync.** Fixed a bug, not a behaviour change — no new data is touched.
 
