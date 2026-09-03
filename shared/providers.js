@@ -115,6 +115,32 @@
     if (cfg.token) h["Authorization"] = "Bearer " + cfg.token;
     return h;
   }
+  // Canonicalize an ETag before it's stored or sent back as If-Match.
+  //
+  // tabbysync.php emits a strong ETag of exactly '"<md5 hex>"', and checks
+  // If-Match against that same string. But an ETag is a RESPONSE header, and
+  // plenty of things between PHP and the browser rewrite it in transit:
+  // Apache's mod_deflate appends "-gzip" when it compresses a response
+  // ('"abc…"' -> '"abc…-gzip"'), and proxies/CDNs commonly downgrade it to a
+  // weak validator ('W/"abc…"'). Sent back verbatim, neither form can ever
+  // equal what the server recomputes — so every conditional write fails with
+  // 412 forever, on a single device, with nothing else writing. (It only
+  // looks fine right after the file is deleted: with no file there's no ETag
+  // to send, the write goes out unconditional, and it succeeds — until the
+  // next sync.)
+  //
+  // Our server's validator is always an md5 hex, so pull that out and re-quote
+  // it canonically. Anything that doesn't look like our ETag is passed through
+  // untouched, so a non-TabbySync endpoint behaves exactly as before.
+  function normalizeEtag(etag) {
+    if (!etag) return "";
+    var s = String(etag).trim();
+    // Strip a weak-validator prefix only to look for our md5 underneath; if
+    // it isn't ours, hand back the original string completely untouched so a
+    // non-TabbySync endpoint keeps whatever validator it issued.
+    var m = s.replace(/^W\//i, "").match(/^"?\s*([0-9a-fA-F]{32})/);
+    return m ? '"' + m[1].toLowerCase() + '"' : s;
+  }
   function customGet(cfg, fileName) {
     var url = customEndpoint(cfg, fileName);
     if (!url) return Promise.resolve({ text: null, etag: "" });
@@ -122,7 +148,7 @@
       if (res.status === 404) return { text: null, etag: "" };
       if (res.status === 401 || res.status === 403) throw new Error("Server rejected the token (auth failed).");
       if (!res.ok) throw new Error("Server GET failed (HTTP " + res.status + ").");
-      var etag = res.headers.get("ETag") || "";
+      var etag = normalizeEtag(res.headers.get("ETag"));
       return res.text().then(function (t) { return { text: t, etag: etag }; });
     });
   }
@@ -130,12 +156,13 @@
     var url = customEndpoint(cfg, fileName);
     if (!url) return Promise.reject(new Error("No server URL configured (need a base URL + sync name)."));
     var headers = customAuth(cfg, { "Content-Type": "application/json" });
-    if (etag) headers["If-Match"] = etag;
+    var want = normalizeEtag(etag);
+    if (want) headers["If-Match"] = want;
     return fetch(url, { method: "PUT", headers: headers, body: text }).then(function (res) {
       if (res.status === 412) { var e = new Error("conflict"); e.conflict = true; throw e; }
       if (res.status === 401 || res.status === 403) throw new Error("Server rejected the token (auth failed).");
       if (!res.ok) throw new Error("Server PUT failed (HTTP " + res.status + ").");
-      return { etag: res.headers.get("ETag") || "" };
+      return { etag: normalizeEtag(res.headers.get("ETag")) };
     });
   }
   // Only a freshly-generated tabbysync.php (from this version's Options ->

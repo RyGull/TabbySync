@@ -157,6 +157,53 @@ test('a write returns the new ETag for the next conditional write', async () => 
   });
 });
 
+// ---------------------------------------------------------------------------
+// ETag rewriting in transit
+//
+// tabbysync.php emits '"<md5>"' and compares If-Match against that same
+// string. But ETag is a RESPONSE header, and things between PHP and the
+// browser rewrite it: Apache's mod_deflate appends "-gzip" when it
+// compresses, and proxies/CDNs downgrade to a weak validator. Handed back
+// verbatim, neither can equal what the server recomputes — so every
+// conditional write 412s forever, on ONE device, with nothing else writing,
+// while looking fine right after the file is deleted (no file, no ETag, so
+// the write goes out unconditional and succeeds). These pin the md5 core
+// surviving the round trip.
+// ---------------------------------------------------------------------------
+
+const MD5 = 'd41d8cd98f00b204e9800998ecf8427e';
+
+test('an ETag mangled by mod_deflate ("-gzip") still matches on the way back', async () => {
+  await withFetch([reply({ body: '{}', etag: '"' + MD5 + '-gzip"' })], async () => {
+    const got = await P.get(CUSTOM, FILE);
+    assert.equal(got.etag, '"' + MD5 + '"', 'the -gzip suffix must not reach If-Match');
+  });
+  await withFetch([reply({ etag: 'x' })], async (calls) => {
+    await P.put(CUSTOM, FILE, '{}', '"' + MD5 + '-gzip"');
+    assert.equal(calls[0].headers['If-Match'], '"' + MD5 + '"');
+  });
+});
+
+test('an ETag weakened to W/ by a proxy still matches on the way back', async () => {
+  await withFetch([reply({ body: '{}', etag: 'W/"' + MD5 + '"' })], async () => {
+    const got = await P.get(CUSTOM, FILE);
+    assert.equal(got.etag, '"' + MD5 + '"', 'the weak prefix must not reach If-Match');
+  });
+});
+
+test('an ETag that is already clean is passed through unchanged', async () => {
+  await withFetch([reply({ body: '{}', etag: '"' + MD5 + '"' })], async () => {
+    assert.equal((await P.get(CUSTOM, FILE)).etag, '"' + MD5 + '"');
+  });
+});
+
+test("a non-TabbySync endpoint's own validator is left completely alone", async () => {
+  // Only our md5-shaped ETag is rewritten; anything else round-trips as-is.
+  await withFetch([reply({ body: '{}', etag: 'W/"opaque-value"' })], async () => {
+    assert.equal((await P.get(CUSTOM, FILE)).etag, 'W/"opaque-value"');
+  });
+});
+
 test('write failures are reported rather than silently swallowed', async () => {
   await withFetch([reply({ status: 403 })], async () => {
     await assert.rejects(() => P.put(CUSTOM, FILE, '{}', ''), /token/i);

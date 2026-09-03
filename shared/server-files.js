@@ -130,11 +130,24 @@
 "    if (json_last_error() !== JSON_ERROR_NONE) fail(400, 'Body is not valid JSON.');\n" +
 "\n" +
 "    // Optimistic concurrency: reject if the file changed under us.\n" +
+"    //\n" +
+"    // Compare only the md5 core of each validator, never the raw strings. An\n" +
+"    // ETag is a RESPONSE header, and things between this script and the\n" +
+"    // browser rewrite it in transit: Apache's mod_deflate appends '-gzip'\n" +
+"    // when it compresses ('\"abc...\"' -> '\"abc...-gzip\"'), and proxies/CDNs\n" +
+"    // downgrade it to a weak validator ('W/\"abc...\"'). The client hands back\n" +
+"    // whatever it received, so a raw string compare would reject every\n" +
+"    // conditional write with 412 forever - on a single device, with nothing\n" +
+"    // else writing - while looking fine right after the file is deleted (no\n" +
+"    // file, no ETag, so the write goes out unconditional and succeeds).\n" +
+"    function etag_core($v) {\n" +
+"        return preg_match('/([0-9a-f]{32})/i', (string) $v, $m) ? strtolower($m[1]) : '';\n" +
+"    }\n" +
 "    $ifMatch = $_SERVER['HTTP_IF_MATCH'] ?? '';\n" +
-"    if ($ifMatch !== '') {\n" +
-"        $current = is_file($path) ? '\"' . md5_file($path) . '\"' : '';\n" +
-"        $want = trim($ifMatch);\n" +
-"        if ($current !== '' && $current !== $want) fail(412, 'Precondition failed (file changed).');\n" +
+"    if (trim($ifMatch) !== '') {\n" +
+"        $current = is_file($path) ? md5_file($path) : '';\n" +
+"        $want = etag_core($ifMatch);\n" +
+"        if ($current !== '' && $want !== '' && $current !== $want) fail(412, 'Precondition failed (file changed).');\n" +
 "    }\n" +
 "\n" +
 "    $tmp = $path . '.tmp.' . bin2hex(random_bytes(4));\n" +

@@ -6,6 +6,41 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.3.7 — 2026-09-03
+
+**Tabs sync — the actual root cause of the permanent conflict.** Everything
+before this in the 1.3.x line treated the conflict as a *race* between two
+writers. It never was. A single machine, with every other copy of the
+extension disabled, hit it on every sync, deterministically.
+
+- `ETag` is a **response** header, and things between `tabbysync.php` and
+  the browser rewrite it in transit. Apache's `mod_deflate` appends
+  `-gzip` when it compresses a response (`"abc…"` → `"abc…-gzip"`);
+  proxies and CDNs downgrade it to a weak validator (`W/"abc…"`). The
+  client stored whatever it received and handed it straight back as
+  `If-Match`, and the server compared that against a freshly computed
+  `'"' . md5_file(...) . '"'`. Once anything rewrote the ETag, that
+  comparison could never succeed again — so **every** conditional write
+  failed with 412, forever, with nothing else writing.
+- This is why deleting the server file "fixed" it exactly once: with no
+  file there's no ETag, so the write goes out unconditional and succeeds
+  — and the very next sync, now that the file exists, conflicts again.
+  It's also why retrying never helped (every retry re-reads the same
+  rewritten ETag), why disabling the second machine changed nothing, and
+  why bookmarks was never affected (that engine never sends `If-Match`).
+- Fixed in the client (`shared/providers.js`): the md5 core is extracted
+  from the ETag and re-quoted canonically before it's stored or sent back,
+  so `"<md5>-gzip"` and `W/"<md5>"` both round-trip correctly. **This works
+  against an already-deployed `tabbysync.php` — no need to re-upload the
+  server script.** An ETag that isn't ours is passed through untouched, so
+  a non-TabbySync endpoint behaves exactly as before.
+- Also hardened the generated `tabbysync.php` to compare only the md5 core
+  of each validator, for anyone deploying a fresh copy. A genuinely
+  mismatched ETag is still rejected with 412 — conflict detection is
+  fixed, not disabled. Verified end-to-end against the real script: the
+  previous version answers 412 to both rewritten forms, this one answers
+  200, and both answer 412 to an actually-wrong ETag.
+
 ## 1.3.6 — 2026-09-03
 
 **Tabs sync.** A second, independent bug behind the persistent conflict,
