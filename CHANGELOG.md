@@ -6,6 +6,33 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.3.3 — 2026-09-03
+
+**Tabs sync.** Two more fixes: one closes a regression from 1.3.1/1.3.2, the
+other is unrelated but was found in the same investigation.
+
+- The periodic sync alarm's first fire was never randomized — it always
+  landed exactly `autoSyncMinutes` after whichever install/startup/settings
+  change (re)created it, then repeated on that same schedule forever. Two
+  devices reloaded at the same moment (e.g. both updating to a new version
+  together, as happened while testing the 1.3.1/1.3.2 fixes) end up
+  **permanently phase-locked**: not an occasional race, but the same
+  collision on every single cycle, indefinitely, since a periodic alarm
+  never re-randomizes itself. This is worse than the original bug the
+  retry work targeted, and the retry work alone can't fix it — retries are
+  still timer-driven, so they just repeat the same collision harder. A
+  manual "Sync now" click always avoided this by not being tied to any
+  timer; the periodic alarm's first fire is now randomized the same way,
+  so two devices no longer default to a shared schedule just because they
+  happened to (re)start together.
+- Fixed a race between overlapping sync attempts (the periodic alarm, a
+  background conflict follow-up, and a manual click could all be in flight
+  at once) where whichever one's badge/status update landed *last* won,
+  regardless of which one was actually current — visible as the toolbar
+  icon going green while the popup still showed an error. Overlapping
+  calls now share a single in-flight sync instead of each running their
+  own and racing to report it.
+
 ## 1.3.2 — 2026-09-03
 
 **Tabs sync.** Two more fixes to the conflict-retry work from 1.3.1.

@@ -10,7 +10,7 @@ declare(strict_types=1);
 // ---- Site-wide facts. Update these when the extension itself changes. ----
 const SITE_NAME     = 'TabbySync';
 const TAGLINE        = 'Self-hosted sync for your bookmarks and your open tabs.';
-const CURRENT_VERSION = '1.3.2'; // keep in step with manifest.json in the extension repo
+const CURRENT_VERSION = '1.3.3'; // keep in step with manifest.json in the extension repo
 const GITHUB_URL     = 'https://github.com/RyGull/TabbySync';
 const LICENSE_URL    = GITHUB_URL . '/blob/main/LICENSE';
 const PRIVACY_URL    = GITHUB_URL . '/blob/main/privacy.html';

@@ -497,8 +497,20 @@
     });
   }
 
+  // Coalesce overlapping calls into the one already running. Without this,
+  // two triggers close together (the periodic alarm, a background conflict
+  // follow-up, a manual click) each start their own doSync, and whichever
+  // one's badge/status update happens to land LAST wins — regardless of
+  // which one actually reflects the current state. That's how the toolbar
+  // icon can end up green while the popup still shows an error: a slower
+  // run that's still failing sets "err", then a faster, unrelated run that
+  // started after it finishes first and overwrites it with "ok" (or the
+  // reverse). Sharing one in-flight promise means only one doSync — and
+  // therefore only one badge/status update — happens at a time.
+  var syncInFlight = null;
   function syncNow(force) {
-    return getSettings().then(function (settings) {
+    if (syncInFlight) return syncInFlight;
+    syncInFlight = getSettings().then(function (settings) {
       if (!settings.syncEnabled && !force) { setBadge("neutral"); return getState(); }
       if (!providers().isConfigured(settings)) { setBadge("neutral"); return getState(); }
       return doSync(settings, 0).then(function (st) {
@@ -511,6 +523,11 @@
         throw e;
       });
     });
+    syncInFlight.then(
+      function () { syncInFlight = null; },
+      function () { syncInFlight = null; }
+    );
+    return syncInFlight;
   }
 
   function doSync(settings, attempt) {

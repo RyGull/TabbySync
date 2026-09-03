@@ -163,7 +163,17 @@
       autoRetryCount = 0;
       return Promise.all([chrome.alarms.clear(POLL_ALARM), chrome.alarms.clear(RETRY_ALARM)]).then(function () {
         if (settings.syncEnabled && settings.autoSyncMinutes > 0) {
-          chrome.alarms.create(POLL_ALARM, { periodInMinutes: Math.max(1, settings.autoSyncMinutes) });
+          var period = Math.max(1, settings.autoSyncMinutes);
+          // Randomize the FIRST fire (the period after that stays fixed).
+          // Without this, two devices reloaded/installed at the same moment
+          // — e.g. both updating to a new version together — end up on a
+          // permanently phase-locked schedule: not a one-off race, but the
+          // same collision on every single cycle forever, since a periodic
+          // alarm never re-randomizes itself. A random offset here is what a
+          // human's manual "Sync now" click always had for free (it isn't
+          // tied to any timer) and what pure timer-driven auto-retries can't
+          // supply on their own.
+          chrome.alarms.create(POLL_ALARM, { delayInMinutes: Math.random() * period, periodInMinutes: period });
         }
       });
     });

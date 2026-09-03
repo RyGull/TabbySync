@@ -113,3 +113,34 @@ test('a 412 that never clears is eventually reported with a message that explain
     assert.equal(puts.length, 4, 'stopped after a bounded number of attempts rather than looping forever');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Overlapping calls — the badge/status race behind a green icon next to a
+// still-showing error: two independent syncNow() runs each set the badge
+// from their own outcome, and whichever settles last wins regardless of
+// which one is actually current. Sharing one in-flight promise closes that.
+// ---------------------------------------------------------------------------
+
+test('two calls made before the first settles share one sync, not two', async () => {
+  await withFetch([
+    NO_REMOTE, reply({ status: 200, etag: '"only"' }),
+  ], async (calls) => {
+    const p1 = TabbySync.syncNow(true);
+    const p2 = TabbySync.syncNow(true); // fired while p1 is still pending
+    await Promise.all([p1, p2]);
+    const puts = calls.filter((c) => c.method === 'PUT');
+    assert.equal(puts.length, 1, 'a second overlapping call started its own doSync instead of sharing the first');
+  });
+});
+
+test('a call made after the previous one has settled starts a fresh sync', async () => {
+  await withFetch([
+    NO_REMOTE, reply({ status: 200, etag: '"first"' }),
+    NO_REMOTE, reply({ status: 200, etag: '"second"' }),
+  ], async (calls) => {
+    await TabbySync.syncNow(true);
+    await TabbySync.syncNow(true);
+    const puts = calls.filter((c) => c.method === 'PUT');
+    assert.equal(puts.length, 2, 'the in-flight guard was never cleared once the first sync settled');
+  });
+});
