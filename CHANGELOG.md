@@ -18,6 +18,10 @@ Versions before 1.3.0 predate this changelog; their history is in the git log.
   failure was what actually reached the badge. `doSync` now allows a few
   more attempts, spaced out with jitter, so devices racing at the same
   instant don't just collide again on the retry.
+- If it still can't get a clean write in after those retries, the error
+  shown is no longer the bare word "conflict" — it now says what happened
+  (another device wrote to the list at the same time) and what to do about
+  it (try "Sync now" again; it's normally transient).
 
 ## 1.3.0 — 2026-09-02
 

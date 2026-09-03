@@ -86,7 +86,7 @@ test('a 412 that clears on a later attempt is retried until it succeeds, not sur
   });
 });
 
-test('a 412 that never clears is eventually reported, not retried forever', async () => {
+test('a 412 that never clears is eventually reported with a message that explains it, not retried forever', async () => {
   await withFetch([
     NO_REMOTE, reply({ status: 412 }),
     NO_REMOTE, reply({ status: 412 }),
@@ -95,8 +95,19 @@ test('a 412 that never clears is eventually reported, not retried forever', asyn
   ], async (calls) => {
     await assert.rejects(
       TabbySync.syncNow(true),
-      (e) => e.conflict === true && /conflict/i.test(e.message),
+      (e) =>
+        e.conflict === true &&
+        // Not just the bare provider message ("conflict") — the user sees
+        // this verbatim in the popup, so it should say what happened
+        // (another device wrote at the same time) and what to do about it
+        // (it's transient; try again), not just the HTTP-level term.
+        /another device/i.test(e.message) &&
+        /sync now/i.test(e.message),
     );
+    // Same clearer text is what actually reaches the popup badge.
+    const status = await TabbySync.getSyncStatus();
+    assert.equal(status.status, 'error');
+    assert.match(status.error, /another device/i);
     const puts = calls.filter((c) => c.method === 'PUT');
     assert.equal(puts.length, 4, 'stopped after a bounded number of attempts rather than looping forever');
   });
