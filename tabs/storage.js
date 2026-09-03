@@ -551,19 +551,13 @@
                   return doSync(settings, attempt + 1);
                 });
               }
-              // Retries exhausted. The provider's own error (e.g. plain
-              // "conflict") is accurate but tells the user nothing about
-              // what to do about it — replace it with something that
-              // explains the cause and that it's very likely transient,
-              // rather than leaving "Error: conflict" on the badge.
+              // Retries exhausted. The provider's own error (plain
+              // "conflict") is accurate but says nothing about the cause —
+              // this is the one that reaches the popup's one-line error
+              // row, so it stays as short as its neighbors there (see the
+              // "auth failed" / "wrong passphrase" messages above).
               if (e.conflict) {
-                var e2 = new Error(
-                  "Sync conflict: another device (or another sync on this one) wrote to " +
-                  "this list at the same time, and TabbySync couldn't get a clean write in " +
-                  "after " + CONFLICT_MAX_ATTEMPTS + " tries. This is usually a one-off timing " +
-                  "clash — hit “Sync now” again in a moment; if it keeps happening, " +
-                  "your devices may be syncing too close together for the server to keep up."
-                );
+                var e2 = new Error("Sync conflict — another device wrote to this list just now. Try Sync now again.");
                 e2.conflict = true;
                 throw e2;
               }
