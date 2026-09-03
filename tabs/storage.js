@@ -30,6 +30,22 @@
   var ETAG_KEY = "sl.tab.etag";
   var pushTimer = null;
 
+  // A 412 means another device (or another sync running on this one) wrote
+  // to the file between our pull and our push. One immediate retry used to
+  // be all doSync allowed, but two devices that both sync on browser startup
+  // tend to race on every attempt at once — a single retry lands them back
+  // in conflict just as often as not, and the badge is left showing "error:
+  // conflict" until the user happens to sync again later, after the race
+  // window has passed. Allow a few more tries, spaced out with jitter so
+  // that two devices retrying "at the same time" don't just collide again.
+  var CONFLICT_MAX_ATTEMPTS = 4; // total tries, including the first
+  function conflictBackoff(attempt) {
+    var base = 300 * Math.pow(2, attempt); // 300, 600, 1200…
+    return new Promise(function (resolve) {
+      setTimeout(resolve, base + Math.floor(Math.random() * base));
+    });
+  }
+
   function shared() { return self.TabbySyncConfig; }
   function providers() { return self.TabbySyncProviders; }
 
@@ -530,7 +546,11 @@
           return pushRemote(settings, m.state, etag)
             .then(function (res) { return setEtag(res.etag).then(function () { return m.state; }); })
             .catch(function (e) {
-              if (e.conflict && attempt < 1) return doSync(settings, attempt + 1);
+              if (e.conflict && attempt < CONFLICT_MAX_ATTEMPTS - 1) {
+                return conflictBackoff(attempt).then(function () {
+                  return doSync(settings, attempt + 1);
+                });
+              }
               throw e;
             });
         });

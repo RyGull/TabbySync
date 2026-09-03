@@ -6,6 +6,19 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## Unreleased
+
+**Tabs sync.** Fixed a bug, not a behaviour change — no new data is touched.
+
+- The tabs engine (self-hosted provider only) could get stuck showing
+  "Error: conflict" after opening the browser, clearing only once you hit
+  "Sync now" yourself. Two devices syncing around the same moment (e.g. both
+  starting up together) would race on the very first write; a single retry
+  often landed them back in conflict with each other, and that retry's
+  failure was what actually reached the badge. `doSync` now allows a few
+  more attempts, spaced out with jitter, so devices racing at the same
+  instant don't just collide again on the retry.
+
 ## 1.3.0 — 2026-09-02
 
 **Licensing.** TabbySync now carries an explicit licence, where before it was
