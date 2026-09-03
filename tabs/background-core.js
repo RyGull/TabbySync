@@ -15,27 +15,6 @@
 
   var LIST_URL = chrome.runtime.getURL("tabs/tablist.html");
   var POLL_ALARM = "sl.tab.poll";
-  var RETRY_ALARM = "sl.tab.retry";
-
-  // A conflict usually clears on its own within doSync's own retries (see
-  // tabs/storage.js) — but if those are exhausted too, don't just sit on it
-  // until the next scheduled sync, which can be minutes away. Follow up
-  // again soon instead. Capped, so a conflict that never clears (as
-  // opposed to two devices racing at the same moment) doesn't turn into an
-  // indefinite once-a-minute retry loop — it falls back to the normal
-  // interval, same as any other sync error.
-  var MAX_AUTO_RETRIES = 3;
-  var autoRetryCount = 0;
-  function scheduleConflictRetry() {
-    if (autoRetryCount >= MAX_AUTO_RETRIES) return;
-    autoRetryCount++;
-    // Jittered, same reasoning as doSync's own backoff (tabs/storage.js): if
-    // two devices are conflicting because their sync timing is aligned, a
-    // fixed delay here just lines the follow-up retries up the same way,
-    // burning the whole budget without ever breaking the tie.
-    var delay = autoRetryCount + Math.random();
-    chrome.alarms.create(RETRY_ALARM, { delayInMinutes: delay });
-  }
 
   function tabsEnabled() {
     return self.TabbySyncConfig.getConfig().then(function (c) { return c.tabs.enabled; });
@@ -157,49 +136,29 @@
 
   function rescheduleAlarm() {
     return TabbySync.getSettings().then(function (settings) {
-      // A reschedule (startup, install, or a settings change) starts a new
-      // episode — give it a fresh short-retry budget, and drop any retry
-      // left over from whatever was going on before.
-      autoRetryCount = 0;
-      return Promise.all([chrome.alarms.clear(POLL_ALARM), chrome.alarms.clear(RETRY_ALARM)]).then(function () {
+      return chrome.alarms.clear(POLL_ALARM).then(function () {
         if (settings.syncEnabled && settings.autoSyncMinutes > 0) {
-          var period = Math.max(1, settings.autoSyncMinutes);
-          // Randomize the FIRST fire (the period after that stays fixed).
-          // Without this, two devices reloaded/installed at the same moment
-          // — e.g. both updating to a new version together — end up on a
-          // permanently phase-locked schedule: not a one-off race, but the
-          // same collision on every single cycle forever, since a periodic
-          // alarm never re-randomizes itself. A random offset here is what a
-          // human's manual "Sync now" click always had for free (it isn't
-          // tied to any timer) and what pure timer-driven auto-retries can't
-          // supply on their own.
-          chrome.alarms.create(POLL_ALARM, { delayInMinutes: Math.random() * period, periodInMinutes: period });
+          chrome.alarms.create(POLL_ALARM, { periodInMinutes: Math.max(1, settings.autoSyncMinutes) });
         }
       });
     });
   }
 
   chrome.alarms.onAlarm.addListener(function (alarm) {
-    if (alarm.name !== POLL_ALARM && alarm.name !== RETRY_ALARM) return;
-    if (alarm.name === POLL_ALARM) autoRetryCount = 0; // each scheduled cycle gets its own budget
+    if (alarm.name !== POLL_ALARM) return;
     TabbySync.syncNow()
-      .then(function () {
-        autoRetryCount = 0;
-        chrome.runtime.sendMessage({ type: "tabbysync-refresh" }).catch(function () {});
-      })
-      .catch(function (e) { if (e && e.conflict) scheduleConflictRetry(); });
+      .then(function () { chrome.runtime.sendMessage({ type: "tabbysync-refresh" }).catch(function () {}); })
+      .catch(function () {});
   });
 
   chrome.runtime.onInstalled.addListener(function () {
     buildMenus();
-    rescheduleAlarm().then(function () { return TabbySync.syncNow(); })
-      .catch(function (e) { if (e && e.conflict) scheduleConflictRetry(); });
+    rescheduleAlarm().then(function () { return TabbySync.syncNow(); }).catch(function () {});
   });
 
   chrome.runtime.onStartup.addListener(function () {
     buildMenus();
-    rescheduleAlarm().then(function () { return TabbySync.syncNow(); })
-      .catch(function (e) { if (e && e.conflict) scheduleConflictRetry(); });
+    rescheduleAlarm().then(function () { return TabbySync.syncNow(); }).catch(function () {});
   });
 
   // React to config changes: server settings, the interval, or the feature
@@ -214,7 +173,7 @@
     rescheduleAlarm()
       .then(function () { return TabbySync.syncNow(); })
       .then(function () { chrome.runtime.sendMessage({ type: "tabbysync-refresh" }).catch(function () {}); })
-      .catch(function (e) { if (e && e.conflict) scheduleConflictRetry(); });
+      .catch(function () {});
   });
 
   // ---- messages from pages -------------------------------------------------
@@ -223,13 +182,8 @@
     if (!msg) return;
     if (msg.type === "tabbysync-sync") {
       TabbySync.syncNow(true)
-        .then(function () { autoRetryCount = 0; sendResponse({ ok: true }); })
-        .catch(function (e) {
-          // The popup shows this error right away, but also follow up in
-          // the background in case the user doesn't retry manually.
-          if (e && e.conflict) scheduleConflictRetry();
-          sendResponse({ ok: false, error: e && e.message });
-        });
+        .then(function () { sendResponse({ ok: true }); })
+        .catch(function (e) { sendResponse({ ok: false, error: e && e.message }); });
       return true;
     }
     if (msg.type === "tabbysync-reschedule") {

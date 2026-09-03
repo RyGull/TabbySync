@@ -30,22 +30,6 @@
   var ETAG_KEY = "sl.tab.etag";
   var pushTimer = null;
 
-  // A 412 means another device (or another sync running on this one) wrote
-  // to the file between our pull and our push. One immediate retry used to
-  // be all doSync allowed, but two devices that both sync on browser startup
-  // tend to race on every attempt at once — a single retry lands them back
-  // in conflict just as often as not, and the badge is left showing "error:
-  // conflict" until the user happens to sync again later, after the race
-  // window has passed. Allow a few more tries, spaced out with jitter so
-  // that two devices retrying "at the same time" don't just collide again.
-  var CONFLICT_MAX_ATTEMPTS = 4; // total tries, including the first
-  function conflictBackoff(attempt) {
-    var base = 300 * Math.pow(2, attempt); // 300, 600, 1200…
-    return new Promise(function (resolve) {
-      setTimeout(resolve, base + Math.floor(Math.random() * base));
-    });
-  }
-
   function shared() { return self.TabbySyncConfig; }
   function providers() { return self.TabbySyncProviders; }
 
@@ -497,20 +481,8 @@
     });
   }
 
-  // Coalesce overlapping calls into the one already running. Without this,
-  // two triggers close together (the periodic alarm, a background conflict
-  // follow-up, a manual click) each start their own doSync, and whichever
-  // one's badge/status update happens to land LAST wins — regardless of
-  // which one actually reflects the current state. That's how the toolbar
-  // icon can end up green while the popup still shows an error: a slower
-  // run that's still failing sets "err", then a faster, unrelated run that
-  // started after it finishes first and overwrites it with "ok" (or the
-  // reverse). Sharing one in-flight promise means only one doSync — and
-  // therefore only one badge/status update — happens at a time.
-  var syncInFlight = null;
   function syncNow(force) {
-    if (syncInFlight) return syncInFlight;
-    syncInFlight = getSettings().then(function (settings) {
+    return getSettings().then(function (settings) {
       if (!settings.syncEnabled && !force) { setBadge("neutral"); return getState(); }
       if (!providers().isConfigured(settings)) { setBadge("neutral"); return getState(); }
       return doSync(settings, 0).then(function (st) {
@@ -523,11 +495,6 @@
         throw e;
       });
     });
-    syncInFlight.then(
-      function () { syncInFlight = null; },
-      function () { syncInFlight = null; }
-    );
-    return syncInFlight;
   }
 
   function doSync(settings, attempt) {
@@ -563,21 +530,7 @@
           return pushRemote(settings, m.state, etag)
             .then(function (res) { return setEtag(res.etag).then(function () { return m.state; }); })
             .catch(function (e) {
-              if (e.conflict && attempt < CONFLICT_MAX_ATTEMPTS - 1) {
-                return conflictBackoff(attempt).then(function () {
-                  return doSync(settings, attempt + 1);
-                });
-              }
-              // Retries exhausted. The provider's own error (plain
-              // "conflict") is accurate but says nothing about the cause —
-              // this is the one that reaches the popup's one-line error
-              // row, so it stays as short as its neighbors there (see the
-              // "auth failed" / "wrong passphrase" messages above).
-              if (e.conflict) {
-                var e2 = new Error("Sync conflict — another device wrote to this list just now.");
-                e2.conflict = true;
-                throw e2;
-              }
+              if (e.conflict && attempt < 1) return doSync(settings, attempt + 1);
               throw e;
             });
         });

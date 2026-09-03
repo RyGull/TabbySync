@@ -6,6 +6,30 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.3.4 — 2026-09-03
+
+**Tabs sync — revert.** 1.3.1 through 1.3.3 tried to make the tabs engine's
+conflict handling more resilient (more retries, a background follow-up, a
+randomized schedule) and instead made it worse: multiple sync profiles
+that don't even share a sync key — and so can't legitimately conflict with
+each other at all — started reporting conflicts, and manual "Sync now"
+stopped reliably clearing the error the way it always had before. The
+retries that were meant to be fixing the problem overlapped with each
+other closely enough to trigger the extension racing against **itself** on
+a single profile, with nothing else involved.
+
+Rather than chase that with another forward patch, `tabs/storage.js` and
+`tabs/background-core.js` are reverted to exactly what 1.3.0 shipped —
+back to the original single-retry conflict handling, no background
+follow-up alarm, no randomized poll offset. If you were on 1.3.1–1.3.3,
+update and reload; this removes the extra retry behavior entirely rather
+than layering another fix on top of it.
+
+The one change from that work kept: the popup now refreshes when the
+background reports a sync just ran, instead of only reading status once
+when opened. That part never touched sync behavior — only what the popup
+displays — and isn't implicated in the regression.
+
 ## 1.3.3 — 2026-09-03
 
 **Tabs sync.** Two more fixes: one closes a regression from 1.3.1/1.3.2, the
