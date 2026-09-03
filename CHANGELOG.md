@@ -6,6 +6,33 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.3.5 — 2026-09-03
+
+**Tabs sync.** Found and fixed the actual bug behind the persistent
+conflict — not a timing issue, present since well before this week's
+retry-logic work (1.3.4 reverted all of that, and this reproduced anyway
+with only one device writing).
+
+- `parse()` (the code that reads a synced tabs file back into memory)
+  fell back to `uid()` — a fresh random id — for any group missing its own
+  `id`. That fallback is not deterministic: parsing the *exact same file*
+  twice produced two *different* ids for that group. Since the merge
+  matches "the same group" across a local copy and a freshly pulled
+  remote copy purely by id, a group with an unstable id looks brand new
+  on every single sync — the state can never be recognized as unchanged,
+  so a sync never stops needing to push, and a push against a file that
+  keeps looking different can conflict indefinitely, with no second
+  device involved at all. A group written by this extension always
+  carries its own id, so this only bit a malformed or pre-id-scheme
+  legacy entry — but for that entry, this fallback was the entire
+  difference between converging and never converging. The fallback id is
+  now derived deterministically from the group's own content, so parsing
+  the same file twice always produces the same id.
+- Added `test/tabs-parse.test.js`, which fails without this fix and
+  passes with it (verified both ways): parsing the same file twice must
+  produce the same id, and merging two such parses of identical content
+  must report no change.
+
 ## 1.3.4 — 2026-09-03
 
 **Tabs sync — revert.** 1.3.1 through 1.3.3 tried to make the tabs engine's

@@ -306,6 +306,17 @@
     });
   }
 
+  // Deterministic 32-bit hash (FNV-1a), used only as a stable id fallback
+  // below — not for anything security-sensitive.
+  function fnv1a(str) {
+    var h = 0x811c9dc5;
+    for (var i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+    }
+    return h.toString(36);
+  }
+
   function parse(text) {
     var d = JSON.parse(text);
     var groups = d.groups || [];
@@ -316,10 +327,23 @@
       trash: Array.isArray(d.trash) ? d.trash : [],
       trashDeleted: d.trashDeleted || {},
       groups: groups.map(function (g) {
+        // A group written by this extension always carries its own id —
+        // makeGroup() sets one at creation and it's preserved verbatim on
+        // every save/serialize. This fallback exists only for a genuinely
+        // malformed or pre-id-scheme legacy entry, and it MUST be
+        // deterministic: a fallback like uid()/Date.now() mints a fresh,
+        // different value every single time the exact same file is parsed,
+        // which breaks mergeStates' whole premise that a group's id
+        // identifies "the same group" across pulls — the group would look
+        // brand new on every sync, never stop needing a push, and the
+        // state would never converge (every sync sees a "conflict",
+        // indefinitely, even with only one device ever writing).
+        var id = g.id || ("legacy-" + fnv1a(JSON.stringify({ name: g.name || "", tabs: (g.tabs || []).map(function (t) { return t.url; }) })));
+        var createdAt = g.createdAt || 0; // not Date.now() — same determinism reasoning
         return {
-          id: g.id || uid(),
-          createdAt: g.createdAt || Date.now(),
-          updatedAt: g.updatedAt || g.createdAt || Date.now(),
+          id: id,
+          createdAt: createdAt,
+          updatedAt: g.updatedAt || createdAt,
           name: g.name || "",
           locked: !!g.locked,
           pinned: !!g.pinned,
