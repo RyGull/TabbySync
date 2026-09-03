@@ -505,20 +505,44 @@
     });
   }
 
+  // Serialize calls so at most one doSync is ever actually talking to the
+  // server at a time — without this, two triggers close together (a
+  // manual click and schedulePush's own debounced auto-push, or two
+  // automatic triggers) can each open their own doSync, and since even an
+  // encrypted no-op write changes the file's bytes (fresh salt/IV every
+  // time), any such overlap 412s: this extension racing against its own
+  // writes, no second device involved at all.
+  //
+  // This queues rather than shares: an earlier version of this code made
+  // an overlapping call return the ALREADY-RUNNING call's promise, which
+  // broke manual "Sync now" — a click would just inherit whatever
+  // automatic attempt happened to already be in flight instead of getting
+  // its own attempt. Queuing instead means every call still gets its own
+  // complete, independent doSync — settings and local state read fresh
+  // at the moment it actually starts — just run one at a time rather than
+  // overlapping.
+  var syncQueue = Promise.resolve();
   function syncNow(force) {
-    return getSettings().then(function (settings) {
-      if (!settings.syncEnabled && !force) { setBadge("neutral"); return getState(); }
-      if (!providers().isConfigured(settings)) { setBadge("neutral"); return getState(); }
-      return doSync(settings, 0).then(function (st) {
-        setBadge("ok");
-        setSyncStatus("ok", "");
-        return st;
-      }).catch(function (e) {
-        setBadge("err");
-        setSyncStatus("error", e && (e.message || String(e)));
-        throw e;
+    var result = syncQueue.then(function () {
+      return getSettings().then(function (settings) {
+        if (!settings.syncEnabled && !force) { setBadge("neutral"); return getState(); }
+        if (!providers().isConfigured(settings)) { setBadge("neutral"); return getState(); }
+        return doSync(settings, 0).then(function (st) {
+          setBadge("ok");
+          setSyncStatus("ok", "");
+          return st;
+        }).catch(function (e) {
+          setBadge("err");
+          setSyncStatus("error", e && (e.message || String(e)));
+          throw e;
+        });
       });
     });
+    // Keep the queue moving regardless of this link's outcome — a failed
+    // sync must not jam every sync after it. Swallowed here only for
+    // sequencing; the real rejection is still delivered below.
+    syncQueue = result.then(function () {}, function () {});
+    return result;
   }
 
   function doSync(settings, attempt) {

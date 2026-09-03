@@ -6,6 +6,44 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.3.6 — 2026-09-03
+
+**Tabs sync.** A second, independent bug behind the persistent conflict,
+found after 1.3.5's fix wasn't enough on its own — confirmed by reproducing
+it with the OTHER device's extension fully disabled, ruling out a second
+device entirely.
+
+- `syncNow()` had no protection at all against two of its own calls
+  overlapping — a manual click racing `schedulePush`'s own debounced
+  auto-push, or two automatic triggers close together. This was never
+  new: it's exactly how the original 1.3.0 code always worked, just rare
+  enough in ordinary use not to surface. Two overlapping calls on the
+  SAME device write to the file independently, and since even an
+  encrypted no-op write changes the file's bytes (fresh salt/IV every
+  time — see the passphrase note below), any such overlap conflicts:
+  this extension racing against itself, no second device required.
+  Overlapping calls are now queued so at most one is ever actually
+  talking to the server at a time.
+  - This is deliberately NOT the same fix 1.3.3 tried and had to be
+    reverted for: that version made an overlapping call share the
+    already-running call's result, which quietly broke manual "Sync now"
+    (a click would just inherit whatever automatic attempt was already in
+    flight instead of getting its own). Queuing instead means every call
+    still gets its own complete, independent sync — settings and local
+    state read fresh at the moment it actually starts — just run one at a
+    time instead of overlapping.
+- Noted for anyone chasing something similar: if you use the encryption
+  passphrase, every write re-encrypts with a fresh random salt and IV, so
+  the file's bytes (and its ETag) change on the server on every single
+  write — even one that changes nothing. That's not a bug and isn't being
+  changed, but it does mean there's no accidental tolerance for two
+  writes landing close together; the queue above is what actually
+  prevents that, not anything about encryption itself.
+- Added test/tabs-sync-queue.test.js, verified to fail without this fix
+  and pass with it (checked both ways): two overlapping calls must run
+  strictly one after another, and each must still get its own outcome
+  rather than sharing the one ahead of it in the queue.
+
 ## 1.3.5 — 2026-09-03
 
 **Tabs sync.** Found and fixed the actual bug behind the persistent
