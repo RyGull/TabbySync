@@ -205,6 +205,16 @@ $("feedbackOpen").addEventListener("click", function () {
   catch (e) { window.open(url, "_blank"); }
 });
 
+// The background worker broadcasts this after every tabs sync attempt —
+// including the short follow-up retries after a conflict (see
+// tabs/background-core.js) — so a popup left open while that's happening
+// picks up the new status/timestamp instead of sitting frozen on the error
+// that prompted the retry in the first place. (tabs/tablist.js listens for
+// the same message and reloads for the same reason.)
+chrome.runtime.onMessage.addListener(function (msg) {
+  if (msg && msg.type === "tabbysync-refresh") refreshTabs();
+});
+
 // On open: just render the last-known status for whatever is enabled +
 // configured. Syncing itself stays on the manual "Sync now" buttons and the
 // background timer — opening the popup shouldn't kick off its own sync.

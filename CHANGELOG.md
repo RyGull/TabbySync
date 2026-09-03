@@ -6,6 +6,21 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.3.2 — 2026-09-03
+
+**Tabs sync.** Two more fixes to the conflict-retry work from 1.3.1.
+
+- The popup never picked up a sync that finished after it was opened — it
+  fetched status once on open and then sat there, so watching the popup
+  through a conflict's background retries (1.3.1) made them invisible: the
+  error stayed on screen even once a retry had actually updated the stored
+  status. The popup now listens for the same "sync just ran" broadcast the
+  tab-list page already did, and refreshes when it arrives.
+- The background follow-up retry (1.3.1) waited a fixed 1 minute before
+  trying again. If two devices are conflicting because their sync timing
+  is aligned, a fixed delay makes the *retries* line up the same way too —
+  it's now jittered, same as `doSync`'s own inner retries.
+
 ## 1.3.1 — 2026-09-03
 
 **Tabs sync.** Fixed a bug, not a behaviour change — no new data is touched.

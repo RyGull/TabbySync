@@ -29,7 +29,12 @@
   function scheduleConflictRetry() {
     if (autoRetryCount >= MAX_AUTO_RETRIES) return;
     autoRetryCount++;
-    chrome.alarms.create(RETRY_ALARM, { delayInMinutes: 1 });
+    // Jittered, same reasoning as doSync's own backoff (tabs/storage.js): if
+    // two devices are conflicting because their sync timing is aligned, a
+    // fixed delay here just lines the follow-up retries up the same way,
+    // burning the whole budget without ever breaking the tie.
+    var delay = autoRetryCount + Math.random();
+    chrome.alarms.create(RETRY_ALARM, { delayInMinutes: delay });
   }
 
   function tabsEnabled() {
