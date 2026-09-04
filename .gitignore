@@ -1,3 +1,6 @@
 
 # Never commit the reCAPTCHA secret
 server/feedback/config.php
+
+# Build output
+dist/
