@@ -145,12 +145,15 @@
         directly from your browser to the destination you configured:
         <ul>
           <li><em>Self-hosted</em> — a server you set up and control. Nothing passes
-            through any server operated by TabbySync's developer. Use an
-            <code>https://</code> address: TabbySync will accept a plain
-            <code>http://</code> endpoint if you configure one, but everything sent to it
-            then crosses the network unencrypted, readable by anyone in between. The
-            encryption passphrase protects the file's <em>contents</em> even over
-            <code>http://</code> — not the fact that you are syncing, or the file names.</li>
+            through any server operated by TabbySync's developer. The address must be
+            <code>https://</code>; TabbySync refuses to save a plain <code>http://</code>
+            server URL, and the only exception is <code>localhost</code> /
+            <code>127.0.0.1</code>, which never leaves your machine. The reason is the
+            access token: it is sent in an <code>Authorization</code> header on
+            <em>every</em> request, outside the encrypted file body, so over
+            <code>http://</code> anyone on the network between you and your server could
+            read it and then delete or overwrite your synced data — and the encryption
+            passphrase would not stop them, because it never covers the token.</li>
           <li><em>GitHub Gist</em> — stored in a private ("secret") gist in your own
             GitHub account, using a personal access token you provide. Governed by
             <a href="https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement" target="_blank" rel="noopener">GitHub's own Privacy Statement</a>.</li>

@@ -141,6 +141,58 @@ test('host access is requested one origin at a time, never as a wildcard', () =>
   assert.match(optionsJs, /new URL\(u\)\.origin \+ ['"]\/\*['"]/);
 });
 
+test('no plain-http host access is requestable except loopback', () => {
+  // The policy: "The address must be https://; TabbySync refuses to save a
+  // plain http:// server URL". An http://*/* pattern here would make that
+  // refusal cosmetic -- the grant would still be available to any code path
+  // that skipped the check.
+  const patterns = manifest.optional_host_permissions || [];
+  assert.ok(patterns.length > 0, 'no optional host permissions -- has the flow moved?');
+  for (const pattern of patterns) {
+    assert.notEqual(pattern, '<all_urls>');
+    if (!pattern.startsWith('http://')) continue;
+    const host = pattern.slice('http://'.length).replace(/\/\*$/, '');
+    assert.ok(
+      host === 'localhost' || host === '127.0.0.1',
+      `plain http is grantable for a non-loopback host: ${pattern}`,
+    );
+  }
+});
+
+test('the options page refuses an insecure server URL before saving it', () => {
+  // The token travels in an Authorization header on every request, outside
+  // the encrypted body, so an http:// destination leaks a long-lived
+  // credential. Both buttons that can reach the server must be gated -- a
+  // "Test" that happily talks to a plain-http host would leak it just as
+  // thoroughly as a "Save" that stored one.
+  const optionsJs = read('options.js');
+  assert.match(optionsJs, /function serverUrlProblem\(/);
+  assert.match(optionsJs, /u\.protocol === 'https:'/);
+  assert.equal(
+    (optionsJs.match(/serverUrlProblem\(serverUrl\)/g) || []).length, 2,
+    'both the save and the test handler must run the check',
+  );
+});
+
+test("the options page's loopback exception matches what the manifest can grant", () => {
+  // Two lists, one rule. If the validator allowed a host the manifest does
+  // not cover, the user would save a config that can never be granted and so
+  // never syncs; if the manifest covered a host the validator rejects, the
+  // permission would be dead weight in the review.
+  const optionsJs = read('options.js');
+  const declared = (optionsJs.match(/const LOOPBACK_HOSTS = \[([^\]]*)\]/) || [])[1];
+  assert.ok(declared !== undefined, 'LOOPBACK_HOSTS not found in options.js');
+  const allowedByOptions = declared.split(',')
+    .map((h) => h.trim().replace(/^['"]|['"]$/g, ''))
+    .filter(Boolean)
+    .sort();
+  const allowedByManifest = (manifest.optional_host_permissions || [])
+    .filter((pattern) => pattern.startsWith('http://'))
+    .map((pattern) => pattern.slice('http://'.length).replace(/\/\*$/, ''))
+    .sort();
+  assert.deepEqual(allowedByOptions, allowedByManifest);
+});
+
 // ---------------------------------------------------------------------------
 // "no analytics, telemetry or usage tracking of any kind"
 // ---------------------------------------------------------------------------

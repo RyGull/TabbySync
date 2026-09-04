@@ -53,6 +53,33 @@ function slug(name) {
   return (name || '').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'profile';
 }
 function safeOrigin(u) { try { return new URL(u).origin + '/*'; } catch { return ''; } }
+
+// A self-hosted destination must use HTTPS. The bearer token rides in an
+// Authorization header on every single request — outside the encryption
+// envelope, which only ever covers the file's body — so a plain http://
+// endpoint hands a long-lived credential to anyone on the path, and lets
+// them replay an older (still validly encrypted) file back at you.
+//
+// Loopback is the one exception: it never leaves the machine, and browsers
+// already treat it as a secure context. This list must stay in step with
+// "optional_host_permissions" in manifest.json — an origin that isn't
+// covered there can't be granted, so allowing one here would only produce a
+// saved config that never syncs. test/privacy-policy.test.js pins the pair
+// together.
+const LOOPBACK_HOSTS = ['localhost', '127.0.0.1'];
+function serverUrlProblem(url) {
+  let u;
+  try { u = new URL(url); } catch {
+    return 'Server URL must be a full address, e.g. https://example.com/tabbysync/tabbysync.php';
+  }
+  if (u.protocol === 'https:') return '';
+  if (u.protocol === 'http:' && LOOPBACK_HOSTS.includes(u.hostname)) return '';
+  if (u.protocol === 'http:') {
+    return 'Server URL must use https:// — your token is sent on every request and would ' +
+           'cross the network in the clear. http:// is accepted only for localhost.';
+  }
+  return `Server URL must use https:// (this one uses "${u.protocol}").`;
+}
 function requestOrigin(url) {
   const o = safeOrigin(url);
   if (!o) return Promise.resolve(true);
@@ -235,6 +262,10 @@ $('srv-save').addEventListener('click', async () => {
   const profileLabel = $('srv-profile-label').value.trim();
 
   if (meta.needsUrl && !serverUrl) { status('srv-status', 'Server URL is required.', 'bad'); return; }
+  if (meta.needsUrl) {
+    const problem = serverUrlProblem(serverUrl);
+    if (problem) { status('srv-status', problem, 'bad'); return; }
+  }
   if (!token) { status('srv-status', `${meta.tokenLabel} is required.`, 'bad'); return; }
   if (provider === 'custom' && !syncName) {
     status('srv-status', 'Sync name is required (letters, numbers, dots, dashes and underscores).', 'bad');
@@ -292,6 +323,10 @@ $('srv-test').addEventListener('click', async () => {
   $('srv-name').value = syncName;
 
   if (meta.needsUrl && !serverUrl) { status('srv-status', 'Fill in the Server URL first.', 'bad'); return; }
+  if (meta.needsUrl) {
+    const problem = serverUrlProblem(serverUrl);
+    if (problem) { status('srv-status', problem, 'bad'); return; }
+  }
   if (!token) { status('srv-status', `Fill in the ${meta.tokenLabel} first.`, 'bad'); return; }
 
   status('srv-status', 'Testing…');

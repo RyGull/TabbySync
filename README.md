@@ -41,7 +41,10 @@ You host a tiny endpoint yourself — a single PHP file with a token you choose.
    containing a `tabbysync/` folder (one `tabbysync.php` + two `.htaccess`
    guards) with a fresh random token already baked in.
 3. Upload that whole folder to any PHP web host over HTTPS, e.g.
-   `https://YOURDOMAIN/tabbysync/tabbysync.php`.
+   `https://YOURDOMAIN/tabbysync/tabbysync.php`. HTTPS is **required** —
+   TabbySync will not save a plain `http://` server URL, because the bearer
+   token is sent with every request and would otherwise cross the network in
+   the clear. (`http://localhost` is the one exception, for local testing.)
 4. Back in **Server & sync**, set:
    - **Server URL** — `https://YOURDOMAIN/tabbysync/tabbysync.php`
    - **Bearer token** — click **Use this token above** so it matches the script

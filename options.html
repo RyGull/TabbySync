@@ -53,7 +53,7 @@
 
       <label class="field gold" for="srv-url" id="srv-url-label">Server URL</label>
       <input type="url" id="srv-url" placeholder="https://example.com/tabbysync/tabbysync.php" spellcheck="false">
-      <p class="hint" id="srv-url-hint">The <code>tabbysync.php</code> script (see “Self-hosting” below). Requests route via <code>?name=</code>.</p>
+      <p class="hint" id="srv-url-hint">The <code>tabbysync.php</code> script (see “Self-hosting” below). Requests route via <code>?name=</code>. Must be <code>https://</code> — your token is sent with every request, so a plain <code>http://</code> address would expose it to anyone on the network (<code>localhost</code> excepted).</p>
 
       <label class="field gold" for="srv-token" id="srv-token-label">Bearer token</label>
       <input type="password" id="srv-token" placeholder="the token inside tabbysync.php" spellcheck="false" autocomplete="off">

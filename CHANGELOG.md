@@ -6,6 +6,37 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.3.8 — 2026-09-04
+
+**Self-hosted server URLs must now use HTTPS.** This is a deliberate
+restriction, and it removes a way to configure TabbySync that was never safe.
+
+- The access token is sent in an `Authorization: Bearer` header on *every*
+  request. That header sits outside the encrypted file body, so the
+  end-to-end encryption passphrase never covered it. Over a plain `http://`
+  endpoint the token crossed the network in the clear — and with it, anyone
+  on the path could delete or overwrite the synced file, or replay an older
+  (still validly encrypted) copy back at the browser. Encrypting the contents
+  never fixed any of that.
+- The Options page now refuses to save, or to test, a self-hosted server URL
+  that is not `https://`. The single exception is `http://localhost` /
+  `http://127.0.0.1`, which never leaves the machine and which browsers
+  already treat as a secure context. Matching a hostname like
+  `localhost.example.com` does not count.
+- `optional_host_permissions` in the manifest narrowed from
+  `http://*/*` + `https://*/*` to `https://*/*` plus those two loopback
+  hosts, so plain-http access to an arbitrary site is no longer even
+  grantable. The two lists are pinned to each other by a test, since a
+  validator that allowed a host the manifest cannot grant would only produce
+  a saved config that never syncs.
+- The privacy policy previously said TabbySync "will accept a plain
+  `http://` endpoint" and described the exposure as covering the file names
+  and the fact that you sync. That understated it: it never mentioned the
+  token. Both the behaviour and the wording are fixed here.
+
+Gist and JSONBin destinations are unaffected — those were always fixed
+`https://` API hosts.
+
 ## 1.3.7 — 2026-09-03
 
 **Tabs sync — the actual root cause of the permanent conflict.** Everything
