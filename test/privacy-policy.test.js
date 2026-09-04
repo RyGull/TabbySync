@@ -373,6 +373,23 @@ test('the policy states who is responsible and how to reach them', () => {
   assert.match(policy, /Contact/);
 });
 
+test('every version number in the repo agrees with the manifest', () => {
+  // package.json, the marketing site footer and the changelog all restate the
+  // extension's version. "Keep this in step with manifest.json" was a comment,
+  // and a comment had already let website/config.php ship a release behind.
+  const version = manifest.version;
+
+  assert.equal(JSON.parse(read('package.json')).version, version, 'package.json is out of step');
+
+  const site = read('website/config.php').match(/const CURRENT_VERSION\s*=\s*'([^']+)'/);
+  assert.ok(site, 'CURRENT_VERSION not found in website/config.php');
+  assert.equal(site[1], version, 'website/config.php is out of step');
+
+  const latest = read('CHANGELOG.md').match(/^## (\S+)/m);
+  assert.ok(latest, 'no version heading found in CHANGELOG.md');
+  assert.equal(latest[1], version, 'the changelog has no entry for this version');
+});
+
 // ---------------------------------------------------------------------------
 // The published copy must be the copy these tests check
 // ---------------------------------------------------------------------------
