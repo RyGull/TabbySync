@@ -57,8 +57,15 @@ website/
   instructions instead of a link that would otherwise go nowhere. Flip
   `CHROME_STORE_LIVE` to `true` and set `CHROME_STORE_URL` in `config.php`
   once that listing exists.
-- **The privacy policy isn't duplicated here.** The footer and the privacy
-  section both link to the policy published at
+- **The privacy policy isn't duplicated here.** `/privacy` (privacy.php)
+  *reads* `website/privacy.html` and renders it inside the site chrome,
+  rather than restating it in PHP. That file is generated from the canonical
+  `privacy.html` by `scripts/build-pages.sh`, and a test fails if the two
+  drift, so uploading a deploy that predates a policy change is caught in CI
+  rather than on the live site. Only the short "This website" section at the
+  top of `/privacy` is written here, because the contact form and the host's
+  access log are the site's business and the extension's policy should not
+  claim to cover them. The footer also links to the policy published at
   `https://rygull.github.io/TabbySync/privacy.html` (GitHub Pages, served
   from `docs/` in the extension repository). That page is generated from the
   canonical `privacy.html` by `scripts/build-pages.sh`, and a test fails if
@@ -67,6 +74,29 @@ website/
   push. Duplicating it here would just be a third copy that could drift.
   (It used to link at `/blob/main/privacy.html`, which shows the file as
   escaped HTML source rather than rendering it.)
+
+## The contact form
+
+`/contact` posts to itself and hands off to `includes/contact-handler.php`,
+which validates, rate-limits per session, and sends with PHP's `mail()`. There
+is no reCAPTCHA and no third-party request of any kind — the spam defence is a
+hidden honeypot field plus the rate limit. `contact-send.php` is a shim for
+pages cached from before the form posted to itself; it does the same thing.
+
+Two things it depends on that are easy to get wrong on a new host:
+
+- **`.htaccess` must be in place**, because `CONTACT_PATH` is `/contact`
+  (extensionless). Without the rewrite, change `CONTACT_PATH` and
+  `PRIVACY_PATH` in `config.php` to `/contact.php` and `/privacy.php`.
+- **`mail()` must actually deliver.** On cPanel it normally does, but set up
+  SPF and DKIM for the domain or messages will land in spam. `From:` is the
+  site's own address and the visitor goes in `Reply-To:`, which is what most
+  hosts require; putting the visitor's address in `From:` is what usually
+  gets contact forms silently dropped.
+
+If a submission ever comes back saying the data went missing, the `why=`
+detail on the URL distinguishes a redirect in front of the form (`method`)
+from a proxy stripping the body (`empty`).
 
 ## Updating it
 

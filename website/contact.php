@@ -44,6 +44,12 @@ if ($status === 'ok') {
     } elseif ($why === 'empty') {
         $notice['detail'] = 'Technical detail: the submission reached the server as a POST, but with none of the form fields in it.';
     }
+} elseif ($status === 'toofast') {
+    // The rate limiter, not a validation failure. Say which it is, or the
+    // visitor retries immediately and trips it again.
+    $notice = ['type' => 'error', 'text' => 'That was quick — please wait a moment before sending another message.'];
+} elseif ($status === 'toomany') {
+    $notice = ['type' => 'error', 'text' => "You've sent several messages already. Please email us directly instead."];
 } elseif ($status === 'error') {
     $notice = ['type' => 'error', 'text' => "Something went wrong on our end and your message wasn't sent. Please try again, or email us directly."];
 }

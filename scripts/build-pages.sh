@@ -21,6 +21,12 @@ mkdir -p docs/shared docs/icons
 
 cp privacy.html docs/privacy.html
 
+# The marketing site renders the same canonical policy inside its own chrome
+# (website/privacy.php reads this file rather than restating it), so the site
+# gets the identical text without becoming another copy to keep in step.
+mkdir -p website
+cp privacy.html website/privacy.html
+
 # Exactly what privacy.html pulls in: the theme toggle, the contact-address
 # renderer, and the two logos. Neither script touches a chrome.* API, so both
 # run unchanged outside the extension.
@@ -31,5 +37,5 @@ cp icons/logo-light.png icons/logo-dark.png docs/icons/
 # Jekyll, which would otherwise skip files it does not recognise.
 : > docs/.nojekyll
 
-echo "docs/ regenerated from the canonical sources:"
-find docs -type f | sort | sed 's/^/  /'
+echo "regenerated from the canonical sources:"
+find docs website/privacy.html -type f | sort | sed 's/^/  /'

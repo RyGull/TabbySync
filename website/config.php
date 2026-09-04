@@ -20,6 +20,12 @@ const LICENSE_URL    = GITHUB_URL . '/blob/main/LICENSE';
 // repository, so there is still exactly one policy to keep accurate.
 const PRIVACY_URL    = 'https://rygull.github.io/TabbySync/privacy.html';
 const CHANGELOG_URL  = GITHUB_URL . '/blob/main/CHANGELOG.md';
+
+// The site's own interior pages. Extensionless because .htaccess rewrites
+// /contact -> contact.php and 301s the other way; keeping the paths here means
+// a host without that rule needs one edit, not a hunt through the templates.
+const CONTACT_PATH   = '/contact';
+const PRIVACY_PATH   = '/privacy';
 const PAYPAL_URL     = 'https://www.paypal.com/ncp/payment/B25W7V9VRGQG4';
 
 // No Chrome Web Store listing exists yet. Flip this on and set the URL the
@@ -27,6 +33,23 @@ const PAYPAL_URL     = 'https://www.paypal.com/ncp/payment/B25W7V9VRGQG4';
 // button correctly points at the GitHub source instead of a dead link.
 const CHROME_STORE_LIVE = false;
 const CHROME_STORE_URL  = '';
+
+/**
+ * The "What's this about?" options on /contact. The first entry is an empty
+ * value on purpose: the <select> is marked required, and a required select
+ * only actually stops anything when its initially-selected option submits as
+ * empty. Anything not a key of this array is rejected by the handler, so a
+ * hand-crafted POST cannot smuggle its own label into the email subject.
+ */
+const CONTACT_REASONS = [
+    ''         => 'Choose one…',
+    'question' => 'A question about ' . SITE_NAME,
+    'bug'      => 'A bug report',
+    'feature'  => 'Feedback or a feature idea',
+    'selfhost' => 'Help with self-hosting',
+    'privacy'  => 'A privacy or data question',
+    'other'    => 'Something else',
+];
 
 /**
  * The contact address, assembled from parts and never written out as a

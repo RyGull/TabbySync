@@ -25,7 +25,8 @@ require_once __DIR__ . '/../config.php';
     <div class="footer-col">
       <h3>Privacy</h3>
       <ul>
-        <li><a href="<?= e(PRIVACY_URL) ?>" target="_blank" rel="noopener">Privacy policy</a></li>
+        <li><a href="<?= e(PRIVACY_PATH) ?>">Privacy policy</a></li>
+        <li><a href="<?= e(PRIVACY_URL) ?>" target="_blank" rel="noopener">The copy that ships in the extension</a></li>
         <li><span class="footer-note">No analytics. No telemetry. Verified in CI, not just claimed.</span></li>
       </ul>
     </div>
@@ -38,6 +39,7 @@ require_once __DIR__ . '/../config.php';
             <?php echo_obfuscated(contact_address()); ?>
           </a>
         </li>
+        <li><a href="<?= e(CONTACT_PATH) ?>">Contact form</a></li>
         <li><a href="<?= e(PAYPAL_URL) ?>" target="_blank" rel="noopener">Donate via PayPal</a></li>
       </ul>
     </div>

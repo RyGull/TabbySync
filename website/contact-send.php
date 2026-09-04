@@ -15,6 +15,10 @@ session_start();
 
 require_once __DIR__ . '/config.php';
 
-$contact_form_url = '/contact.php';
+// CONTACT_PATH, not '/contact.php': .htaccess 301s the .php form of every
+// URL to its extensionless one, and redirecting the visitor into a redirect is
+// how the status query string gets lost on some hosts -- which would show them
+// no confirmation at all after a message that did send.
+$contact_form_url = CONTACT_PATH;
 
 require __DIR__ . '/includes/contact-handler.php';

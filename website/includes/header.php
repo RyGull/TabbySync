@@ -43,6 +43,7 @@ $page_description = $page_description ?? TAGLINE . ' No servers of ours involved
       <a href="/#how-it-works">How it works</a>
       <a href="/#privacy">Privacy</a>
       <a href="/#install">Install</a>
+      <a href="<?= e(CONTACT_PATH) ?>">Contact</a>
       <a href="<?= e(GITHUB_URL) ?>" target="_blank" rel="noopener">Source</a>
     </nav>
 

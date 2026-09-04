@@ -296,3 +296,108 @@ section { padding: 88px 0; }
   section { padding: 60px 0; }
   .hero { padding: 56px 0 64px; }
 }
+
+/* ===========================================================================
+   Interior pages — /privacy and /contact
+   ---------------------------------------------------------------------------
+   The landing page is one long scroll of full-width sections; these two are
+   ordinary documents. Same tokens, narrower measure, no third-party anything.
+   =========================================================================== */
+
+.page-hero {
+  padding: 64px 0 40px;
+  background: linear-gradient(180deg, var(--panel) 0%, var(--bg) 100%);
+  border-bottom: 1px solid var(--line);
+}
+.page-hero h1 { font-size: clamp(28px, 4vw, 40px); line-height: 1.15; margin: 0 0 14px; letter-spacing: -.02em; }
+.page-lede { font-size: 17px; color: var(--muted); max-width: 60ch; margin: 0; }
+
+/* Long-form text wants a measure a reader can actually track along. */
+.content-narrow { max-width: 78ch; }
+
+.policy-section,
+.contact-section { padding: 44px 0 72px; }
+
+/* ---- the policy body ---------------------------------------------------- */
+/* Descendant selectors on purpose: most of this markup is injected verbatim
+   from the extension's own privacy.html, which carries no site classes. */
+.policy { font-size: 15.5px; line-height: 1.7; }
+.policy h2 {
+  font-size: 20px; margin: 38px 0 12px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--line); letter-spacing: -.01em;
+}
+.policy h2:first-child { margin-top: 0; }
+.policy p, .policy li { color: var(--text); }
+.policy ul { padding-left: 22px; margin: 12px 0; }
+.policy li { margin: 6px 0; }
+.policy a { text-decoration: underline; }
+
+.policy table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 14.5px; }
+.policy th, .policy td {
+  border: 1px solid var(--line); padding: 10px 12px; text-align: left; vertical-align: top;
+}
+.policy th { background: var(--panel); font-weight: 600; }
+
+/* Wide tables scroll inside their own box rather than pushing the page sideways. */
+.policy-table-wrap { overflow-x: auto; }
+
+.callout {
+  background: var(--panel); border: 1px solid var(--line);
+  border-left: 4px solid var(--accent); border-radius: 10px;
+  padding: 14px 18px; margin: 20px 0;
+}
+.callout-warn, .callout.warn { border-left-color: var(--err); }
+
+.github-note {
+  display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center;
+  justify-content: space-between; background: var(--panel-2);
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px 16px; margin-bottom: 28px; font-size: 14px; color: var(--muted);
+}
+
+/* ---- the contact form --------------------------------------------------- */
+.form-grid { display: flex; flex-direction: column; gap: 18px; margin: 0 0 26px; }
+.form-row { display: flex; flex-direction: column; gap: 6px; }
+.form-row label { font-size: 14px; font-weight: 600; }
+
+.form-row.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 640px) { .form-row.two-col { grid-template-columns: 1fr; } }
+
+.form-grid input[type="text"],
+.form-grid input[type="email"],
+.form-grid select,
+.form-grid textarea {
+  width: 100%; font: inherit; color: var(--text);
+  background: var(--bg); border: 1px solid var(--line);
+  border-radius: 10px; padding: 11px 13px;
+}
+.form-grid textarea { min-height: 190px; resize: vertical; }
+.form-grid :is(input, select, textarea):focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent);
+}
+.form-grid :is(input, select, textarea)[aria-invalid="true"] { border-color: var(--err); }
+
+.field-error { color: var(--err); font-size: 13.5px; margin: 0; }
+
+.notice {
+  border: 1px solid var(--line); border-left: 4px solid var(--accent);
+  background: var(--panel); border-radius: 10px;
+  padding: 14px 18px; margin: 0 0 26px;
+}
+.notice.success { border-left-color: #16a34a; }
+.notice.error { border-left-color: var(--err); }
+.notice-detail { display: block; margin-top: 8px; font-size: 13.5px; color: var(--muted); }
+
+.contact-alt { color: var(--muted); font-size: 14.5px; }
+
+/* The spam trap. Real visitors never see it, so they never fill it in; a bot
+   reading the markup does. It must stay hidden from assistive technology as
+   well, or a screen-reader user fills it in and gets silently discarded --
+   which is why this rule is load-bearing, not decoration. */
+.honeypot {
+  position: absolute !important;
+  left: -9999px !important;
+  width: 1px !important; height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

@@ -423,6 +423,54 @@ test('every asset the published policy references exists in docs/', () => {
   }
 });
 
+test('the marketing site serves the same policy, not a retyped one', () => {
+  // website/privacy.php reads website/privacy.html rather than restating the
+  // policy in PHP -- an earlier hand-written copy there had already drifted,
+  // still promising that a plain http:// server URL would be accepted after
+  // 1.3.8 made that false. Same rule as docs/: byte-identical, or the site is
+  // publishing something no test has checked against the code.
+  assert.equal(
+    read('website/privacy.html'), policy,
+    'website/privacy.html is out of step with privacy.html -- run scripts/build-pages.sh',
+  );
+
+  const php = read('website/privacy.php');
+  assert.match(php, /file_get_contents/, 'privacy.php should read the policy, not contain one');
+  assert.doesNotMatch(
+    php, /Self-hosted<\/em> — a server you set up/,
+    'privacy.php has gone back to holding its own copy of the policy text',
+  );
+});
+
+test('the contact form can only offer reasons the handler accepts', () => {
+  // contact.php renders CONTACT_REASONS straight into the <select>, and the
+  // handler rejects anything that is not a key of it. If the two ever read
+  // different lists, every submission from the dropdown starts failing
+  // validation for a reason the visitor cannot see or fix.
+  const config = read('website/config.php');
+  assert.match(config, /const CONTACT_REASONS = \[/, 'CONTACT_REASONS is not defined');
+  assert.match(config, /^\s*''\s*=>/m, 'the reason list needs an empty first entry for "required" to bite');
+
+  const handler = read('website/includes/contact-handler.php');
+  assert.match(handler, /array_key_exists\(\$reason, CONTACT_REASONS\)/,
+    'the handler must validate the reason against the same list');
+});
+
+test('every PHP file the site includes actually exists', () => {
+  // A missing require is a fatal error and a blank page, which is exactly how
+  // contact.php and contact-send.php shipped: both required an
+  // includes/contact-handler.php that had never existed in this repository.
+  for (const file of readdirSync(join(root, 'website')).filter((f) => f.endsWith('.php'))) {
+    const src = read(`website/${file}`);
+    for (const m of src.matchAll(/(?:require|include)(?:_once)?\s+__DIR__\s*\.\s*'([^']+)'/g)) {
+      assert.ok(
+        statSync(join(root, 'website', m[1]), { throwIfNoEntry: false }),
+        `website/${file} requires "${m[1]}", which does not exist`,
+      );
+    }
+  }
+});
+
 test('the Pages site has a landing page and opts out of Jekyll', () => {
   // The store also requires a reachable homepage URL, and Jekyll would
   // otherwise reprocess the directory rather than serving it as-is.
