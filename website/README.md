@@ -58,10 +58,15 @@ website/
   `CHROME_STORE_LIVE` to `true` and set `CHROME_STORE_URL` in `config.php`
   once that listing exists.
 - **The privacy policy isn't duplicated here.** The footer and the privacy
-  section both link straight to `privacy.html` in the extension repository
-  on GitHub, so there is exactly one copy to keep accurate — the one that
-  `test/privacy-policy.test.js` already checks against the code on every
-  push. Duplicating it here would just be a second copy that could drift.
+  section both link to the policy published at
+  `https://rygull.github.io/TabbySync/privacy.html` (GitHub Pages, served
+  from `docs/` in the extension repository). That page is generated from the
+  canonical `privacy.html` by `scripts/build-pages.sh`, and a test fails if
+  the two drift apart — so there is still exactly one copy to keep accurate,
+  the one that `test/privacy-policy.test.js` checks against the code on every
+  push. Duplicating it here would just be a third copy that could drift.
+  (It used to link at `/blob/main/privacy.html`, which shows the file as
+  escaped HTML source rather than rendering it.)
 
 ## Updating it
 

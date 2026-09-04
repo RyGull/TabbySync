@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<!-- TabbySync — Copyright (c) 2026 Ryan Gulliver. All rights reserved.
+     Personal, non-commercial use only. No redistribution. See LICENSE.
+
+     Hand-written, unlike the rest of docs/ — scripts/build-pages.sh mirrors
+     privacy.html and its assets here but leaves this file alone. It exists so
+     the Pages site has a landing page (the Chrome Web Store needs a reachable
+     homepage URL) without waiting on the PHP marketing site in website/. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TabbySync</title>
+<meta name="description" content="Self-hosted sync for your bookmarks and your open tabs — two tools in one browser extension.">
+<style>
+  :root {
+    --bg:#ffffff; --panel:#f7f8fa; --line:#e3e6ea; --text:#1c2330; --muted:#5b6472;
+    --accent:#2563eb; --err:#dc2626;
+  }
+  /* Same palette and theme rules as privacy.html, so the two pages match
+     however the visitor's system (or the toggle) has things set. */
+  :root[data-theme="dark"],
+  :root:not([data-theme="light"]) {
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:#171a20; --panel:#1e222a; --line:#333a45; --text:#e8eaed; --muted:#9aa2af; --accent:#5b8def;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#171a20; --panel:#1e222a; --line:#333a45; --text:#e8eaed; --muted:#9aa2af; --accent:#5b8def;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+    font:15px/1.65 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  .wrap { max-width:760px; margin:0 auto; padding:40px 22px 80px; }
+  .top { display:flex; align-items:center; gap:11px; margin-bottom:18px; }
+  .logo { height:40px; width:auto; display:none; }
+  .logo-light { display:block; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .logo-light { display:none; }
+    :root:not([data-theme="light"]) .logo-dark  { display:block; }
+  }
+  :root[data-theme="dark"]  .logo-light { display:none; }
+  :root[data-theme="dark"]  .logo-dark  { display:block; }
+  :root[data-theme="light"] .logo-light { display:block; }
+  :root[data-theme="light"] .logo-dark  { display:none; }
+  #sl-theme { margin-left:auto; }
+  h1 { font-size:26px; margin:0 0 4px; }
+  .tagline { color:var(--muted); font-size:15px; margin:0 0 28px; }
+  h2 { font-size:18px; margin:34px 0 10px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  p, li { color:var(--text); }
+  ul { padding-left:22px; }
+  li { margin:6px 0; }
+  code { background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:1px 5px; font-size:.92em; }
+  a { color:var(--accent); }
+  .callout { background:var(--panel); border:1px solid var(--line); border-left:4px solid var(--accent);
+    border-radius:6px; padding:12px 16px; margin:16px 0; }
+  footer { margin-top:40px; color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <img class="logo logo-light" src="icons/logo-light.png" alt="TabbySync">
+      <img class="logo logo-dark" src="icons/logo-dark.png" alt="TabbySync">
+    </div>
+
+    <h1>TabbySync</h1>
+    <p class="tagline">Self-hosted sync for your bookmarks and your open tabs — two tools
+    in one browser extension, sharing one server, one token and one sync name.</p>
+
+    <div class="callout">
+      <strong>No server of ours, ever.</strong> Your bookmarks and tabs go directly from
+      your browser to a destination <em>you</em> choose and control: a server you
+      self-host, a private GitHub Gist, or a JSONBin.io bin. Nothing passes through any
+      server operated by TabbySync's developer, and there is no account, no analytics and
+      no telemetry of any kind.
+    </div>
+
+    <h2>What it does</h2>
+    <ul>
+      <li><strong>Bookmarks</strong> — keeps your bookmark tree in sync across your
+      computers, merging changes rather than overwriting them.</li>
+      <li><strong>Tabs</strong> — save the tabs in a window as a named list and reopen it
+      anywhere, optionally restored as a native browser tab group.</li>
+      <li><strong>Optional end-to-end encryption</strong> — AES-256-GCM with a key derived
+      from a passphrase that never leaves your device, so the destination stores
+      ciphertext it cannot read.</li>
+      <li>Use either half on its own, or both. They share one destination and one token.</li>
+    </ul>
+
+    <h2>Links</h2>
+    <ul>
+      <li><a href="privacy.html">Privacy policy</a></li>
+      <li><a href="https://github.com/RyGull/TabbySync" target="_blank" rel="noopener">Source code on GitHub</a></li>
+      <li><a href="https://github.com/RyGull/TabbySync/issues" target="_blank" rel="noopener">Report a problem or ask a question</a></li>
+      <li><a href="https://github.com/RyGull/TabbySync/blob/main/README.md" target="_blank" rel="noopener">Installation and self-hosting guide</a></li>
+      <li><a href="https://github.com/RyGull/TabbySync/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Release notes</a></li>
+      <li><a href="https://github.com/RyGull/TabbySync/blob/main/LICENSE" target="_blank" rel="noopener">License</a></li>
+    </ul>
+
+    <h2>Contact</h2>
+    <p>Questions go to
+    <span data-contact data-contact-subject="TabbySync">contact [at] tabbysync [dot] com</span>.</p>
+
+    <footer>TabbySync — self-hosted-first bookmark &amp; tab sync.
+    Copyright &copy; 2026 Ryan Gulliver.</footer>
+  </div>
+
+  <script src="shared/theme.js"></script>
+  <script src="shared/contact.js"></script>
+</body>
+</html>

@@ -27,10 +27,17 @@ function sourceFiles(exts) {
   // 'website' is the marketing site (website/README.md), a separate PHP
   // deployable with its own threat model -- external links (GitHub, PayPal,
   // the license) are normal there and none of it ships inside the extension
-  // bundle. None of its files currently match the .js/.html extensions this
+  // bundle.
+  //
+  // 'docs' is the GitHub Pages source: a mirror of privacy.html and the assets
+  // it pulls in, published so the store has a policy URL that renders as a
+  // page. Nothing original lives there and none of it ships in the extension
+  // bundle either -- scanning it would just double-count the same file. The
+  // mirror is held to the canonical copy by its own test at the end of this
+  // file instead. None of its files currently match the .js/.html extensions this
   // scanner walks anyway (it's .php/.css), but excluded explicitly so that
   // stays true by design rather than by accident if that ever changes.
-  const skip = new Set(['.git', 'node_modules', 'test', '.github', 'icons', 'scripts', '.githooks', 'website']);
+  const skip = new Set(['.git', 'node_modules', 'test', '.github', 'icons', 'scripts', '.githooks', 'website', 'docs']);
   const out = [];
   (function walk(dir, rel) {
     for (const name of readdirSync(dir)) {
@@ -364,4 +371,44 @@ test('the policy names each sync provider the code can actually reach', () => {
 test('the policy states who is responsible and how to reach them', () => {
   assert.match(policy, /Ryan Gulliver/, 'no identifiable controller named');
   assert.match(policy, /Contact/);
+});
+
+// ---------------------------------------------------------------------------
+// The published copy must be the copy these tests check
+// ---------------------------------------------------------------------------
+
+test('docs/ publishes the same privacy policy this file verifies', () => {
+  // GitHub's blob view renders privacy.html as escaped source, so the policy
+  // is served through Pages from docs/ instead. That makes a second copy on
+  // disk, and a second copy is a second thing that can drift: every test above
+  // checks the root privacy.html, so a stale docs/privacy.html would publish
+  // claims about the code that nothing has verified. Byte-identical or bust --
+  // run scripts/build-pages.sh after editing the policy.
+  assert.equal(
+    read('docs/privacy.html'), policy,
+    'docs/privacy.html is out of step with privacy.html -- run scripts/build-pages.sh',
+  );
+});
+
+test('every asset the published policy references exists in docs/', () => {
+  // The mirror is only useful if it renders. privacy.html pulls in two scripts
+  // and two logos by relative path; deriving the list from the file means
+  // adding a new one to the policy fails here until build-pages.sh copies it,
+  // rather than silently 404ing on the live site.
+  const refs = [...policy.matchAll(/(?:src|href)\s*=\s*"([^"]+)"/g)].map((m) => m[1]);
+  const local = refs.filter((r) => !/^(?:https?:)?\/\//.test(r) && !r.startsWith('#'));
+  assert.ok(local.length > 0, 'no local asset references found -- has the policy changed shape?');
+  for (const ref of local) {
+    assert.ok(
+      statSync(join(root, 'docs', ref), { throwIfNoEntry: false }),
+      `privacy.html references "${ref}" but docs/${ref} does not exist -- run scripts/build-pages.sh`,
+    );
+  }
+});
+
+test('the Pages site has a landing page and opts out of Jekyll', () => {
+  // The store also requires a reachable homepage URL, and Jekyll would
+  // otherwise reprocess the directory rather than serving it as-is.
+  assert.ok(statSync(join(root, 'docs/index.html'), { throwIfNoEntry: false }));
+  assert.ok(statSync(join(root, 'docs/.nojekyll'), { throwIfNoEntry: false }));
 });
