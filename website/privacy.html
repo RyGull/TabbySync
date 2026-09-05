@@ -88,7 +88,7 @@
     <table>
       <tr><th>Permission</th><th>What it's used for</th></tr>
       <tr><td><code>bookmarks</code></td><td>Read and write your browser's bookmark tree, so it can be synced and merged across devices.</td></tr>
-      <tr><td><code>tabs</code> / <code>tabGroups</code></td><td>Read open tabs when you choose to "stash" them, and re-open them (optionally as a browser tab group) when you restore a saved list.</td></tr>
+      <tr><td><code>tabs</code> / <code>tabGroups</code></td><td>Read open tabs when you choose to save them, and reopen them (optionally as a browser tab group) when you reopen a saved list.</td></tr>
       <tr><td><code>storage</code> / <code>unlimitedStorage</code></td><td>Save your bookmarks/tab-list data, settings, and sync state locally in the browser (<code>chrome.storage.local</code>).</td></tr>
       <tr><td><code>contextMenus</code></td><td>Add right-click menu shortcuts (e.g. "Send tabs to TabbySync").</td></tr>
       <tr><td><code>alarms</code></td><td>Run the periodic background sync on the schedule you set.</td></tr>
@@ -109,7 +109,7 @@
           text for that permission — it describes what the permission would technically
           <em>allow</em>, not what TabbySync does with it. TabbySync never listens
           for page navigation; it only reads your currently open tabs at the moment
-          you act — opening the popup, stashing a window, or restoring a saved
+          you act — opening the popup, saving a window's tabs, or reopening a saved
           list.</li>
         <li><strong>"Allow access to file URLs"</strong> and <strong>"Collect
           errors"</strong> are generic per-extension toggles the browser renders for
@@ -123,8 +123,8 @@
           the following sites" toggle only ever list sites <em>you</em> put there.
           TabbySync's manifest requests zero host access up front — no
           <code>host_permissions</code>, no content scripts on any page. The only
-          way a site ends up in that list is Options → picking a sync method and
-          hitting "Save &amp; grant access" (or connecting Gist/JSONBin), which
+          way a site ends up in that list is Settings → choosing where your data
+          should live and hitting "Save and connect", which
           asks the browser's own native permission prompt, naming that exact site,
           before anything is granted — and it only ever requests the one host
           you just configured (your server's domain, <code>api.github.com</code>,
@@ -138,9 +138,9 @@
       <li><strong>On your device:</strong> your bookmarks/tab-list data and settings are
         stored locally via the browser's extension storage (<code>chrome.storage.local</code>,
         never the browser's own cloud sync). This never leaves your device unless sync is
-        turned on. Options → <strong>Import &amp; export</strong> can also write a copy to
-        your downloads folder; unless you choose the encrypted-backup option and set a
-        passphrase, that file is plain readable JSON on your disk.</li>
+        turned on. Settings → Bookmarks or Tabs → <strong>More options</strong> →
+        <strong>Backups</strong> can also write a copy to your downloads folder; unless you
+        choose the password-protected backup, that file is plain readable JSON on your disk.</li>
       <li><strong>Your sync destination:</strong> if you enable sync, your data is sent
         directly from your browser to the destination you configured:
         <ul>
@@ -171,8 +171,8 @@
     </div>
 
     <h2>Deleting your data</h2>
-    <p>Options → <strong>Delete data</strong>, at the bottom of the page, removes synced
-    data from the destination you configured. Each button asks you to type
+    <p>Settings → <strong>Advanced and delete options</strong>, at the bottom of the page,
+    removes synced data from the destination you configured. Each button asks you to type
     <code>DELETE</code> to unlock it and then confirm again before anything happens.</p>
     <ul>
       <li>A <strong>per-provider</strong> button sends a delete request to that provider
@@ -193,7 +193,8 @@
     and TabbySync will tell you to re-upload the script.</p>
 
     <h2>Encryption</h2>
-    <p>You can set an optional passphrase (Options → Encryption). When set, your data
+    <p>You can set an optional password (Settings → <strong>Lock it with a password</strong>).
+    When set, your data
     is encrypted on your device with AES-256-GCM <em>before</em> it is ever sent to your
     sync destination — so a self-hosted host, GitHub, or JSONBin.io only ever sees
     ciphertext. The passphrase itself is never transmitted anywhere and is stored only

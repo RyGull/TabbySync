@@ -33,6 +33,13 @@ ceiling, and created every tab in one burst.
   that cannot be undone by closing a tab.
 - `npm run e2e:bulk` drives all of it in a real browser; `test/bulk-open.test.js`
   keeps the guard wired into every path that opens tabs in bulk.
+- **The documentation caught up with the rename.** The README, the marketing
+  site and the privacy policy still walked people through "Save & grant
+  access", "Bearer token", "Stash all tabs", "Options → Delete data" and
+  "Options → Encryption" — none of which have been the names of those things
+  since 1.3.9. Instructions that name a button nobody can find are worse than
+  none, so they now match what is actually on screen. No claim in the policy
+  changed; the paths it points at did.
 
 ## 1.3.11 — 2026-09-05
 

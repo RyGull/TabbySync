@@ -62,9 +62,10 @@ require __DIR__ . '/includes/header.php';
         <div class="feature-icon">
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="7" height="14" rx="1.5"/><rect x="14" y="5" width="7" height="14" rx="1.5"/></svg>
         </div>
-        <h3>Tabs — stash and restore</h3>
-        <p>Collapses open tabs into a saved list to free memory, then restores them
-          individually or all at once — as regular tabs or as a browser tab group.</p>
+        <h3>Tabs — close them, keep them</h3>
+        <p>Closes the tabs you're done with and saves them as a list, freeing the memory they
+          were holding. Reopen one link, one list, or everything — as ordinary tabs or as a
+          browser tab group.</p>
       </article>
 
       <article class="feature-card">
@@ -95,7 +96,7 @@ require __DIR__ . '/includes/header.php';
         <h3>No server? Two free alternatives</h3>
         <p>Not realistic to self-host? A private GitHub Gist or a JSONBin.io bin work
           too — both meaningfully less private than self-hosting, which is why the
-          encryption passphrase is recommended for either.</p>
+          password lock is recommended for either.</p>
       </article>
 
       <article class="feature-card">
@@ -122,8 +123,8 @@ require __DIR__ . '/includes/header.php';
       <div class="shot-copy">
         <h3>The popup — both engines at a glance</h3>
         <p>Bookmarks and Tabs each get their own switch, status dot, saved counts and last-sync
-          time. One click stashes every tab in the window; another opens the list.</p>
-        <p class="shot-note">Shown: a self-hosted profile with the encryption passphrase on.</p>
+          time. One click saves every tab in the window; another opens your lists.</p>
+        <p class="shot-note">Shown: syncing to your own website, with the password lock on.</p>
       </div>
       <figure class="shot-figure shot-figure-narrow">
         <img class="shot-light" src="/assets/img/screenshots/popup-light.png" width="480" height="897"
@@ -135,10 +136,12 @@ require __DIR__ . '/includes/header.php';
 
     <div class="shot-block">
       <div class="shot-copy">
-        <h3>The tab list — stashed tabs you can actually manage</h3>
+        <h3>The saved-tabs page — lists you can actually manage</h3>
         <p>Name a list, pin it to the top, lock it against accidental deletion, search across every
-          title and URL, drag links between lists, then restore one link, one list, or everything —
-          as plain tabs or a browser tab group. Deleted lists go to Trash for 30 days, and sync there too.</p>
+          title and URL, drag links between lists, then reopen one link, one list, or everything — as
+          ordinary tabs or a browser tab group. Reopening a lot of tabs asks first and opens them in
+          batches you can stop. Anything you delete waits 30 days in “Recently deleted”, and syncs
+          there too.</p>
       </div>
       <figure class="shot-figure">
         <img class="shot-light" src="/assets/img/screenshots/tablist-light.png" width="1280" height="800"
@@ -166,9 +169,9 @@ require __DIR__ . '/includes/header.php';
     <div class="shot-block">
       <div class="shot-copy">
         <h3>…and a switch for everything each engine does</h3>
-        <p>Separate auto-sync intervals, duplicate handling when you stash tabs, restore behaviour,
-          and plain or encrypted import/export — bookmarks and tabs are configured independently,
-          and either one can be turned off entirely.</p>
+        <p>Separate sync intervals, duplicate handling, reopening behaviour and backups — bookmarks
+          and tabs are configured independently, each behind “More options”, and either one can be
+          turned off entirely.</p>
       </div>
       <figure class="shot-figure">
         <img class="shot-light" src="/assets/img/screenshots/options-engines-light.png" width="1280" height="800"
@@ -234,7 +237,7 @@ require __DIR__ . '/includes/header.php';
         <li>Never listens for tab navigation — only reads tabs at the moment you act</li>
         <li>Host access requested one origin at a time, never a wildcard</li>
         <li>Contacts <strong>no server operated by the developer</strong>, ever</li>
-        <li>Your bearer token and encryption passphrase can never enter an uploaded payload</li>
+        <li>Your access code and password lock can never enter an uploaded payload</li>
       </ul>
       <a class="btn btn-ghost" href="<?= e(PRIVACY_URL) ?>" target="_blank" rel="noopener">Read the full privacy policy</a>
     </div>
@@ -257,7 +260,7 @@ require __DIR__ . '/includes/header.php';
     </p>
     <ol class="install-steps">
       <li>Add it from the <a href="<?= e(CHROME_STORE_URL) ?>" target="_blank" rel="noopener">Chrome Web Store</a>.</li>
-      <li>Click the <?= e(SITE_NAME) ?> icon, choose Bookmarks, Tabs, or both, and open Options.</li>
+      <li>Click the <?= e(SITE_NAME) ?> icon, choose Bookmarks, Tabs, or both, and open Settings.</li>
       <li>Point it at a destination — your own server, a private GitHub Gist, or JSONBin.io.</li>
     </ol>
     <div class="hero-actions">

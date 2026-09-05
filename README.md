@@ -67,8 +67,9 @@ version lands.
 
 You host a tiny endpoint yourself — a single PHP file with a token you choose.
 
-1. TabbySync → **Options** → **Server & sync** → **Self-hosting**.
-2. Click **Download server files (.zip)** — you get `tabbysync-server.zip`
+1. TabbySync → **Settings** → step 1, choose **My own website** → step 2,
+   **Don't have that file yet?**
+2. Click **Make my file →** — you get `tabbysync-server.zip`
    containing a `tabbysync/` folder (one `tabbysync.php` + two `.htaccess`
    guards) with a fresh random token already baked in.
 3. Upload that whole folder to any PHP web host over HTTPS, e.g.
@@ -76,20 +77,20 @@ You host a tiny endpoint yourself — a single PHP file with a token you choose.
    TabbySync will not save a plain `http://` server URL, because the bearer
    token is sent with every request and would otherwise cross the network in
    the clear. (`http://localhost` is the one exception, for local testing.)
-4. Back in **Server & sync**, set:
-   - **Server URL** — `https://YOURDOMAIN/tabbysync/tabbysync.php`
-   - **Bearer token** — click **Use this token above** so it matches the script
-   - **Sync name** — e.g. `work` (same name on every computer you want to share)
-5. **Save & grant access**, then **Test connection** (a `404` is expected until
-   the first sync). Repeat the same URL + token + sync name on your other
-   computers.
+4. Back in step 1, set:
+   - **Web address of the file you uploaded** — `https://YOURDOMAIN/tabbysync/tabbysync.php`
+   - **Access code** — click **Fill in my access code above** so it matches the script
+   - **Name for this group of computers** — e.g. `work` (the same word on every
+     computer you want to share with)
+5. **Save and connect**, then **Check it works**. Repeat the same address, code
+   and group name on your other computers.
 
 Prefer your own endpoint? Any server that answers `GET`/`PUT` on
 `?name=<file>.json` with `Authorization: Bearer <token>` works; the generated
 `tabbysync.php` shows the exact contract (it also honours `ETag` / `If-Match`
-for safe concurrent writes). It also answers `DELETE`, which Options →
-**Delete data** uses — that part is optional, only needed if you want to use
-that button against your own endpoint.
+for safe concurrent writes). It also answers `DELETE`, which Settings →
+**Advanced and delete options** uses — that part is optional, only needed if you
+want to use those buttons against your own endpoint.
 
 ## No server? Free alternatives
 
@@ -114,17 +115,17 @@ their access and retention policies, not yours. The Options page shows a
 disclaimer for each. **If you use either one, turn on the encryption
 passphrase above** so that third party only ever sees unreadable ciphertext.
 
-## Encryption (optional, shared)
+## The password lock (optional, shared)
 
-Options → **Server & sync** → **Encryption**. One passphrase encrypts **both**
+Settings → step 3, **Lock it with a password**. One password encrypts **both**
 tools with AES-256-GCM in your browser before anything is uploaded, so the
-stored files are unreadable even to your host. The passphrase never leaves your
-device — enter the same one on every computer. **If you forget it, the data
+stored files are unreadable even to whoever holds them. It never leaves your
+device — type the same one on every computer. **If you forget it, the data
 can't be recovered.**
 
 ## Deleting your synced data
 
-Options → **Delete data**, at the very bottom of the page. Type `DELETE` to
+Settings → **Advanced and delete options**, at the bottom of the page. Type `DELETE` to
 unlock the buttons (a plain click does nothing on its own), then confirm —
 each one still asks you to confirm again before it does anything. Per-provider
 buttons remove that provider's remote file(s)/gist/bins and clear its saved
@@ -136,10 +137,14 @@ and TabbySync's own local settings.
 
 ## Everyday use
 
-- **Toolbar popup** — status of both tools, per-tool on/off toggles, **Sync
-  now**, **Stash all tabs**, **Open list**.
-- **Stash tabs** — the popup button, `Alt`+`Shift`+`O`, or right-click the icon
-  (this tab / others / left / right).
+- **Toolbar popup** — where both tools are syncing, per-tool on/off switches,
+  **Sync now**, **Save my tabs**, **My lists**.
+- **Saving tabs** — the popup's **Save my tabs**, `Alt`+`Shift`+`O`, or
+  right-click the toolbar icon (this tab / others / left / right).
+- **The saved-tabs page** — name, pin, lock, search and reorder your lists;
+  **Reopen** one or **Reopen everything**. Above 15 tabs it asks first and opens
+  them in batches you can stop. Deleted lists wait 30 days in **Recently
+  deleted**.
 - **Bookmarks** — just use your browser's bookmarks; changes sync automatically
   (debounced), on a timer, and on window focus.
 
@@ -305,7 +310,7 @@ describe what TabbySync interoperates with.
 TabbySync synchronises, encrypts and deletes your own data. It is provided as
 is, with no warranty of any kind, and the author accepts no liability for lost
 or damaged bookmarks or tabs. **Keep your own backups, and keep your own
-encryption passphrase — a forgotten passphrase cannot be recovered.** See
+password lock — a forgotten password cannot be recovered.** See
 [LICENSE](LICENSE) sections 7 and 8.
 
 ## Tests
