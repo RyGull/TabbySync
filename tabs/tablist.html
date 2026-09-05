@@ -20,19 +20,33 @@
       <span id="sl-theme"></span>
     </header>
 
+    <!-- Same status band as the settings page and the popup: what is
+         happening, where it is going, and how much is here. -->
+    <div class="band" id="status-block" title="Sync status"></div>
+
+    <!-- Search first, because it is what this page is used for most; the one
+         action people come here to take next to it; everything rarer behind a
+         menu, so the page opens with three controls instead of nine. -->
     <div class="toolbar">
-      <button class="tbtn" id="restore-all">Restore all</button>
-      <button class="tbtn" id="delete-all">Delete all</button>
-      <button class="tbtn" id="export">Export</button>
-      <button class="tbtn" id="import">Import</button>
-      <button class="tbtn" id="trash-link">Trash</button>
-      <button class="tbtn" id="options-link">Options</button>
-      <button class="tbtn" id="sync-now">Sync now</button>
-      <label class="tchk" title="When on, restoring a link (or all) removes it from the list. Off keeps it.">
-        <input type="checkbox" id="remove-on-restore"> Remove after restore
-      </label>
-      <input type="search" id="search" class="tsearch" placeholder="Search tabs by title or URL…" autocomplete="off" spellcheck="false">
-      <div class="status-block" id="status-block" title="Sync status"></div>
+      <input type="search" id="search" class="tsearch" placeholder="Search your saved tabs…" autocomplete="off" spellcheck="false">
+      <button class="tbtn primary" id="restore-all">Reopen everything</button>
+      <details class="menu" id="more-menu">
+        <summary class="tbtn">More</summary>
+        <div class="menu-body">
+          <button class="menu-item" id="sync-now" type="button">Sync now</button>
+          <button class="menu-item" id="trash-link" type="button">Recently deleted…</button>
+          <hr>
+          <label class="menu-check" title="When on, reopening a link (or everything) also removes it from the list. Off keeps it.">
+            <input type="checkbox" id="remove-on-restore"> Remove links after I reopen them
+          </label>
+          <hr>
+          <button class="menu-item" id="export" type="button">Save a backup…</button>
+          <button class="menu-item" id="import" type="button">Restore from a backup…</button>
+          <button class="menu-item" id="options-link" type="button">Settings</button>
+          <hr>
+          <button class="menu-item danger" id="delete-all" type="button">Delete all my lists…</button>
+        </div>
+      </details>
     </div>
 
     <div id="list"></div>
@@ -40,10 +54,10 @@
 
   <div class="overlay" id="overlay">
     <div class="modal">
-      <h3 id="modal-title">Export</h3>
+      <h3 id="modal-title">Save a backup</h3>
       <p id="modal-help" class="stats"></p>
       <label id="modal-encrypt-row" style="display:none;align-items:center;gap:8px;margin:0 0 8px;font-size:13px;cursor:pointer">
-        <input type="checkbox" id="modal-encrypt"> Encrypt with my passphrase
+        <input type="checkbox" id="modal-encrypt"> Lock it with my password
       </label>
       <textarea id="modal-text" spellcheck="false"></textarea>
       <div class="row">
@@ -55,11 +69,11 @@
 
   <div class="overlay" id="trash-overlay">
     <div class="modal">
-      <h3>Trash — recently deleted</h3>
+      <h3>Recently deleted</h3>
       <p class="stats" id="trash-help"></p>
       <div id="trash-list"></div>
       <div class="row">
-        <button class="btn ghost" id="trash-empty">Empty trash</button>
+        <button class="btn ghost" id="trash-empty">Delete these permanently</button>
         <button class="btn ghost tabs-modal-btns" id="trash-close">Close</button>
       </div>
     </div>

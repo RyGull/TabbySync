@@ -59,9 +59,16 @@
   }
   function countsLabel() {
     var t = totals();
-    return t.tabs === 0 ? "no stashed tabs" :
+    return t.tabs === 0 ? "no lists yet" :
       t.tabs + " tab" + (t.tabs === 1 ? "" : "s") + " in " +
-      t.groups + " group" + (t.groups === 1 ? "" : "s");
+      t.groups + " list" + (t.groups === 1 ? "" : "s");
+  }
+
+  // Where the data goes, named the way the settings page asks the question.
+  var DEST_NAME = { custom: "your website", gist: "your GitHub", jsonbin: "free storage" };
+  function destName() {
+    try { return DEST_NAME[settings && settings.provider] || DEST_NAME.custom; }
+    catch (e) { return DEST_NAME.custom; }
   }
   function setCountsDisplay(text) {
     var c = statusEl && statusEl.querySelector(".status-count");
@@ -74,20 +81,40 @@
   function renderStatusBlock() {
     if (!statusEl) return;
     TabbySync.getSyncStatus().then(function (st) {
-      var kind = st.status === "ok" ? "ok" : st.status === "error" ? "err" : "";
-      var syncText = st.status === "ok" ? "Synced" : st.status === "error" ? "Sync error" : "Never synced";
-      statusEl.className = "status-block" + (kind ? " " + kind : "");
-      statusEl.title = (st.status === "error" && st.error) ? st.error : "Sync status";
+      var kind = st.status === "ok" ? "ok" : st.status === "error" ? "err" : "setup";
+      var headline = st.status === "ok" ? "Everything is saved."
+        : st.status === "error" ? "The last save didn't work."
+          : "Nothing has been saved yet.";
+
+      statusEl.className = "band " + kind;
+      statusEl.title = (st.status === "error" && st.error) ? st.error : "";
       statusEl.innerHTML = "";
-      statusEl.appendChild(el("span", "status-dot"));
-      var nameEl = el("span", "status-name", profileLabel());
-      nameEl.title = nameEl.textContent; // full name on hover if it's truncated
-      statusEl.appendChild(nameEl);
-      statusEl.appendChild(el("span", "status-enc" + (encryptionOn() ? " on" : ""),
-        encryptionOn() ? "🔒 Encrypted" : "Not encrypted"));
-      statusEl.appendChild(el("span", "status-sync", syncText));
-      if (st.at) statusEl.appendChild(el("span", "status-last", formatDate(st.at)));
-      statusEl.appendChild(el("span", "status-count", countsOverride != null ? countsOverride : countsLabel()));
+      statusEl.appendChild(el("span", "band-mark",
+        st.status === "ok" ? "✓" : st.status === "error" ? "!" : "·"));
+
+      var text = el("span", "band-text");
+      text.appendChild(el("span", "band-line1", headline));
+
+      // Line two is the detail, assembled from what is actually true: where
+      // it goes, what it is shared as, whether it is locked, and when it last
+      // went. An error puts the reason here instead — a page that says
+      // something failed and not why is just an unhappy face.
+      var line2 = el("span", "band-line2");
+      if (st.status === "error" && st.error) {
+        line2.textContent = st.error;
+      } else {
+        var bits = ["Saved to " + destName()];
+        if (settings && settings.syncKey) bits.push("shared as “" + settings.syncKey + "”");
+        bits.push(encryptionOn() ? "password lock on" : "no password lock");
+        if (st.at) bits.push("last synced " + formatDate(st.at));
+        line2.textContent = bits.join(" · ");
+      }
+      text.appendChild(line2);
+      statusEl.appendChild(text);
+
+      var count = el("span", "band-count", countsOverride != null ? countsOverride : countsLabel());
+      count.className = "band-count status-count";
+      statusEl.appendChild(count);
     });
   }
   // Immediate feedback for a manually-triggered sync; renderStatusBlock()
@@ -96,8 +123,8 @@
     if (!statusEl) return;
     if (!on) { renderStatusBlock(); return; }
     statusEl.classList.add("busy");
-    var s = statusEl.querySelector(".status-sync");
-    if (s) s.textContent = "Syncing…";
+    var line = statusEl.querySelector(".band-line1");
+    if (line) line.textContent = "Saving…";
   }
 
   // ---- actions -------------------------------------------------------------
@@ -236,7 +263,7 @@
     var unlocked = state.groups.filter(function (g) { return !g.locked; });
     if (!unlocked.length) return;
     if (!confirm("Delete all " + unlocked.length + " unlocked list" + (unlocked.length === 1 ? "" : "s") +
-      "? Locked lists are kept, and you can recover these from Trash.")) return;
+      "? Locked lists are kept, and you can get these back from “Recently deleted” for 30 days.")) return;
     TabbySync.trashAdd(state, unlocked.map(function (g) {
       return { kind: "group", name: groupLabelSafe(g), tabs: g.tabs.map(copyTab) };
     }));
@@ -374,11 +401,14 @@
     listEl.innerHTML = "";
     if (!state.groups.length) {
       var empty = el("div", "empty");
-      empty.appendChild(el("h2", null, "Nothing stashed"));
+      empty.appendChild(el("h2", null, "No saved tabs yet"));
       var p = el("p");
+      // Name the button as it actually reads in the popup — an instruction
+      // that names a button nobody can find is worse than no instruction.
       p.innerHTML =
-        "Click the TabbySync toolbar icon and choose <b>Stash all tabs</b> (or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd>) " +
-        "to send this window's tabs here and free up memory.";
+        "Click the TabbySync icon in your toolbar and choose <b>Save my tabs</b>, or press " +
+        "<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd>. The tabs in that window close and land here, " +
+        "ready to reopen on any of your computers.";
       empty.appendChild(p);
       listEl.appendChild(empty);
       return;
@@ -389,9 +419,9 @@
     var rest = groups.filter(function (g) { return !g.pinned; });
 
     if (pinned.length) {
-      listEl.appendChild(sectionLabel("📌 Pinned"));
+      listEl.appendChild(sectionLabel("📌 Pinned to the top"));
       pinned.forEach(function (g) { listEl.appendChild(renderGroup(g)); });
-      if (rest.length) listEl.appendChild(sectionLabel("Groups"));
+      if (rest.length) listEl.appendChild(sectionLabel("Your lists"));
     }
     rest.forEach(function (g) { listEl.appendChild(renderGroup(g)); });
     applyFilter();
@@ -425,8 +455,8 @@
       });
       g.hidden = !any;
     });
-    countsOverride = shown + " matching tab" + (shown === 1 ? "" : "s") +
-      " · “" + searchQuery.trim() + "”";
+    countsOverride = shown + " match" + (shown === 1 ? "" : "es") +
+      " for “" + searchQuery.trim() + "”";
     setCountsDisplay(countsOverride);
   }
 
@@ -444,7 +474,7 @@
 
     // group drag handle (reorder whole group)
     var ghandle = el("span", "group-handle", "⠿");
-    ghandle.title = "Drag to reorder this group";
+    ghandle.title = "Drag to move this list up or down";
     ghandle.draggable = true;
     ghandle.addEventListener("dragstart", function (e) { onGroupDragStart(e, g.id); });
     ghandle.addEventListener("dragend", onDragEnd);
@@ -452,51 +482,65 @@
 
     // pin toggle
     var pin = el("span", "pin" + (g.pinned ? " on" : ""), "📌");
-    pin.title = g.pinned ? "Unpin from top" : "Pin to top";
+    pin.title = g.pinned ? "Unpin this list" : "Pin this list to the top";
     pin.addEventListener("click", function () { togglePin(g.id); });
     head.appendChild(pin);
 
     var star = el("span", "star" + (g.locked ? " on" : ""), g.locked ? "🔒" : "🔓");
     star.title = g.locked
-      ? "Locked — protected from deleting; click to unlock"
-      : "Lock this group to protect it from accidental deletion";
+      ? "Locked, so it can't be deleted by accident — click to unlock"
+      : "Lock this list so it can't be deleted by accident";
     star.addEventListener("click", function () { toggleLock(g.id); });
     head.appendChild(star);
 
-    var restore = el("button", "gbtn restore", "Restore");
-    restore.title = "Reopen all these tabs as normal tabs (and clear the list unless locked)";
-    restore.addEventListener("click", function () { restoreGroup(g.id, false); });
-    head.appendChild(restore);
-
-    var restoreG = el("button", "gbtn asgroup", "Restore as group");
-    restoreG.title = "Reopen all these tabs together in a browser tab group";
-    restoreG.addEventListener("click", function () { restoreGroup(g.id, true); });
-    head.appendChild(restoreG);
-
-    var exp = el("button", "gbtn export", "Export");
-    exp.title = "Export just this list, to import into another profile";
-    exp.addEventListener("click", function () { openExportScope(g.id); });
-    head.appendChild(exp);
-
-    if (g.locked) {
-      head.appendChild(el("span", "lock-note", "Locked"));
-    } else {
-      var del = el("button", "gbtn delete", "Delete");
-      del.title = "Delete this whole list";
-      del.addEventListener("click", function () { deleteGroup(g.id); });
-      head.appendChild(del);
-    }
-
+    // The name comes before the buttons now: it is what the list *is*, and
+    // reading "Restore · Restore as group · Export · Delete" before finding
+    // out which list you are looking at is backwards.
     var name = el("input", "group-name");
     name.value = g.name || "";
-    name.placeholder = "Name this group…";
+    name.placeholder = "Name this list…";
+    name.title = "Give this list a name you'll recognise";
     name.addEventListener("change", function () { renameGroup(g.id, name.value.trim()); });
     name.addEventListener("keydown", function (e) { if (e.key === "Enter") name.blur(); });
     head.appendChild(name);
 
-    head.appendChild(el("span", "spacer"));
     head.appendChild(el("span", "group-meta",
       g.tabs.length + " tab" + (g.tabs.length === 1 ? "" : "s") + " · " + formatDate(g.createdAt)));
+
+    if (g.locked) head.appendChild(el("span", "lock-note", "Locked"));
+
+    var restore = el("button", "gbtn restore", "Reopen");
+    restore.title = "Reopen these tabs" + (removeOnRestore() && !g.locked
+      ? " and clear this list" : " and keep this list");
+    restore.addEventListener("click", function () { restoreGroup(g.id, false); });
+    head.appendChild(restore);
+
+    // Everything rarer folds into one menu, so a list is two visible controls
+    // instead of five. Same actions, same handlers.
+    var menu = el("details", "gmenu");
+    var sum = el("summary", "gbtn more");
+    sum.textContent = "⋯";
+    sum.title = "More for this list";
+    menu.appendChild(sum);
+    var body = el("div", "gmenu-body");
+
+    var asGroup = el("button", "menu-item", "Reopen as a browser tab group");
+    asGroup.addEventListener("click", function () { menu.open = false; restoreGroup(g.id, true); });
+    body.appendChild(asGroup);
+
+    var exp = el("button", "menu-item", "Save a backup of this list…");
+    exp.addEventListener("click", function () { menu.open = false; openExportScope(g.id); });
+    body.appendChild(exp);
+
+    if (!g.locked) {
+      var del = el("button", "menu-item danger", "Delete this list");
+      del.title = "Deleted lists stay in “Recently deleted” for 30 days";
+      del.addEventListener("click", function () { menu.open = false; deleteGroup(g.id); });
+      body.appendChild(del);
+    }
+
+    menu.appendChild(body);
+    head.appendChild(menu);
     group.appendChild(head);
 
     var ul = el("ul", "tabs");
@@ -516,12 +560,12 @@
     li.draggable = true; // reordering allowed; locked lists only reorder in place
 
     var dh = el("span", "drag-handle", "⠿");
-    dh.title = g.locked ? "Drag to reorder within this locked list" : "Drag to reorder";
+    dh.title = "Drag to move this link";
     li.appendChild(dh);
 
     if (!g.locked) {
       var close = el("span", "close", "✕");
-      close.title = "Remove from list";
+      close.title = "Remove this link from the list";
       close.addEventListener("click", function (e) { e.stopPropagation(); deleteTab(g.id, index); });
       li.appendChild(close);
     } else {
@@ -600,7 +644,7 @@
     var groups, titleName;
     if (scope === "all") {
       groups = sortedGroups();
-      titleName = "all lists";
+      titleName = "all your lists";
     } else {
       var g = groupById(scope);
       if (!g) return;
@@ -610,7 +654,7 @@
     var plaintext = JSON.stringify(exportObject(groups), null, 2);
     var hasPass = !!(settings && settings.passphrase);
 
-    modalTitle.textContent = "Export " + titleName;
+    modalTitle.textContent = "Backup of " + titleName;
     modalText.readOnly = true;
     modalPrimary.textContent = "Copy";
     modalPrimary.onclick = function () {
@@ -668,7 +712,7 @@
   });
   overlay.addEventListener("click", function (e) { if (e.target === overlay) overlay.classList.remove("show"); });
 
-  // ---- trash panel ---------------------------------------------------------
+  // ---- "recently deleted" panel --------------------------------------------
 
   var trashOverlay = document.getElementById("trash-overlay");
   var trashListEl = document.getElementById("trash-list");
@@ -687,10 +731,10 @@
     var list = (state.trash || []).slice();
     trashListEl.innerHTML = "";
     trashHelp.textContent = list.length
-      ? "Deleted lists and links are kept for 30 days and sync across your computers. Restore adds them back to this profile."
+      ? "Anything you delete is kept here for 30 days, on every computer you share with. Putting one back adds it to your lists again."
       : "";
     if (!list.length) {
-      trashListEl.appendChild(el("div", "trash-empty-note", "Trash is empty."));
+      trashListEl.appendChild(el("div", "trash-empty-note", "Nothing has been deleted recently."));
     } else {
       list.forEach(function (entry) { trashListEl.appendChild(renderTrashEntry(entry)); });
     }
@@ -717,7 +761,7 @@
     var restore = el("button", "btn", "Restore");
     restore.addEventListener("click", function () { restoreFromTrash(entry); });
     var rm = el("button", "btn ghost", "Remove");
-    rm.title = "Delete permanently from trash";
+    rm.title = "Delete this permanently";
     rm.addEventListener("click", function () {
       TabbySync.trashRemove(state, entry.tid); persist(); renderTrashList();
     });
@@ -739,11 +783,28 @@
     if (e.target === trashOverlay) trashOverlay.classList.remove("show");
   });
   document.getElementById("trash-empty").addEventListener("click", function () {
-    if (!confirm("Permanently empty the trash? This can't be undone.")) return;
+    if (!confirm("Permanently delete everything in “Recently deleted”? This can't be undone.")) return;
     TabbySync.trashEmpty(state); persist(); renderTrashList();
   });
 
   // ---- toolbar wiring ------------------------------------------------------
+
+  // A <details> menu stays open until something closes it; clicking anywhere
+  // else is what every other menu in a browser does.
+  document.addEventListener("click", function (e) {
+    document.querySelectorAll("details.menu[open], details.gmenu[open]").forEach(function (d) {
+      if (!d.contains(e.target)) d.open = false;
+    });
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    document.querySelectorAll("details.menu[open], details.gmenu[open]").forEach(function (d) { d.open = false; });
+  });
+  // Closing the More menu after picking something out of it, so the page
+  // isn't left with a menu hanging over what just happened.
+  document.querySelectorAll("#more-menu .menu-item").forEach(function (b) {
+    b.addEventListener("click", function () { document.getElementById("more-menu").open = false; });
+  });
 
   document.getElementById("search").addEventListener("input", function (e) {
     searchQuery = e.target.value || "";

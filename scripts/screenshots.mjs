@@ -67,7 +67,7 @@ const groups = [
   },
   {
     id: 'g-work', createdAt: now - 3 * 60 * min, updatedAt: now - 55 * min,
-    name: 'Work — release 1.3.8', locked: true, pinned: false,
+    name: 'Work — release 1.3.9', locked: true, pinned: false,
     tabs: [
       { url: 'https://github.com/RyGull/TabbySync', title: 'RyGull/TabbySync: Self-hosted sync for bookmarks and tabs', favIconUrl: '' },
       { url: 'https://github.com/RyGull/TabbySync/blob/main/CHANGELOG.md', title: 'TabbySync — CHANGELOG', favIconUrl: '' },
@@ -268,8 +268,8 @@ const COPY = {
     body: 'Bookmarks and open tabs, each with its own on/off switch, live counts and last-sync time — sharing one destination, one token and one sync name.',
   },
   tablist: {
-    title: 'Stash tabs into lists you can actually manage',
-    body: 'Name, pin, lock, search, reorder and restore — as plain tabs or a browser tab group. Deleted lists sit in Trash for 30 days.',
+    title: 'Close the tabs, keep the tabs',
+    body: 'Saved lists you can name, pin, lock, search and reopen — one link, one list, or everything, on any of your computers. Anything you delete waits 30 days before it is really gone.',
   },
   options: {
     title: 'Setup is four questions long',

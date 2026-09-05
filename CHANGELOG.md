@@ -61,6 +61,20 @@ and in what order.
   on/off" became "Password lock"; "Stash tabs" and "Open tabs" became "Save
   my tabs" and "My lists"; the profile box says what the name is for. The
   popup's height is unchanged, so it still never scrolls.
+- **The saved-tabs page got the same treatment.** Its toolbar was nine
+  controls in a row — Restore all, Delete all, Export, Import, Trash,
+  Options, Sync now, a checkbox and the search box — with the sync status
+  squeezed onto the end. It is now the search box, one button ("Reopen
+  everything"), and a **More** menu holding the rest, under the same status
+  band the settings page and popup use. Each saved list was five buttons
+  before you could see which list it was; the name now comes first, followed
+  by **Reopen** and a **⋯** menu with "reopen as a browser tab group", "save a
+  backup of this list" and "delete". Nothing was removed, and the drag-and-drop
+  reordering, search and merge behaviour are untouched.
+- **The same words everywhere.** "Stash" is "save", "restore" is "reopen",
+  "groups" are "lists", "Trash" is "Recently deleted", "Encrypted" is
+  "password lock", and the empty page now names the popup button — **Save my
+  tabs** — that actually exists rather than one that was renamed a version ago.
 - **Screenshots** in `docs/screenshots/` and on the marketing site were
   regenerated from the rebuilt UI by `scripts/screenshots.mjs`.
 

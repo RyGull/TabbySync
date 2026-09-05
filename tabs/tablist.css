@@ -10,6 +10,7 @@
   --link: #2361c9;
   --link-hover: #16408c;
   --accent: #2361c9;
+  --accent-ink: #ffffff;
   --danger: #c0392b;
   --star: #e9a319;
   --drop: #cfe0ff;
@@ -27,9 +28,11 @@
     --link: #7aa7ff;
     --link-hover: #a9c6ff;
     --accent: #7aa7ff;
+    --accent-ink: #10203d;   /* the accent is light here, so its text is dark */
     --danger: #ef6a5c;
     --star: #f0b737;
     --drop: #33456b;
+    --ok: #4ade80;
   }
 }
 :root[data-theme="dark"] {
@@ -41,9 +44,11 @@
   --link: #7aa7ff;
   --link-hover: #a9c6ff;
   --accent: #7aa7ff;
+  --accent-ink: #10203d;
   --danger: #ef6a5c;
   --star: #f0b737;
   --drop: #33456b;
+  --ok: #4ade80;
 }
 
 * { box-sizing: border-box; }
@@ -92,10 +97,10 @@ header.top {
 
 .toolbar {
   display: flex;
-  gap: 8px 16px;
+  gap: 8px;
   flex-wrap: wrap;
   align-items: center;
-  margin: 12px 0 18px;
+  margin: 0 0 18px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
 }
@@ -115,13 +120,14 @@ header.top {
 }
 .tbtn:hover { border-color: var(--accent); color: var(--accent); }
 .tbtn:active { filter: brightness(.96); }
-#delete-all:hover { border-color: var(--danger); color: var(--danger); }
+.tbtn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.tbtn.primary:hover { filter: brightness(1.07); color: var(--accent-ink); }
 
 /* search box */
 .tsearch {
-  flex: 1 1 180px;
-  min-width: 150px;
-  max-width: 340px;
+  flex: 1 1 240px;
+  min-width: 180px;
+  max-width: 460px;
   padding: 6px 11px;
   border: 1px solid var(--border);
   border-radius: 7px;
@@ -132,12 +138,34 @@ header.top {
 }
 .tsearch:focus { outline: none; border-color: var(--accent); }
 
-/* "Remove after restore" toggle */
-.tchk {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-size: 12.5px; color: var(--muted); cursor: pointer; user-select: none;
+/* ---- menus: the toolbar's "More", and the one on each list --------------
+   Both are <details>, so they open and close without a line of JavaScript;
+   tablist.js only adds click-outside and Escape, which <details> has no
+   opinion about. */
+.menu, .gmenu { position: relative; }
+.menu > summary, .gmenu > summary { list-style: none; cursor: pointer; user-select: none; }
+.menu > summary::-webkit-details-marker, .gmenu > summary::-webkit-details-marker { display: none; }
+.menu > summary::after { content: " ▾"; font-size: 11px; color: var(--muted); }
+.menu-body, .gmenu-body {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 60;
+  min-width: 236px; padding: 6px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 11px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.22);
+  display: flex; flex-direction: column; gap: 1px;
 }
-.tchk input { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+.menu-body hr { border: 0; border-top: 1px solid var(--border); margin: 5px 2px; }
+.menu-item {
+  border: 0; background: transparent; color: var(--text); font-family: inherit;
+  font-size: 13px; font-weight: 600; text-align: left; padding: 9px 10px;
+  border-radius: 7px; cursor: pointer; white-space: nowrap;
+}
+.menu-item:hover { background: var(--bg); }
+.menu-item.danger { color: var(--danger); }
+.menu-check {
+  display: flex; align-items: center; gap: 8px; padding: 9px 10px;
+  font-size: 13px; color: var(--text); cursor: pointer; user-select: none;
+}
+.menu-check input { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
 
 /* legacy link buttons (kept for any remaining .linkbtn usages) */
 .linkbtn {
@@ -147,43 +175,38 @@ header.top {
 .linkbtn:hover { color: var(--link-hover); text-decoration: underline; }
 
 /* status block — profile / encryption / sync status, popup-style */
-.status-block {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  row-gap: 2px;
-  font-size: 12px;
-  color: var(--muted);
+/* ---- status band --------------------------------------------------------
+   The same three states, in the same shape, as the band on the settings page
+   and the dot in the popup: green when it is saved, amber when nothing has
+   been saved yet, red with the reason when the last attempt failed. */
+.band {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 15px; margin: 14px 0 14px;
+  border: 1px solid var(--border); border-radius: 11px; background: var(--card);
 }
-.status-block > span { white-space: nowrap; }
-.status-block > span + span::before {
-  content: "·";
-  margin: 0 7px;
-  color: var(--border);
+.band-mark {
+  width: 26px; height: 26px; border-radius: 50%; flex: 0 0 auto;
+  display: grid; place-items: center; font-size: 14px; font-weight: 700;
+  color: #fff; background: var(--muted);
 }
-/* Sync names are capped at save time (see shared/config.js), but this is a
-   belt-and-suspenders limit against a long name saved before that existed,
-   or any other unexpectedly long value — never let one span push the
-   toolbar layout around. */
-.status-name {
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: inline-block;
-  vertical-align: bottom;
+.band-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.band-line1 { font-weight: 650; font-size: 13.5px; }
+.band-line2 { color: var(--muted); font-size: 12.5px; }
+.band-count {
+  margin-left: auto; flex: 0 0 auto; font-size: 12.5px; font-weight: 600;
+  color: var(--muted); white-space: nowrap;
 }
-.status-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: #b9b9b9;
-  flex: 0 0 auto;
-}
-.status-block.ok .status-dot { background: var(--ok); }
-.status-block.err .status-dot { background: var(--danger); }
-.status-block.busy .status-dot { background: var(--star); }
-.status-name { font-weight: 700; color: var(--text); }
-.status-enc.on { color: var(--ok); font-weight: 600; }
-.status-block.err .status-sync { color: var(--danger); font-weight: 600; }
+.band.ok { background: color-mix(in srgb, var(--ok) 10%, var(--card));
+  border-color: color-mix(in srgb, var(--ok) 34%, var(--border)); }
+.band.ok .band-mark { background: var(--ok); }
+.band.setup { background: color-mix(in srgb, var(--star) 12%, var(--card));
+  border-color: color-mix(in srgb, var(--star) 40%, var(--border)); }
+.band.setup .band-mark { background: var(--star); }
+.band.err { background: color-mix(in srgb, var(--danger) 9%, var(--card));
+  border-color: color-mix(in srgb, var(--danger) 36%, var(--border)); }
+.band.err .band-mark { background: var(--danger); }
+.band.err .band-line2 { color: var(--danger); }
+.band.busy .band-mark { background: var(--star); }
 
 .section-label {
   font-size: 12px;
@@ -249,28 +272,38 @@ header.top {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  color: #fff;
+  color: var(--accent-ink);
   font-family: inherit;
   line-height: 1.4;
 }
 .gbtn:hover { filter: brightness(1.08); }
 .gbtn:active { filter: brightness(0.94); }
-.gbtn.restore { background: #2f6fd6; }   /* blue */
-.gbtn.asgroup { background: #17a2b8; }   /* teal — same cool family, distinct */
-.gbtn.export  { background: #7b52c9; }   /* purple — clear of the amber lock text */
-.gbtn.delete  { background: #c0392b; }   /* red */
-.group-meta { color: var(--muted); font-size: 12px; }
+/* One filled button per list — the thing you came to do. Everything else is
+   in the ⋯ menu, so a list is two controls instead of five and the row stops
+   competing with the links underneath it. */
+.gbtn.restore { background: var(--accent); }
+.gbtn.more {
+  background: var(--card); color: var(--muted); border: 1px solid var(--border);
+  padding: 3px 9px; font-size: 15px; line-height: 1.2; border-radius: 6px;
+}
+.gbtn.more:hover { color: var(--text); border-color: var(--muted); filter: none; }
+.gmenu[open] > .gbtn.more { border-color: var(--accent); color: var(--accent); }
+.group-meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .group-name {
   border: 1px solid transparent;
   background: transparent;
   color: var(--text);
-  font-weight: 600;
+  font-weight: 700;
   font-size: 14px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  min-width: 120px;
+  padding: 3px 7px;
+  border-radius: 5px;
+  min-width: 140px;
+  flex: 1 1 160px;
   font-family: inherit;
 }
+/* The name is the list's identity, so it should look editable before you
+   hover it — an unstyled input that only appears on hover reads as a label. */
+.group-name::placeholder { color: var(--muted); font-weight: 500; }
 .group-name:hover { border-color: var(--border); }
 .group-name:focus { border-color: var(--accent); outline: none; background: var(--bg); }
 
