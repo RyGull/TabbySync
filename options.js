@@ -121,10 +121,59 @@ function setBand(kind, mark, line1, line2) {
   $('bandLine2').textContent = line2 || '';
 }
 
+// ---- the safety brake ------------------------------------------------------
+// The engine stops a sync that would delete most of the bookmarks in this
+// browser, and records why. It cannot decide which copy is right — only the
+// person can — so this is where that question gets asked.
+
+function fmtBrake(b) {
+  const gone = b.had - b.keeps;
+  return `The last sync would have deleted ${gone} of your ${b.had} bookmark${b.had === 1 ? '' : 's'}, ` +
+    `leaving ${b.keeps}. That looked wrong, so it was stopped.`;
+}
+
+function showBrake(blocked) {
+  $('brakeCard').hidden = !blocked;
+  if (blocked) $('brakeWhat').textContent = fmtBrake(blocked);
+}
+
+// "Keep what's in this browser": push the live bookmarks over the saved copy.
+// This is the safe answer and it is offered first, because it cannot lose
+// anything — the copy it overwrites is the one that looked wrong.
+$('brakeKeep').addEventListener('click', async () => {
+  if (!confirm('Upload the bookmarks in this browser over the saved copy?\n\n' +
+    'Your bookmarks here stay exactly as they are. The saved copy is replaced with them.')) return;
+  status('brakeStatus', 'Uploading your bookmarks…');
+  const r = await send({ type: 'bmOverwrite' });
+  if (r && r.ok) {
+    // The push already made both sides agree, so a normal sync now has
+    // nothing large to delete and will clear the block by succeeding.
+    await send({ type: 'syncNow' });
+    status('brakeStatus', 'Done — your bookmarks are safe and syncing again.', 'ok');
+  } else {
+    status('brakeStatus', 'That did not work: ' + ((r && r.message) || 'unknown error'), 'bad');
+  }
+  await refreshBand();
+});
+
+// "Accept the deletion": run the same sync again with the brake lifted, once.
+$('brakeAccept').addEventListener('click', async () => {
+  const b = (await send({ type: 'getStatus' }) || {}).blockedDeletion;
+  const gone = b ? b.had - b.keeps : 'many';
+  if (!confirm(`Delete ${gone} bookmark${gone === 1 ? '' : 's'} from this browser?\n\n` +
+    'This applies the deletion that was stopped. It cannot be undone from here.')) return;
+  status('brakeStatus', 'Applying…');
+  const r = await send({ type: 'syncNow', allowLargeDeletion: true });
+  status('brakeStatus', r && r.ok ? 'Done.' : 'That did not work: ' + ((r && r.message) || 'unknown error'),
+    r && r.ok ? 'ok' : 'bad');
+  await refreshBand();
+});
+
 async function refreshBand() {
   const [cfg, bm, tb] = await Promise.all([
     SL.getConfig(), send({ type: 'getStatus' }), send({ type: 'sl-tab-status' }),
   ]);
+  showBrake(bm && bm.blockedDeletion);
   const configured = SP.isConfigured({ ...cfg, baseUrl: cfg.serverUrl });
   const anyOn = cfg.bookmarks.enabled || cfg.tabs.enabled;
   const where = DEST_NAME[cfg.provider] || DEST_NAME.custom;
@@ -155,6 +204,14 @@ async function refreshBand() {
 
   // Surface a real failure over a cheerful "all good" — a red dot in the
   // popup and a green band here would be the page lying to you.
+  if (bm && bm.blockedDeletion) {
+    // The detail is in the card immediately below; repeating it here twice
+    // just makes both harder to read.
+    setBand('bad', '!', 'A sync was stopped to protect your bookmarks.',
+      'Nothing was changed. Choose what to do below.');
+    return;
+  }
+
   const bmBad = cfg.bookmarks.enabled && bm && bm.lastStatus === 'error';
   const tbBad = cfg.tabs.enabled && tb && tb.lastStatus === 'error';
   if (bmBad || tbBad) {

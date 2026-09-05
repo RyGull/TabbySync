@@ -3,9 +3,13 @@ import crypto from 'node:crypto';
 // TabbySync — Copyright (c) 2026 Ryan Gulliver. All rights reserved.
 // Personal, non-commercial use only. No redistribution. See LICENSE.
 
-// e2e-switch-destination.mjs — loads the extension for real and switches
-// sync destinations underneath it, to answer one question end to end:
-// do the bookmarks in the browser survive it?
+// e2e-switch-destination.mjs — loads the extension for real and tries the two
+// things that have emptied someone's bookmarks, to answer one question end to
+// end: do the bookmarks in the browser survive it?
+//
+//   1. switching sync destination underneath a synced profile
+//   2. a destination whose file has been emptied, which is what the safety
+//      brake exists to stop — and then lifting the brake on purpose
 //
 //   node scripts/e2e-switch-destination.mjs                 (this working tree)
 //   node scripts/e2e-switch-destination.mjs /path/to/copy   (any other build)
@@ -111,8 +115,50 @@ await syncNow();
 console.log('back to A       :', (await bookmarks()).length, 'bookmarks');
 
 console.log(after.length === started
-  ? `\nRESULT: all ${started} bookmarks SURVIVED the switch`
-  : `\nRESULT: DATA LOSS — ${started - after.length} of ${started} bookmarks deleted by the switch`);
+  ? `\nRESULT 1: all ${started} bookmarks SURVIVED the switch`
+  : `\nRESULT 1: DATA LOSS — ${started - after.length} of ${started} bookmarks deleted by the switch`);
+
+// ---------------------------------------------------------------------------
+// 2. the safety brake: a destination whose file has been emptied
+// ---------------------------------------------------------------------------
+// The brake only guards collections of 20 or more, so this needs a realistic
+// number of bookmarks rather than the three above.
+console.log('\n--- safety brake ---');
+await p.evaluate(async () => {
+  const bar = (await chrome.bookmarks.getTree())[0].children[0];
+  for (let i = 0; i < 25; i++) {
+    await chrome.bookmarks.create({ parentId: bar.id, title: 'Link ' + i, url: 'https://example.com/' + i });
+  }
+});
+await configure('brake'); await p.waitForTimeout(400);
+await syncNow();
+const before = (await bookmarks()).length;
+console.log('synced          :', before, 'bookmarks, file on server:', files.has('bookmarks-brake.json'));
+
+// Someone else's machine deletes the lot, or the file is damaged: the
+// destination still exists and still answers, it is just empty now.
+const emptied = JSON.parse(files.get('bookmarks-brake.json'));
+emptied.children.forEach((root) => { root.children = []; });
+files.set('bookmarks-brake.json', JSON.stringify(emptied));
+console.log('server file emptied by "another machine"');
+
+const blocked = await syncNow();
+console.log('sync result     :', blocked && blocked.status, '—', (blocked && blocked.message || '').slice(0, 78));
+const held = (await bookmarks()).length;
+console.log('browser now     :', held, 'bookmarks');
+console.log(held === before
+  ? `RESULT 2: the brake HELD — all ${held} bookmarks still here, nothing pushed`
+  : `RESULT 2: the brake FAILED — ${before - held} bookmarks deleted`);
+
+// And the release: the same sync, accepted on purpose.
+const allowed = await p.evaluate(() => new Promise(r =>
+  chrome.runtime.sendMessage({ type: 'syncNow', allowLargeDeletion: true }, r)));
+const afterAllow = (await bookmarks()).length;
+console.log('\nafter accepting :', afterAllow, 'bookmarks —',
+  allowed && allowed.ok ? 'the deletion went through as asked' : 'FAILED: ' + JSON.stringify(allowed));
+console.log(afterAllow === 0
+  ? 'RESULT 3: the brake can be lifted when the deletion is real'
+  : 'RESULT 3: lifting the brake did not apply the deletion');
 await ctx.close();
 fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(ext, { recursive: true, force: true });
 process.exit(0);

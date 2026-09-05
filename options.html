@@ -30,6 +30,26 @@
       </span>
     </div>
 
+    <!-- ================= SAFETY BRAKE =================
+         Only ever visible when a sync was stopped because it would have
+         deleted most of the bookmarks in this browser. It asks the one
+         question the extension cannot answer for you: which copy is right? -->
+    <section class="card brake" id="brakeCard" hidden>
+      <h2><span class="ic">🛑</span> A sync was stopped to protect your bookmarks</h2>
+      <p class="say" id="brakeWhat"></p>
+      <p class="say">Nothing has been changed — not in this browser, and not where your data is
+        saved. This happens when the two copies disagree by a lot, which is usually a sign
+        something went wrong rather than something you meant. Tell TabbySync which one is right:</p>
+      <div class="row">
+        <button class="btn primary" id="brakeKeep">Keep what's in this browser</button>
+        <button class="btn danger" id="brakeAccept">Accept the deletion</button>
+      </div>
+      <p class="hint" id="brakeHint">“Keep what's in this browser” uploads your current bookmarks over
+        the saved copy. “Accept the deletion” lets the sync go ahead and removes them here too.
+        If you're not sure, choose the first one — it can't lose anything.</p>
+      <div class="status" id="brakeStatus"></div>
+    </section>
+
     <!-- ================= 1. WHERE THE DATA LIVES ================= -->
     <section class="card server" id="serverCard">
       <h2><span class="step-n">1</span> Where should your bookmarks and tabs live?</h2>

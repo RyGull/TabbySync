@@ -15,7 +15,7 @@ declare(strict_types=1);
 const SITE_URL      = 'https://tabbysync.com';
 const SITE_NAME     = 'TabbySync';
 const TAGLINE        = 'Self-hosted sync for your bookmarks and your open tabs.';
-const CURRENT_VERSION = '1.3.10'; // keep in step with manifest.json in the extension repo
+const CURRENT_VERSION = '1.3.11'; // keep in step with manifest.json in the extension repo
 const GITHUB_URL     = 'https://github.com/RyGull/TabbySync';
 const LICENSE_URL    = GITHUB_URL . '/blob/main/LICENSE';
 // GitHub's blob view renders privacy.html as escaped source, not as a page,

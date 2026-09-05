@@ -6,6 +6,34 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.3.11 — 2026-09-05
+
+**A safety brake on the bookmark sync.** 1.3.10 fixed the one bug that was
+deleting bookmarks. This is the guard for the next one, whatever it turns out
+to be: instead of trying to enumerate the ways a sync can go wrong, it looks
+at what a sync is about to do and stops if that looks like an accident.
+
+- **What it does.** Before anything is written, the engine compares what is in
+  the browser now with what the merge would leave. If you have at least 20
+  bookmarks and fewer than a fifth of them would survive, the sync stops. The
+  browser keeps what it has, the destination keeps what it has, and nothing is
+  pushed either way.
+- **What it does not do.** Deletions you make yourself never trip it — they are
+  already gone from the live tree by the time a sync reads it, so nothing is
+  being removed. Under 20 bookmarks it does not look at all, and above that it
+  only objects when four fifths would go at once. A brake that argued with
+  ordinary tidying would teach people to click through it, which is worse than
+  no brake.
+- **You can lift it, because sometimes the deletion is real.** Options shows
+  what was stopped and offers the only two answers that exist: **keep what's in
+  this browser**, which uploads your bookmarks over the saved copy, or **accept
+  the deletion**, which runs the same sync again and applies it. The safe one
+  is offered first and cannot lose anything.
+- `scripts/e2e-switch-destination.mjs` now also proves this end to end: it
+  syncs 28 real bookmarks, empties the file on the server the way another
+  machine would, and checks that the sync is refused with all 28 still in the
+  browser — then lifts the brake and checks the deletion goes through.
+
 ## 1.3.10 — 2026-09-05
 
 **Fixes data loss: switching sync method could delete every bookmark in the

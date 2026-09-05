@@ -23,9 +23,9 @@ function report(kind) {
 }
 
 // Run a sync and reflect the outcome on the shared badge.
-async function doSync(trigger) {
+async function doSync(trigger, opts) {
   report('syncing');
-  const res = await runSync(trigger);
+  const res = await runSync(trigger, opts);
   if (res && res.ok) report('ok');
   else if (res && (res.status === 'not configured')) report('none');
   else if (res && res.status === 'busy') { /* another run will set it */ }
@@ -113,7 +113,9 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 // Messages from popup / options.
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.type === 'syncNow') {
-    doSync('manual').then(sendResponse);
+    // allowLargeDeletion comes from Options, and only after the user has been
+    // shown how many bookmarks would go and has agreed to it.
+    doSync('manual', { allowLargeDeletion: !!(msg && msg.allowLargeDeletion) }).then(sendResponse);
     return true;
   }
   // Force-write the current local bookmarks to the server in the CURRENT
@@ -151,6 +153,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         lastSync: state.lastSync,
         lastStatus: state.lastStatus,
         lastError: state.lastError,
+        blockedDeletion: state.blockedDeletion,
         bookmarks: s.bookmarks,
         folders: s.folders,
       });

@@ -83,6 +83,9 @@ const S = {
   lastSync: 'sl.bm.lastSync',
   lastError: 'sl.bm.lastError',
   lastStatus: 'sl.bm.lastStatus',
+  // Set when the safety brake stopped a sync; cleared by the next good one.
+  // Options reads it to offer the choice the brake refused to make alone.
+  blockedDeletion: 'sl.bm.blockedDeletion',
 };
 const STATE_KEYS = Object.keys(S).map((k) => S[k]);
 
@@ -95,6 +98,7 @@ export async function getState() {
     lastSync: s[S.lastSync] || 0,
     lastError: s[S.lastError] || '',
     lastStatus: s[S.lastStatus] || 'never synced',
+    blockedDeletion: s[S.blockedDeletion] || null,
   };
 }
 

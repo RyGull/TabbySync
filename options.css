@@ -111,6 +111,12 @@ button.btn:hover { border-color:var(--muted); }
 .btn.outline { background:transparent; color:var(--accent); border-color:var(--accent); }
 input[type=file] { display:none; }
 
+/* the safety brake — shown only when a sync was stopped, so it is allowed to
+   be loud: it is the one thing on the page that needs answering first */
+.card.brake { border: 2px solid var(--err); box-shadow: 0 0 0 4px rgba(220,38,38,.10); }
+.card.brake h2 { color: var(--err); }
+.card.brake h2 .ic { background: rgba(220,38,38,.14); }
+
 /* danger zone — a closed disclosure, so the most destructive thing on the
    page isn't sitting open while someone is still setting up */
 .card.danger { border:1px solid var(--line); background:transparent; padding:0; }

@@ -34,7 +34,42 @@ function destinationKey(cfg) {
 
 export function isSuppressed() { return busy || Date.now() < suppressUntil; }
 
-export async function runSync(trigger = 'manual') {
+/**
+ * The safety brake.
+ *
+ * Every data-loss bug this project has had ends the same way: a sync deletes
+ * bookmarks that are sitting in the browser right now. The causes differ and
+ * the next one will have a cause nobody has thought of yet, so this checks the
+ * outcome instead — how many bookmarks a merge is about to remove — and stops
+ * if that number looks like an accident rather than a decision.
+ *
+ * It compares against what is in the browser, not against the cache, because
+ * the browser is the copy the user would actually miss. A deletion the user
+ * made themselves never trips it: their own deletes are already gone from the
+ * live tree, so the merged result matches it.
+ *
+ * The thresholds are deliberately loose. A brake that second-guesses ordinary
+ * tidying would be worse than no brake, because people would learn to click
+ * through it. Under 20 bookmarks nothing is checked at all — losing five is
+ * bad but survivable, and deleting five on purpose is an ordinary afternoon.
+ * Above that, it only objects when four fifths of them would go at once.
+ */
+export const BRAKE_MIN_BOOKMARKS = 20;
+export const BRAKE_MIN_KEPT_FRACTION = 0.2;
+
+export function deletionLooksWrong(localCount, mergedCount) {
+  if (localCount < BRAKE_MIN_BOOKMARKS) return false;
+  if (mergedCount >= localCount) return false;
+  return mergedCount < localCount * BRAKE_MIN_KEPT_FRACTION;
+}
+
+/**
+ * `allowLargeDeletion` lifts the brake for exactly one run. Options sets it
+ * when the user has been shown what would be deleted and has said yes — a
+ * brake with no release is just a different way to lose your data, and mass
+ * deletes are sometimes real.
+ */
+export async function runSync(trigger = 'manual', { allowLargeDeletion = false } = {}) {
   if (busy) return { ok: false, status: 'busy', message: 'A sync is already running.' };
   const cfg = await getConfig();
   if (!isConfigured(cfg)) {
@@ -73,6 +108,24 @@ export async function runSync(trigger = 'manual') {
 
     const merged = threeWayMerge(usableBase, local, remote, { deleteWins: cfg.deleteWins });
 
+    const had = stats(local).bookmarks;
+    const keeps = stats(merged).bookmarks;
+    if (!allowLargeDeletion && deletionLooksWrong(had, keeps)) {
+      // Nothing is applied and nothing is pushed: the browser keeps what it
+      // has, and the destination keeps what it has, until someone says which
+      // one is right. Options offers that choice; the message says what the
+      // numbers are, because "sync blocked" on its own tells you nothing.
+      const message = `Sync stopped: this would have deleted ${had - keeps} of your ${had} bookmarks, ` +
+        `leaving ${keeps}. Nothing was changed. Open Options to keep your bookmarks or accept the deletion.`;
+      console.warn('[TabbySync] ' + message);
+      await setState({
+        lastStatus: 'error',
+        lastError: message,
+        blockedDeletion: { at: Date.now(), had, keeps },
+      });
+      return { ok: false, status: 'blocked', had, keeps, message };
+    }
+
     const newMap = await applyTree(merged, stableToLocal);
     await putRemote(cfg, merged);
 
@@ -85,6 +138,7 @@ export async function runSync(trigger = 'manual') {
       lastSync: ts,
       lastError: '',
       lastStatus: 'ok',
+      blockedDeletion: null,
     });
     suppressUntil = Date.now() + 3000; // let our own bookmark writes settle
     const s = stats(merged);
