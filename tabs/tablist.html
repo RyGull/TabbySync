@@ -67,6 +67,25 @@
     </div>
   </div>
 
+  <!-- Opening a lot of tabs at once is the one action here that can take the
+       whole browser down with it, so it asks first and then does it slowly
+       enough to be stopped. -->
+  <div class="overlay" id="bulk-overlay">
+    <div class="modal">
+      <h3 id="bulk-title">Reopen these tabs?</h3>
+      <p class="stats" id="bulk-msg"></p>
+      <div class="row" id="bulk-choices">
+        <button class="btn" id="bulk-some">Open the first 25</button>
+        <button class="btn ghost" id="bulk-all">Open all of them</button>
+        <button class="btn ghost" id="bulk-cancel">Cancel</button>
+      </div>
+      <div id="bulk-progress" hidden>
+        <p class="stats" id="bulk-count"></p>
+        <div class="row"><button class="btn ghost" id="bulk-stop">Stop</button></div>
+      </div>
+    </div>
+  </div>
+
   <div class="overlay" id="trash-overlay">
     <div class="modal">
       <h3>Recently deleted</h3>

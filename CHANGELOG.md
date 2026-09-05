@@ -6,6 +6,34 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.3.12 — 2026-09-05
+
+**Reopening saved tabs can no longer take your machine down.** Reported by a
+user who pressed "Reopen everything" with a few hundred tabs saved and watched
+the browser try to open more than 800 at once. It asked nothing first, had no
+ceiling, and created every tab in one burst.
+
+- **It asks first.** Above 15 tabs you get the count and three answers: open
+  the first 25, open all of them, or cancel. Nothing is opened until you pick,
+  and the safe answer is the one under the cursor. A handful still just opens.
+- **It opens them slowly enough to be stopped.** Tabs are created a few at a
+  time with a pause between, so the browser stays responsive and a **Stop**
+  button, Escape, or a click outside the dialog halts it wherever it has got
+  to. This applies to reopening one list as well as everything, and to
+  reopening as browser tab groups.
+- **A stopped restore never clears your lists.** With "remove links after I
+  reopen them" turned on, a restore that was stopped a third of the way through
+  used to be indistinguishable from one that finished. Removal now happens only
+  when everything actually opened; anything less leaves the lists exactly as
+  they were.
+- The redesign in 1.3.9 made this easier to hit by accident: "Restore all" used
+  to be one of nine buttons in a crowded toolbar, and became the single
+  highlighted action next to the search box. The button stays where it is —
+  it is the right thing to have there — but it now asks before doing something
+  that cannot be undone by closing a tab.
+- `npm run e2e:bulk` drives all of it in a real browser; `test/bulk-open.test.js`
+  keeps the guard wired into every path that opens tabs in bulk.
+
 ## 1.3.11 — 2026-09-05
 
 **A safety brake on the bookmark sync.** 1.3.10 fixed the one bug that was

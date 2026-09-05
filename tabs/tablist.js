@@ -129,6 +129,90 @@
 
   // ---- actions -------------------------------------------------------------
 
+  // ---- opening a lot of tabs at once ---------------------------------------
+  //
+  // "Reopen everything" against a few hundred saved tabs will try to open a
+  // few hundred tabs, which is enough to take a machine down — reported by
+  // someone who nearly lost theirs to a single click. Three things guard it
+  // now: it asks before opening more than a handful, it offers to open only
+  // the first few, and whatever you choose is opened in small batches you can
+  // stop partway.
+  var BULK_WARN_AT = 15;   // open up to this many without asking
+  var BULK_FIRST_N = 25;   // what "just some of them" means
+  var BATCH_SIZE = 5;      // tabs created per tick
+  var BATCH_PAUSE = 140;   // ms between ticks — keeps the browser answering
+
+  var bulkOverlay = document.getElementById("bulk-overlay");
+  var bulkStop = false;
+
+  /**
+   * Asks how many to open. Resolves with a limit (a number), or null if the
+   * answer was "don't". Anything at or under BULK_WARN_AT skips the question.
+   */
+  function askHowMany(total, what) {
+    if (total <= BULK_WARN_AT) return Promise.resolve(total);
+    return new Promise(function (resolve) {
+      var some = Math.min(BULK_FIRST_N, total);
+      document.getElementById("bulk-title").textContent = "Open " + total + " tabs?";
+      document.getElementById("bulk-msg").textContent =
+        what + " would open " + total + " tabs at once. That is enough to make most " +
+        "browsers crawl, and can run the machine out of memory. Nothing is removed from " +
+        "your lists either way.";
+      document.getElementById("bulk-some").textContent = "Open the first " + some;
+      document.getElementById("bulk-all").textContent = "Open all " + total;
+      document.getElementById("bulk-choices").hidden = false;
+      document.getElementById("bulk-progress").hidden = true;
+      bulkOverlay.classList.add("show");
+
+      function done(value) {
+        document.getElementById("bulk-some").onclick = null;
+        document.getElementById("bulk-all").onclick = null;
+        document.getElementById("bulk-cancel").onclick = null;
+        resolve(value);
+      }
+      document.getElementById("bulk-some").onclick = function () { done(some); };
+      document.getElementById("bulk-all").onclick = function () { done(total); };
+      document.getElementById("bulk-cancel").onclick = function () {
+        bulkOverlay.classList.remove("show");
+        done(null);
+      };
+    });
+  }
+
+  /** Creates tabs a few at a time, so the browser stays usable and Stop works. */
+  function createInBatches(urls, onTab) {
+    bulkStop = false;
+    var showProgress = urls.length > BULK_WARN_AT;
+    if (showProgress) {
+      document.getElementById("bulk-choices").hidden = true;
+      document.getElementById("bulk-progress").hidden = false;
+      document.getElementById("bulk-stop").onclick = function () { bulkStop = true; };
+      bulkOverlay.classList.add("show");
+    }
+    var i = 0;
+    return new Promise(function (resolve) {
+      (function tick() {
+        if (bulkStop || i >= urls.length) {
+          bulkOverlay.classList.remove("show");
+          resolve({ opened: i, stopped: bulkStop });
+          return;
+        }
+        var end = Math.min(i + BATCH_SIZE, urls.length);
+        for (; i < end; i++) {
+          try {
+            var created = chrome.tabs.create({ url: urls[i], active: false });
+            if (onTab && created && typeof created.then === "function") created.then(onTab, function () {});
+          } catch (e) { /* one bad URL shouldn't stop the rest */ }
+        }
+        if (showProgress) {
+          document.getElementById("bulk-count").textContent =
+            "Opened " + i + " of " + urls.length + "…";
+        }
+        setTimeout(tick, BATCH_PAUSE);
+      })();
+    });
+  }
+
   function openTabs(urls, active) {
     urls.forEach(function (url, i) {
       try { chrome.tabs.create({ url: url, active: !!active && i === 0 }); } catch (e) {}
@@ -142,18 +226,17 @@
 
   // Open the URLs and put them in a native browser tab group named `title`.
   // Falls back to plain tabs if the tabGroups API isn't available.
+  // Resolves with { opened, stopped } like createInBatches, so every restore
+  // path can tell a finished restore from one that was stopped partway.
   function openTabsGrouped(urls, title, color) {
-    if (!urls.length) return;
-    if (!chrome.tabs || !chrome.tabs.group) { openTabs(urls, false); return; }
-    var creations = urls.map(function (u) {
-      return new Promise(function (resolve) {
-        try { chrome.tabs.create({ url: u, active: false }, function (tab) { resolve(tab && tab.id); }); }
-        catch (e) { resolve(null); }
-      });
-    });
-    Promise.all(creations).then(function (ids) {
-      ids = ids.filter(function (id) { return typeof id === "number"; });
-      if (!ids.length) return;
+    if (!urls.length) return Promise.resolve({ opened: 0, stopped: false });
+    if (!chrome.tabs || !chrome.tabs.group) return createInBatches(urls);
+
+    var ids = [];
+    return createInBatches(urls, function (tab) {
+      if (tab && typeof tab.id === "number") ids.push(tab.id);
+    }).then(function (res) {
+      if (!ids.length) return res;
       try {
         chrome.tabs.group({ tabIds: ids }, function (groupId) {
           if (chrome.runtime.lastError || groupId == null) return;
@@ -168,6 +251,7 @@
           }
         });
       } catch (e) { /* grouping unsupported on this browser */ }
+      return res;
     });
   }
 
@@ -200,9 +284,22 @@
     var asGroup = typeof asGroupOverride === "boolean"
       ? asGroupOverride
       : !!(settings && settings.restoreAsGroup);
-    if (asGroup) openTabsGrouped(urls, groupLabel(g));
-    else openTabs(urls, false);
-    if (!g.locked && removeOnRestore()) { TabbySync.removeGroup(state, gid); persist(); render(); }
+
+    return askHowMany(urls.length, "Reopening this list").then(function (limit) {
+      if (!limit) return;
+      var take = urls.slice(0, limit);
+      if (asGroup) return openTabsGrouped(take, groupLabel(g)).then(function (r) { finish(r); });
+      return createInBatches(take).then(finish);
+    });
+
+    // Only clear the list when everything in it actually opened: a stopped or
+    // partial restore that deleted the list anyway would lose the rest.
+    function finish(res) {
+      var complete = res && !res.stopped && res.opened === urls.length;
+      if (complete && !g.locked && removeOnRestore()) {
+        TabbySync.removeGroup(state, gid); persist(); render();
+      }
+    }
   }
   function copyTab(t) { return { url: t.url, title: t.title || t.url, favIconUrl: t.favIconUrl || "" }; }
   function groupLabelSafe(g) { return g.name || formatDate(g.createdAt); }
@@ -242,17 +339,39 @@
   }
   function restoreAll() {
     if (!state.groups.length) return;
-    if (settings && settings.restoreAsGroup) {
-      var colors = ["blue", "green", "red", "yellow", "purple", "cyan", "orange", "pink"];
-      state.groups.forEach(function (g, i) {
-        openTabsGrouped(g.tabs.map(function (t) { return t.url; }), groupLabel(g), colors[i % colors.length]);
-      });
-    } else {
+    var groups = sortedGroups();
+    var total = 0;
+    groups.forEach(function (g) { total += g.tabs.length; });
+
+    return askHowMany(total, "Reopening everything").then(function (limit) {
+      if (!limit) return;
+
+      var asGroup = !!(settings && settings.restoreAsGroup);
+      if (asGroup) {
+        // Whole lists at a time, so each one still arrives as its own browser
+        // tab group; stop once the limit is reached rather than splitting one.
+        var colors = ["blue", "green", "red", "yellow", "purple", "cyan", "orange", "pink"];
+        var budget = limit, opened = 0, i = 0;
+        return (function next() {
+          if (i >= groups.length || budget <= 0 || bulkStop) {
+            return Promise.resolve({ opened: opened, stopped: bulkStop });
+          }
+          var g = groups[i], take = g.tabs.slice(0, budget).map(function (t) { return t.url; });
+          i++; budget -= take.length; opened += take.length;
+          return openTabsGrouped(take, groupLabel(g), colors[(i - 1) % colors.length]).then(next);
+        })().then(finish);
+      }
+
       var urls = [];
-      state.groups.forEach(function (g) { g.tabs.forEach(function (t) { urls.push(t.url); }); });
-      openTabs(urls, false);
-    }
-    if (removeOnRestore()) {
+      groups.forEach(function (g) { g.tabs.forEach(function (t) { urls.push(t.url); }); });
+      return createInBatches(urls.slice(0, limit)).then(finish);
+    });
+
+    // Same rule as one list: clear only what fully opened. Anything less and
+    // the lists stay exactly as they were.
+    function finish(res) {
+      var complete = res && !res.stopped && res.opened === total;
+      if (!complete || !removeOnRestore()) return;
       var keep = state.groups.filter(function (g) { return g.locked; });
       state.groups.forEach(function (g) { if (!g.locked) state.deleted[g.id] = Date.now(); });
       state.groups = keep;
@@ -799,6 +918,21 @@
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
     document.querySelectorAll("details.menu[open], details.gmenu[open]").forEach(function (d) { d.open = false; });
+    // Escape out of the "open this many tabs?" question, and stop a run in
+    // progress — the same key does the safe thing in both states.
+    if (bulkOverlay.classList.contains("show")) {
+      bulkStop = true;
+      var cancel = document.getElementById("bulk-cancel");
+      if (cancel && cancel.onclick) cancel.onclick();
+      bulkOverlay.classList.remove("show");
+    }
+  });
+  bulkOverlay.addEventListener("click", function (e) {
+    if (e.target !== bulkOverlay) return;
+    bulkStop = true;
+    var cancel = document.getElementById("bulk-cancel");
+    if (cancel && cancel.onclick) cancel.onclick();
+    bulkOverlay.classList.remove("show");
   });
   // Closing the More menu after picking something out of it, so the page
   // isn't left with a menu hanging over what just happened.
