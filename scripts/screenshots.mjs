@@ -24,6 +24,8 @@
 //           only 1280x800 or 640x400, no alpha
 //   og/     the 1200x630 social card the marketing site points every Open
 //           Graph and Twitter tag at
+//   promo/  the Chrome Web Store's promo tiles — 440x280 (shown beside the
+//           listing) and 1400x560 (used if the store ever features it)
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -36,7 +38,8 @@ const RAW = path.join(DIR, 'raw');
 const WEB = path.join(DIR, 'web');
 const STORE = path.join(DIR, 'store');
 const OG = path.join(DIR, 'og');
-for (const d of [RAW, WEB, STORE, OG]) fs.mkdirSync(d, { recursive: true });
+const PROMO = path.join(DIR, 'promo');
+for (const d of [RAW, WEB, STORE, OG, PROMO]) fs.mkdirSync(d, { recursive: true });
 
 const THEMES = ['light', 'dark'];
 
@@ -394,6 +397,73 @@ async function socialCard(browser) {
   console.log('og    ', path.relative(ROOT, sitePath));
 }
 
+// ---- 5. the Chrome Web Store's promo tiles ---------------------------------
+
+// Two fixed sizes the store asks for, both of which sit next to competitors'
+// tiles in a grid. At 440x280 there is room for the mark, the name and one
+// line — anything more is unreadable at the size it is actually displayed.
+async function promoTiles(browser) {
+  const logo = 'data:image/png;base64,' +
+    fs.readFileSync(path.join(ROOT, 'icons', 'logo-light.png')).toString('base64');
+  const icon = 'data:image/png;base64,' +
+    fs.readFileSync(path.join(ROOT, 'icons', 'icon-256.png')).toString('base64');
+  const shot = dataUri(RAW, 'popup-light.png');
+
+  const tiles = [
+    {
+      name: 'small-tile-440x280.png', w: 440, h: 280,
+      body: `<div class="stack">
+               <img class="logo" src="${logo}" alt="TabbySync">
+               <p class="line">Your bookmarks and tabs, synced to a server you control.</p>
+               <div class="tags"><span>Self-hosted</span><span>Encrypted</span><span>No account</span></div>
+             </div>`,
+    },
+    {
+      name: 'marquee-1400x560.png', w: 1400, h: 560,
+      body: `<div class="row">
+               <div class="stack left">
+                 <img class="logo" src="${logo}" alt="TabbySync">
+                 <h1>Bookmarks and tabs, synced to your own server</h1>
+                 <p class="line">One extension, two tools, one destination you choose. Optional
+                   end-to-end encryption. No account, no analytics, no tracking.</p>
+               </div>
+               <div class="shot"><img src="${shot}" alt=""></div>
+             </div>`,
+    },
+  ];
+
+  for (const t of tiles) {
+    const page = await browser.newPage({ viewport: { width: t.w, height: t.h }, deviceScaleFactor: 1 });
+    await page.setContent(`<style>
+      *{box-sizing:border-box;margin:0;padding:0;}
+      body{width:${t.w}px;height:${t.h}px;overflow:hidden;color:#131925;
+        background:radial-gradient(${t.w}px ${t.h}px at 15% -20%, #ffffff, #e6ecf6);
+        font:400 16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+        display:flex;align-items:center;justify-content:center;}
+      .accent{position:absolute;top:0;left:0;right:0;height:6px;
+        background:linear-gradient(90deg,#2563eb 0%,#2563eb 50%,#ea580c 50%,#ea580c 100%);}
+      .stack{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:0 26px;}
+      .logo{height:${t.w > 600 ? 68 : 44}px;width:auto;display:block;}
+      .line{font-size:${t.w > 600 ? 20 : 14}px;line-height:1.45;color:#4d5866;max-width:${t.w > 600 ? '40ch' : '26ch'};}
+      .tags{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;}
+      .tags span{font-size:11.5px;font-weight:650;padding:5px 10px;border-radius:999px;
+        border:1px solid rgba(19,25,37,.14);background:rgba(255,255,255,.75);color:#3b4553;}
+      .row{display:flex;align-items:center;gap:60px;padding:0 72px;width:100%;}
+      .left{align-items:flex-start;text-align:left;flex:1 1 auto;}
+      h1{font-size:40px;line-height:1.14;font-weight:800;letter-spacing:-.02em;max-width:17ch;}
+      .shot{flex:0 0 auto;width:250px;border:1px solid rgba(19,25,37,.12);border-radius:14px;
+        overflow:hidden;box-shadow:0 22px 50px rgba(19,25,37,.20);background:#fff;}
+      .shot img{display:block;width:100%;}
+    </style><div class="accent"></div>${t.body}`);
+    await page.waitForTimeout(300);
+    const out = path.join(PROMO, t.name);
+    await page.screenshot({ path: out, clip: { x: 0, y: 0, width: t.w, height: t.h } });
+    await page.close();
+    console.log('promo ', path.relative(ROOT, out));
+  }
+  void icon;
+}
+
 // ---- run -------------------------------------------------------------------
 
 await capture();
@@ -401,6 +471,7 @@ const browser = await chromium.launch();
 await downscale(browser);
 await frame(browser);
 await socialCard(browser);
+await promoTiles(browser);
 await browser.close();
 console.log('\nDone. Store images are exactly 1280x800 with no alpha channel;'
   + ' the social card is 1200x630.');

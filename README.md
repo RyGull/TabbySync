@@ -213,6 +213,24 @@ doesn't answer — the script waits for that first doomed sync and then stamps a
 settled "synced" status, so the pictures show an ordinary healthy profile rather
 than the artifact of there being no server on the machine that took them.
 
+## Publishing to the Chrome Web Store
+
+```
+sh scripts/package.sh          # dist/tabbysync-<version>.zip — the upload itself
+npm run screenshots            # store images + promo tiles, from the real UI
+```
+
+`store/listing.md` holds every text field the dashboard asks for, ready to
+paste: the description, the single-purpose statement, a justification for each
+permission, the remote-code answer and the data-usage disclosures with the
+reasoning behind each tick. It is kept beside the code on purpose — a
+permission justification is a claim about the manifest, and the two drift apart
+the moment they live in different places.
+
+Assets come out of `docs/screenshots/`: `store/` for the 1280x800 listing
+images (RGB, no alpha, which the store requires), `promo/` for the 440x280 and
+1400x560 tiles.
+
 ## Marketing site
 
 `website/` is a separate, fancy, responsive PHP landing page for
