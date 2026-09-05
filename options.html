@@ -14,221 +14,433 @@
     <div class="top">
       <img class="olo olo-light" src="icons/logo-light.png" alt="TabbySync">
       <img class="olo olo-dark" src="icons/logo-dark.png" alt="TabbySync">
-      <span class="tag">self-hosted bookmark &amp; tab sync</span>
+      <span class="tag">Settings</span>
       <span id="sl-theme"></span>
     </div>
-    <div class="intro-cards">
-      <div class="card intro-card">
-        <p><strong>Privacy-first.</strong> Your bookmarks and tabs stay on your device and are sent
-          only to the sync destination you choose. TabbySync runs no server of its own, collects no
-          analytics, and never sees your data. <a href="privacy.html" target="_blank" rel="noopener">Read the full privacy policy →</a></p>
-      </div>
-      <div class="card intro-card warn">
-        <p>Self-hosting keeps your data on a server only you control; the free alternatives below
-          trade some of that privacy for not needing a server at all. We have no control over your
-          data once you use a third-party provider.</p>
-      </div>
+
+    <!-- ================= STATUS BAND =================
+         The one thing this page never used to answer: is it working right
+         now? Filled in by refreshBand() in options.js from the same status
+         messages the popup uses. -->
+    <div class="band" id="statusBand">
+      <span class="band-mark" id="bandMark">·</span>
+      <span class="band-text">
+        <span class="band-line1" id="bandLine1">Checking…</span>
+        <span class="band-line2" id="bandLine2"></span>
+      </span>
     </div>
 
-    <!-- ================= SHARED SERVER ================= -->
-    <section class="card server">
-      <h2><span class="ic">🌐</span> Server &amp; sync</h2>
-      <p>Both tools share this: bookmarks are stored as
-        <code>bookmarks-&lt;name&gt;.json</code> and tabs as <code>tabs-&lt;name&gt;.json</code>,
-        so they never collide.</p>
+    <!-- ================= 1. WHERE THE DATA LIVES ================= -->
+    <section class="card server" id="serverCard">
+      <h2><span class="step-n">1</span> Where should your bookmarks and tabs live?</h2>
+      <p class="say">TabbySync keeps no copy of its own and runs no server. You pick the destination,
+        and your data goes only there. <a href="privacy.html" target="_blank" rel="noopener">Read the privacy policy →</a></p>
 
-      <label class="field gold" for="sync-provider">Sync method</label>
-      <select id="sync-provider"></select>
-      <!-- a div, not a <p> — the gist hint below needs an <ol> in it, which
-           isn't valid inside a paragraph -->
-      <div class="hint" id="provider-hint"></div>
+      <!-- The real control is the <select>; the cards below drive it. Keeping
+           the select means every provider lookup, save path and test path in
+           options.js reads exactly the same value it always did — the cards
+           are a nicer way to set it, not a second source of truth. -->
+      <label class="sr-only" for="sync-provider">Sync method</label>
+      <select id="sync-provider" class="sr-only" tabindex="-1" aria-hidden="true"></select>
+
+      <div class="choices" id="providerChoices" role="group" aria-label="Where your data is stored">
+        <button type="button" class="choice own" data-provider="custom" aria-pressed="false">
+          <span class="t"><span class="tick">✓</span> My own website</span>
+          <span class="d">You upload one small file to your web space. Nobody else can read your data —
+            not even us.</span>
+          <span class="tagline">Most private · recommended</span>
+        </button>
+        <button type="button" class="choice gh" data-provider="gist" aria-pressed="false">
+          <span class="t"><span class="tick">✓</span> My GitHub account</span>
+          <span class="d">Free, no server needed. GitHub holds the file, so turn on the password
+            lock below.</span>
+          <span class="tagline">Free · less private</span>
+        </button>
+        <button type="button" class="choice easy" data-provider="jsonbin" aria-pressed="false">
+          <span class="t"><span class="tick">✓</span> Just get me going</span>
+          <span class="d">A free storage service holds it. Quickest to set up, least private of the
+            three — use the password lock.</span>
+          <span class="tagline">Easiest · least private</span>
+        </button>
+      </div>
+
       <div class="callout" id="provider-disclaimer" hidden></div>
+      <div class="hint" id="provider-hint"></div>
+      <div class="row" id="guide-row" hidden>
+        <button class="btn primary" id="guide-open" type="button">Show me how, step by step →</button>
+      </div>
 
-      <label class="field gold" for="srv-profile-label" id="srv-profile-label-label">Sync name</label>
-      <input type="text" id="srv-profile-label" placeholder="e.g. Home laptop, Work" spellcheck="false" autocomplete="off" maxlength="60">
-      <p class="hint" id="srv-profile-label-hint">Unlike the Sync name for other methods, JSONBin has no name of its
-        own to tell profiles apart — this one is just for your own reference, shown in the popup and here only.
-        It's never sent anywhere and doesn't change where your data syncs (JSONBin still keys everything off the
-        API key above).</p>
+      <div class="fields">
+        <label class="field" for="srv-url" id="srv-url-label">Web address of the file you uploaded</label>
+        <input type="url" id="srv-url" placeholder="https://example.com/tabbysync/tabbysync.php" spellcheck="false">
+        <p class="hint" id="srv-url-hint">It ends in <code>tabbysync.php</code> — the file from step 2 below.
+          It must start with <code>https://</code>: your access code is sent with every request, so a plain
+          <code>http://</code> address would expose it to anyone on the network (<code>localhost</code> excepted).</p>
 
-      <label class="field gold" for="srv-url" id="srv-url-label">Server URL</label>
-      <input type="url" id="srv-url" placeholder="https://example.com/tabbysync/tabbysync.php" spellcheck="false">
-      <p class="hint" id="srv-url-hint">The <code>tabbysync.php</code> script (see “Self-hosting” below). Requests route via <code>?name=</code>. Must be <code>https://</code> — your token is sent with every request, so a plain <code>http://</code> address would expose it to anyone on the network (<code>localhost</code> excepted).</p>
+        <label class="field" for="srv-token" id="srv-token-label">Access code</label>
+        <input type="password" id="srv-token" placeholder="the code inside tabbysync.php" spellcheck="false" autocomplete="off">
+        <p class="hint" id="srv-token-hint">Stored on this computer only.</p>
 
-      <label class="field gold" for="srv-token" id="srv-token-label">Bearer token</label>
-      <input type="password" id="srv-token" placeholder="the token inside tabbysync.php" spellcheck="false" autocomplete="off">
-      <p class="hint" id="srv-token-hint">Sent as <code>Authorization: Bearer …</code>. Stored only in this browser profile.</p>
+        <label class="field" for="srv-profile-label" id="srv-profile-label-label">Name for this computer</label>
+        <input type="text" id="srv-profile-label" placeholder="e.g. Home laptop, Work" spellcheck="false" autocomplete="off" maxlength="60">
+        <p class="hint" id="srv-profile-label-hint">Just a label for you, shown in the popup and here. It's
+          never sent anywhere and doesn't affect where your data goes — this method keys everything off the
+          API key above, so it can only hold one profile.</p>
 
-      <label class="field gold" for="srv-name" id="srv-name-label">Sync name</label>
-      <input type="text" id="srv-name" placeholder="work" spellcheck="false" autocomplete="off" maxlength="40">
-      <p class="hint" id="srv-name-hint">This profile's name (e.g. <code>work</code>, <code>home</code>). Use the identical name on your other computers to share the same data; a different name stays separate. Letters, numbers, dots, dashes and underscores only, up to 40 characters — anything else is stripped when you save.</p>
+        <label class="field" for="srv-name" id="srv-name-label">Name for this group of computers</label>
+        <input type="text" id="srv-name" placeholder="work" spellcheck="false" autocomplete="off" maxlength="40">
+        <p class="hint" id="srv-name-hint">Type the same word on every computer you want to share with —
+          <code>work</code>, <code>home</code>, <code>laptops</code>. A different word keeps them separate.
+          Letters, numbers, dots, dashes and underscores only.</p>
+      </div>
 
-      <div class="preview" id="srv-preview">Set a URL and sync name to see your file paths.</div>
+      <div class="preview" id="srv-preview">Fill in the boxes above to see where your files will go.</div>
 
       <div class="row">
-        <button class="btn primary" id="srv-save">Save &amp; grant access</button>
-        <button class="btn" id="srv-test">Test connection</button>
+        <button class="btn primary" id="srv-save">Save and connect</button>
+        <button class="btn" id="srv-test">Check it works</button>
       </div>
       <div class="status" id="srv-status"></div>
-
-      <h3>Encryption (optional, shared)</h3>
-      <p>Encrypt data <b>before</b> it reaches your server, so the stored files are unreadable
-        even to your host. One passphrase covers both tools; enter the same one on every computer.</p>
-      <label class="field" for="enc-pass">Passphrase</label>
-      <input type="password" id="enc-pass" placeholder="a phrase only you know" spellcheck="false" autocomplete="new-password">
-      <div class="callout"><b>Important:</b> never sent to the server, stored only on this device.
-        If you forget it, the encrypted data can't be recovered — there's no reset.</div>
-      <div class="row">
-        <button class="btn" id="enc-save">Save passphrase</button>
-        <button class="btn outline" id="enc-clear">Turn off encryption</button>
-      </div>
-      <div class="status" id="enc-status"></div>
-
     </section>
 
-    <!-- ================= SELF-HOSTING ================= -->
+    <!-- ================= 2. SELF-HOSTING (only for "my own website") ======= -->
     <section class="card selfhost" id="selfhostCard">
-      <h2><span class="ic">🛠️</span> Self-hosting — generate your server files</h2>
-      <p>No endpoint yet? Generate a ready-to-upload bundle (one PHP script + <code>.htaccess</code>
-        guards) with a fresh random token. It runs on <b>your</b> web space; TabbySync never sends your data to anyone.</p>
-      <label class="field" for="gen-token">Server token</label>
-      <div class="row" style="margin-top:4px">
-        <input type="text" id="gen-token" spellcheck="false" autocomplete="off" readonly style="flex:1;min-width:220px">
-        <button class="btn" id="gen-regen" type="button">Regenerate</button>
-      </div>
-      <div class="row">
-        <button class="btn primary" id="gen-download" type="button">Download server files (.zip)</button>
-        <button class="btn outline" id="gen-use" type="button">Use this token above</button>
-      </div>
-      <div class="status" id="gen-status"></div>
-      <details>
-        <summary>How to host it (about 3 minutes)</summary>
-        <div class="callout">
-          <ol style="margin:0 0 0 18px;padding:0;line-height:1.7">
-            <li>Click <b>Download server files</b> — you get <code>tabbysync-server.zip</code> containing a <code>tabbysync/</code> folder.</li>
-            <li>Upload that whole folder to your PHP web space (e.g. <code>public_html/</code> on cPanel) over HTTPS.</li>
-            <li>Set <b>Server URL</b> above to <code>https://YOURDOMAIN/tabbysync/tabbysync.php</code>, then click <b>Use this token above</b>.</li>
-            <li><b>Save &amp; grant access</b>, then <b>Test connection</b> — a <code>404</code> is expected until the first sync creates a file.</li>
-            <li>Repeat the same URL + token + sync name on your other computers.</li>
-          </ol>
+      <h2><span class="step-n">2</span> Don't have that file yet?</h2>
+      <p class="say">TabbySync writes it for you, with a fresh access code already inside. Takes about
+        three minutes, and you only do it once.</p>
+
+      <ol class="howto">
+        <li>
+          <b>Download it.</b>
+          <div class="row">
+            <button class="btn primary" id="gen-download" type="button">Make my file →</button>
+          </div>
+        </li>
+        <li><b>Upload the whole <code>tabbysync</code> folder</b> to your web space — the same place your
+          website's pages live (on cPanel that's usually <code>public_html/</code>). Your web address must
+          start with <code>https://</code>.</li>
+        <li><b>Come back up to step 1</b> and paste the address of the uploaded file, e.g.
+          <code>https://example.com/tabbysync/tabbysync.php</code>, then click the button below to fill in
+          the access code for you.
+          <div class="row">
+            <button class="btn" id="gen-use" type="button">Fill in my access code above</button>
+          </div>
+        </li>
+        <li><b>Click “Save and connect”</b>, then “Check it works”. Repeat the same address, code and group
+          name on your other computers.</li>
+      </ol>
+
+      <details class="more">
+        <summary>The access code TabbySync generated</summary>
+        <div class="inner">
+          <p class="hint">This is baked into the file you download. Generating a new one means uploading the
+            file again.</p>
+          <div class="row">
+            <input type="text" id="gen-token" spellcheck="false" autocomplete="off" readonly style="flex:1;min-width:220px">
+            <button class="btn" id="gen-regen" type="button">Make a new one</button>
+          </div>
         </div>
       </details>
+      <div class="status" id="gen-status"></div>
     </section>
 
-    <!-- ================= BOOKMARKS ================= -->
-    <section class="card bm" id="bmCard">
-      <h2><span class="ic">📑</span> Bookmarks
-        <label class="sw" title="Enable bookmark sync">
-          <input type="checkbox" id="bm-enable"><span class="track"></span>
-        </label>
-      </h2>
-      <p>Sync your whole bookmark tree (bar + other bookmarks) with a true three-way merge across devices.</p>
-      <div class="body">
-        <label class="field" for="bm-interval">Auto-sync every (minutes)</label>
-        <input type="number" id="bm-interval" min="1" max="1440" step="1" value="5">
-        <label class="check"><input type="checkbox" id="bm-autosync"> Sync shortly after any bookmark change</label>
-        <label class="check"><input type="checkbox" id="bm-deletewins"> Deletions win over edits <span class="hint">(off = an edit beats a delete, so nothing is silently lost)</span></label>
+    <!-- ================= 3. PASSWORD LOCK ================= -->
+    <section class="card enc" id="encCard">
+      <h2><span class="step-n">3</span> Lock it with a password</h2>
+      <p class="say">Scrambles your data on this computer <b>before</b> it's sent, so whoever stores it
+        can't read it. Type the same password on your other computers.</p>
 
-        <h3>Import &amp; export</h3>
-        <p>Imports <b>merge</b> into your current bookmarks (matched by URL, no duplicates), then sync.</p>
-        <div class="row">
-          <button class="btn outline" id="bm-exp-html">Export HTML</button>
-          <button class="btn outline" id="bm-imp-html">Import HTML…</button>
+      <div class="engine enc-row">
+        <div class="engine-top">
+          <label class="sw" title="Lock my data with a password">
+            <input type="checkbox" id="enc-switch"><span class="track"></span>
+          </label>
+          <span class="engine-name" id="enc-state">Password lock is off</span>
         </div>
-        <label class="field" for="bm-backup-pass" style="margin-top:16px">Encrypted backup passphrase</label>
-        <input type="password" id="bm-backup-pass" placeholder="backup passphrase" spellcheck="false" autocomplete="new-password">
-        <div class="row">
-          <button class="btn outline" id="bm-exp-enc">Export encrypted backup</button>
-          <button class="btn outline" id="bm-imp-enc">Import encrypted backup…</button>
+        <div class="engine-body" id="enc-body">
+          <label class="field" for="enc-pass">Password</label>
+          <input type="password" id="enc-pass" placeholder="a phrase only you know" spellcheck="false" autocomplete="new-password">
+          <div class="callout"><b>There is no reset.</b> This password never leaves this computer, so if you
+            forget it, the locked data can't be recovered by anyone — including us. Write it down somewhere safe.</div>
+          <div class="row">
+            <button class="btn primary" id="enc-save">Save password</button>
+            <button class="btn outline" id="enc-clear">Turn the lock off</button>
+          </div>
         </div>
-        <input type="file" id="bm-file-html" accept=".html,text/html">
-        <input type="file" id="bm-file-enc" accept=".json,application/json">
-        <div class="status" id="bm-io-status"></div>
+      </div>
+      <div class="status" id="enc-status"></div>
+    </section>
+
+    <!-- ================= 4. WHAT TO SYNC ================= -->
+    <section class="card what">
+      <h2><span class="step-n">4</span> What should it keep in sync?</h2>
+      <p class="say">Use one, or both. They share everything you set above.</p>
+
+      <!-- ---------------- bookmarks ---------------- -->
+      <div class="engine bm" id="bmCard">
+        <div class="engine-top">
+          <label class="sw" title="Sync bookmarks">
+            <input type="checkbox" id="bm-enable"><span class="track"></span>
+          </label>
+          <span class="engine-name">Bookmarks</span>
+          <span class="engine-count" id="bm-summary"></span>
+        </div>
+        <p class="engine-what">Keeps your bookmarks the same on every computer. Changes made in two places
+          are combined, not overwritten, so nothing is quietly lost.</p>
+
+        <details class="more">
+          <summary>More options</summary>
+          <div class="inner">
+            <div class="mini">
+              <label for="bm-interval">Check for changes every</label>
+              <input type="number" id="bm-interval" min="1" max="1440" step="1" value="5"> minutes
+            </div>
+            <label class="check"><input type="checkbox" id="bm-autosync">
+              <span>Sync right after I add or change a bookmark</span></label>
+            <label class="check"><input type="checkbox" id="bm-deletewins">
+              <span>If a bookmark is deleted on one computer and edited on another, delete it
+                <span class="sub">Off: the edit wins, so nothing disappears by surprise.</span></span></label>
+
+            <h3>Backups</h3>
+            <p class="hint">Restoring <b>merges</b> into your current bookmarks (matched by web address, no
+              duplicates) and then syncs. Nothing is replaced.</p>
+            <div class="row">
+              <button class="btn outline" id="bm-exp-html">Save a backup file</button>
+              <button class="btn outline" id="bm-imp-html">Restore from a file…</button>
+            </div>
+            <label class="field" for="bm-backup-pass">Password-protect the backup <span class="opt">optional</span></label>
+            <input type="password" id="bm-backup-pass" placeholder="a password for this backup file" spellcheck="false" autocomplete="new-password">
+            <p class="hint">Only for the buttons below — this is about the file you save to your computer,
+              not the password lock further up this page.</p>
+            <div class="row">
+              <button class="btn outline" id="bm-exp-enc">Save a locked backup</button>
+              <button class="btn outline" id="bm-imp-enc">Restore a locked backup…</button>
+            </div>
+            <input type="file" id="bm-file-html" accept=".html,text/html">
+            <input type="file" id="bm-file-enc" accept=".json,application/json">
+            <div class="status" id="bm-io-status"></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- ---------------- tabs ---------------- -->
+      <div class="engine tab" id="tabCard">
+        <div class="engine-top">
+          <label class="sw" title="Sync tabs">
+            <input type="checkbox" id="tab-enable"><span class="track"></span>
+          </label>
+          <span class="engine-name">Tabs</span>
+          <span class="engine-count" id="tab-summary"></span>
+        </div>
+        <p class="engine-what">Closes the tabs you're done with and saves them as a list you can reopen on
+          any of your computers — one link, one list, or all of them.</p>
+
+        <details class="more">
+          <summary>More options</summary>
+          <div class="inner">
+            <div class="mini">
+              <label for="tab-interval">Check for changes every</label>
+              <input type="number" id="tab-interval" min="0" max="1440" step="1" value="5"> minutes
+            </div>
+            <p class="hint">Set it to 0 to stop checking in the background — you can still sync any time
+              from the popup.</p>
+
+            <div class="mini">
+              <label for="tab-dedupe">If a tab is already saved</label>
+              <select id="tab-dedupe">
+                <option value="group">Don't save it twice</option>
+                <option value="allow">Save it again anyway</option>
+                <option value="all">Skip it if it's anywhere in my lists</option>
+              </select>
+            </div>
+            <p class="hint">A skipped tab still closes in your window — it just isn't saved a second time.</p>
+            <div class="row">
+              <button class="btn" id="tab-dedupe-now">Clean up duplicates I already saved</button>
+            </div>
+            <div class="status" id="tab-dedupe-status"></div>
+
+            <h3>Reopening</h3>
+            <label class="check"><input type="checkbox" id="tab-restore-group">
+              <span>Reopen each list as a browser tab group</span></label>
+            <label class="check"><input type="checkbox" id="tab-remove-restore">
+              <span>Remove links from the list once I reopen them
+                <span class="sub">Off: reopening leaves the list as it was.</span></span></label>
+            <label class="check"><input type="checkbox" id="tab-pin-list">
+              <span>Keep the saved-tabs page pinned</span></label>
+
+            <h3>Backups</h3>
+            <p class="hint">Restoring <b>merges</b> into your saved lists (matched by web address, no
+              duplicates) and then syncs. In a plain list of addresses, a blank line starts a new list.</p>
+            <div class="row">
+              <button class="btn outline" id="tab-exp">Save a backup file</button>
+              <button class="btn outline" id="tab-imp">Restore from a file…</button>
+            </div>
+            <label class="field" for="tab-backup-pass">Password-protect the backup <span class="opt">optional</span></label>
+            <input type="password" id="tab-backup-pass" placeholder="a password for this backup file" spellcheck="false" autocomplete="new-password">
+            <p class="hint">Only for the buttons below — this is about the file you save to your computer,
+              not the password lock further up this page.</p>
+            <div class="row">
+              <button class="btn outline" id="tab-exp-enc">Save a locked backup</button>
+              <button class="btn outline" id="tab-imp-enc">Restore a locked backup…</button>
+            </div>
+            <input type="file" id="tab-file" accept=".json,application/json">
+            <div class="status" id="tab-io-status"></div>
+
+            <h3>Keyboard shortcut</h3>
+            <p class="hint"><code>Alt</code>+<code>Shift</code>+<code>O</code> saves every tab in the window.
+              Right-click the toolbar icon for more (this tab, the others, the ones to the left or right).
+              Change it at <code>chrome://extensions/shortcuts</code>.</p>
+          </div>
+        </details>
       </div>
     </section>
 
-    <!-- ================= TABS ================= -->
-    <section class="card tab" id="tabCard">
-      <h2><span class="ic">🗂️</span> Tabs
-        <label class="sw" title="Enable tab sync">
-          <input type="checkbox" id="tab-enable"><span class="track"></span>
-        </label>
-      </h2>
-      <p>Collapse open tabs into a saved list to free memory, then restore them individually or all at once — synced across devices.</p>
-      <div class="body">
-        <label class="field" for="tab-interval">Auto-sync every (minutes)</label>
-        <input type="number" id="tab-interval" min="0" max="1440" step="1" value="5">
-        <p class="hint">0 disables the background check (you can still sync from the popup). Minimum 1 minute when on.</p>
+    <!-- ================= ADVANCED / DELETE ================= -->
+    <details class="card danger" id="dangerCard">
+      <summary><span class="ic">⚠️</span> Advanced and delete options</summary>
+      <div class="danger-inner">
+        <p><b>This permanently deletes your synced data from wherever it's stored</b> — your own website,
+          GitHub, or the free storage service. It does <b>not</b> touch the bookmarks and tabs in this
+          browser, only the copy TabbySync has been syncing to. There's no undo.</p>
 
-        <label class="field" for="tab-dedupe">When sending tabs already saved<span class="req">* required</span></label>
-        <select id="tab-dedupe" required>
-          <option value="" disabled selected hidden>— Choose one —</option>
-          <option value="allow">Keep duplicates (save everything)</option>
-          <option value="group">Skip duplicates within the same send</option>
-          <option value="all">Skip tabs already saved in this list</option>
-        </select>
-        <p class="hint">Pick one so you know whether repeat tabs get added to your lists again — there's no default. Skipped tabs still close in your window; they're just not saved a second time.</p>
+        <label class="field" for="danger-unlock">Type <code>DELETE</code> to switch the buttons on</label>
+        <input type="text" id="danger-unlock" placeholder="DELETE" spellcheck="false" autocomplete="off">
+        <p class="hint">Each button asks you to confirm as well — this just keeps a stray click from
+          getting that far.</p>
+
         <div class="row">
-          <button class="btn" id="tab-dedupe-now">Remove duplicates already saved</button>
+          <button class="btn danger" id="danger-custom" type="button" disabled>Delete what's on my website</button>
+          <button class="btn danger" id="danger-gist" type="button" disabled>Delete what's on GitHub</button>
+          <button class="btn danger" id="danger-jsonbin" type="button" disabled>Delete what's on JSONBin.io</button>
         </div>
-        <div class="status" id="tab-dedupe-status"></div>
+        <div class="status" id="danger-status"></div>
 
-        <h3>Restoring</h3>
-        <label class="check"><input type="checkbox" id="tab-restore-group"> Open each restored list as a browser tab group</label>
-        <label class="check"><input type="checkbox" id="tab-remove-restore"> Remove links from the list when I restore them <span class="hint">(off = keep them after restoring)</span></label>
-
-        <h3>Tab list tab</h3>
-        <label class="check"><input type="checkbox" id="tab-pin-list"> Keep the tab-list tab pinned</label>
-
-        <h3>Import &amp; export</h3>
-        <p>Imports <b>merge</b> into this profile's lists (matched by URL, no duplicates), then sync. In a plain URL list, a <b>blank line</b> starts a new group.</p>
+        <h3>Start over from scratch</h3>
+        <p>Deletes the synced data everywhere you've ever set up here, erases every TabbySync setting in
+          this browser, and starts fresh as if just installed. This does <b>not</b> uninstall the extension.</p>
         <div class="row">
-          <button class="btn outline" id="tab-exp">Export JSON</button>
-          <button class="btn outline" id="tab-imp">Import JSON…</button>
+          <button class="btn danger solid" id="danger-wipe-all" type="button" disabled>Delete everything and start over</button>
         </div>
-        <label class="field" for="tab-backup-pass" style="margin-top:16px">Encrypted backup passphrase</label>
-        <input type="password" id="tab-backup-pass" placeholder="backup passphrase" spellcheck="false" autocomplete="new-password">
-        <div class="row">
-          <button class="btn outline" id="tab-exp-enc">Export encrypted backup</button>
-          <button class="btn outline" id="tab-imp-enc">Import encrypted backup…</button>
-        </div>
-        <input type="file" id="tab-file" accept=".json,application/json">
-        <div class="status" id="tab-io-status"></div>
-
-        <h3>Shortcuts</h3>
-        <p><code>Alt</code>+<code>Shift</code>+<code>O</code> — send all tabs. Right-click the toolbar icon for more (this tab, others, left, right). Rebind at <code>chrome://extensions/shortcuts</code>.</p>
+        <div class="status" id="danger-wipe-status"></div>
       </div>
-    </section>
+    </details>
 
-    <!-- ================= DANGER ZONE ================= -->
-    <section class="card danger" id="dangerCard">
-      <h2><span class="ic">⚠️</span> Delete data</h2>
-      <p><b>This permanently deletes your synced data from wherever it's stored</b> — your self-hosted
-        server, GitHub Gist, or JSONBin.io. It does <b>not</b> touch your actual bookmarks or open tabs in
-        this browser, only the remote copy TabbySync has been syncing to. There's no undo — once it's gone
-        from the provider, it's gone.</p>
+  <!-- ================= SETUP GUIDES =================
+       Long-form, click-by-click walk-throughs for the two destinations that
+       need an account somewhere. They live here rather than in
+       shared/providers.js because they are documents, and that file is
+       metadata loaded by every page in the extension. -->
+  <dialog id="guideDialog" class="guide">
+    <div class="guide-head">
+      <h2 id="guide-title">Setting this up</h2>
+      <button class="btn" id="guide-close" type="button" aria-label="Close">Close</button>
+    </div>
+    <div class="guide-body">
 
-      <label class="field" for="danger-unlock">Type <code>DELETE</code> to unlock the buttons below</label>
-      <input type="text" id="danger-unlock" placeholder="DELETE" spellcheck="false" autocomplete="off">
-      <p class="hint">Each button below still asks you to confirm before it does anything — this just
-        keeps a stray click from getting that far.</p>
+      <div class="guide-sec" data-guide="gist" hidden>
+        <p class="say">GitHub gives every account a place to keep small private files, called a
+          <b>gist</b>. TabbySync makes one for you and keeps your bookmarks and tabs in it. You need a
+          free GitHub account and one “access token”, which is a password that only lets TabbySync touch
+          those files and nothing else.</p>
 
-      <div class="row">
-        <button class="btn danger" id="danger-custom" type="button" disabled>Delete Self-Hosted data</button>
-        <button class="btn danger" id="danger-gist" type="button" disabled>Delete GitHub Gist data</button>
-        <button class="btn danger" id="danger-jsonbin" type="button" disabled>Delete JSONBin.io data</button>
+        <div class="callout warn"><b>Worth knowing first.</b> A private gist is <i>unlisted</i>, not truly
+          locked: anyone who gets its direct link, or your token, can read it. GitHub can read it too.
+          That's why the password lock — the next step on the settings page — matters much more
+          here than it does on your own website. Turn it on.</div>
+
+        <h3>Make the token</h3>
+        <ol class="howto">
+          <li>Sign in at <b>github.com</b>. If you don't have an account, make one — it's free.</li>
+          <li>Go to
+            <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a>.
+            (The long way round: click your picture, top right → <b>Settings</b> → scroll to
+            <b>Developer settings</b> at the bottom of the left menu → <b>Personal access tokens</b> →
+            <b>Fine-grained tokens</b> → <b>Generate new token</b>.)</li>
+          <li><b>Token name</b> — type anything you'll recognise later, like <code>TabbySync</code>.</li>
+          <li><b>Expiration</b> — choose <b>No expiration</b>. TabbySync can't renew a token by itself, so
+            an expiring one means sync quietly stops working on the day it lapses until you make a new one.</li>
+          <li><b>Repository access</b> — leave it exactly as it is. Gists aren't repositories, so this
+            setting has no effect either way.</li>
+          <li><b>Permissions</b> — this is the only part that matters. Find the <b>Account permissions</b>
+            section, click <b>Gists</b>, and set it to <b>Read and write</b>. Don't grant anything else;
+            TabbySync needs nothing else.</li>
+          <li>Click <b>Generate token</b> at the bottom.</li>
+          <li>GitHub shows the token <b>once</b>, as a long line starting <code>github_pat_</code>. Copy it
+            now — you can't see it again, only replace it.</li>
+        </ol>
+
+        <h3>Put it into TabbySync</h3>
+        <ol class="howto">
+          <li>Back on this page, paste it into <b>GitHub access token</b>.</li>
+          <li>Fill in <b>Name for this group of computers</b> — any word, e.g. <code>home</code>. Use the
+            same word on your other computers to share the same data.</li>
+          <li>Turn on the <b>password lock</b> — the next step on the settings page — and pick a password.
+            GitHub then only ever stores scrambled text it cannot read.</li>
+          <li>Click <b>Save and connect</b>, then <b>Check it works</b>. TabbySync creates the private gist
+            the first time it saves — you don't need to make one yourself.</li>
+        </ol>
+
+        <h3>If something goes wrong</h3>
+        <ul class="howto">
+          <li><b>“GitHub rejected the token”</b> — the <b>Gists</b> permission is missing or set to
+            read-only. Make a new token with it set to <b>Read and write</b>.</li>
+          <li><b>Sync stopped after a while</b> — the token expired. Make a new one and paste it in.</li>
+          <li><b>You want it gone</b> — delete the token at github.com under the same Settings page, and
+            use <b>Advanced and delete options</b> at the bottom of this page to remove the data.</li>
+        </ul>
       </div>
-      <div class="status" id="danger-status"></div>
 
-      <h3>Reset everything</h3>
-      <p>Deletes remote data on <b>every</b> sync method you've ever saved credentials for here — self-hosted,
-        Gist and JSONBin, whichever apply — then erases every TabbySync setting stored in this browser and
-        starts over as if freshly installed. This does <b>not</b> uninstall the extension.</p>
-      <div class="row">
-        <button class="btn danger solid" id="danger-wipe-all" type="button" disabled>Wipe everything &amp; reset the extension</button>
+      <div class="guide-sec" data-guide="jsonbin" hidden>
+        <p class="say">JSONBin.io is a free service that stores small files, called <b>bins</b>. TabbySync
+          makes the bins for you; all you have to fetch is one key. There is no server to run and nothing
+          to upload.</p>
+
+        <div class="callout warn"><b>Worth knowing first.</b> This is the least private of the three
+          choices: your data sits on a free third-party service with no promises about how long it keeps
+          things, and free bins can be rate-limited or reclaimed. Turn on the <b>password lock</b> —
+          the next step on the settings page — so JSONBin only ever holds scrambled text, and don't use
+          this option for anything sensitive.</div>
+
+        <h3>Get the key</h3>
+        <ol class="howto">
+          <li>Go to <a href="https://jsonbin.io/login" target="_blank" rel="noopener">jsonbin.io</a> and
+            sign up, or log in if you already have an account. The free plan is enough.</li>
+          <li>Click your account name in the top-right corner and choose <b>API Keys</b>.</li>
+          <li>You'll see a key labelled <b>X-Master-Key</b>. Click to reveal it, then copy it. If there
+            isn't one yet, click to create it first.</li>
+        </ol>
+
+        <h3>Put it into TabbySync</h3>
+        <ol class="howto">
+          <li>Back on this page, paste it into <b>JSONBin API key</b>.</li>
+          <li><b>Name for this computer</b> is only a label for you — it doesn't change where anything is
+            stored. This method keys everything off the API key itself, so one key means one profile; use
+            your own website or GitHub if you want separate <code>work</code> and <code>home</code> sets.</li>
+          <li>Turn on the <b>password lock</b> — the next step on the settings page — and pick a password.</li>
+          <li>Click <b>Save and connect</b>. The bins are created the first time it saves, which is also
+            when the key is really checked — so “Check it works” has nothing to test until then.</li>
+        </ol>
+
+        <h3>If something goes wrong</h3>
+        <ul class="howto">
+          <li><b>Saving fails right after you paste the key</b> — the key is wrong, or it was copied with a
+            space on the end. Copy it again from the API Keys page.</li>
+          <li><b>It worked and then stopped</b> — free accounts have request limits. Raising the “check for
+            changes every” minutes in step 4 makes TabbySync ask far less often.</li>
+        </ul>
       </div>
-      <div class="status" id="danger-wipe-status"></div>
-    </section>
+
+      <div class="guide-sec" data-guide="custom" hidden>
+        <p class="say">Your own website is the most private choice: the data never touches anyone else's
+          computer. The full walk-through is on this page already — see <b>step 2</b>, which makes the file
+          for you with an access code already inside.</p>
+      </div>
+
+    </div>
+  </dialog>
+
+    <p class="footnote">TabbySync collects no analytics and contacts no server of ours, ever.
+      <a href="privacy.html" target="_blank" rel="noopener">Privacy policy</a></p>
   </div>
 
   <script src="shared/config.js"></script>

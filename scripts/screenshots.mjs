@@ -272,12 +272,12 @@ const COPY = {
     body: 'Name, pin, lock, search, reorder and restore — as plain tabs or a browser tab group. Deleted lists sit in Trash for 30 days.',
   },
   options: {
-    title: 'Your server, your token, your data',
-    body: 'Self-host a single PHP file, or use a private GitHub Gist or JSONBin. Add a passphrase and the host only ever sees ciphertext.',
+    title: 'Setup is four questions long',
+    body: 'Where your data lives, how to reach it, what to call this group of computers, and a password to lock it with. Your own website is the most private; GitHub or a free service work if you have no server.',
   },
   'options-engines': {
-    title: 'Tune each engine independently',
-    body: 'Separate sync intervals, duplicate handling, restore behaviour, and plain or encrypted import/export for both bookmarks and tabs.',
+    title: 'Everything else, one click away',
+    body: 'Bookmarks and tabs each get a switch and a sentence. Intervals, duplicate handling, restore behaviour and backups are all still there, folded behind “More options”.',
   },
 };
 

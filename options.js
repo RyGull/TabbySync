@@ -100,6 +100,74 @@ function updateCardsDisabled() {
   $('tabCard').classList.toggle('off', !$('tab-enable').checked);
 }
 
+// ---- the status band -------------------------------------------------------
+// This page used to be the one place that never said whether any of this was
+// working — you set six fields and then went to the popup to find out. Both
+// engines already answer a status message for the popup; this asks the same
+// two questions and puts the answer at the top, in a sentence.
+const DEST_NAME = { custom: 'your own website', gist: 'your GitHub account', jsonbin: 'the free storage service' };
+
+function fmtWhen(ts) {
+  if (!ts) return 'never';
+  const mins = Math.round((Date.now() - ts) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} minute${mins === 1 ? '' : 's'} ago`;
+  return new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+function setBand(kind, mark, line1, line2) {
+  $('statusBand').className = 'band' + (kind ? ' ' + kind : '');
+  $('bandMark').textContent = mark;
+  $('bandLine1').textContent = line1;
+  $('bandLine2').textContent = line2 || '';
+}
+
+async function refreshBand() {
+  const [cfg, bm, tb] = await Promise.all([
+    SL.getConfig(), send({ type: 'getStatus' }), send({ type: 'sl-tab-status' }),
+  ]);
+  const configured = SP.isConfigured({ ...cfg, baseUrl: cfg.serverUrl });
+  const anyOn = cfg.bookmarks.enabled || cfg.tabs.enabled;
+  const where = DEST_NAME[cfg.provider] || DEST_NAME.custom;
+  const shared = cfg.syncName ? ` · shared as “${cfg.syncName}”` : '';
+
+  // Per-engine one-liners, reused under each switch below.
+  if (bm) {
+    $('bm-summary').textContent = cfg.bookmarks.enabled
+      ? `${bm.bookmarks} bookmark${bm.bookmarks === 1 ? '' : 's'} in ${bm.folders} folder${bm.folders === 1 ? '' : 's'}`
+      : 'off';
+  }
+  if (tb) {
+    $('tab-summary').textContent = cfg.tabs.enabled
+      ? `${tb.links} link${tb.links === 1 ? '' : 's'} in ${tb.groups} list${tb.groups === 1 ? '' : 's'}`
+      : 'off';
+  }
+
+  if (!configured) {
+    setBand('setup', '!', 'Not set up yet — about two minutes to finish.',
+      'Answer step 1 below and TabbySync starts keeping your computers in step.');
+    return;
+  }
+  if (!anyOn) {
+    setBand('setup', '!', 'Connected, but nothing is being synced.',
+      'Turn on Bookmarks, Tabs, or both in step 4.');
+    return;
+  }
+
+  // Surface a real failure over a cheerful "all good" — a red dot in the
+  // popup and a green band here would be the page lying to you.
+  const bmBad = cfg.bookmarks.enabled && bm && bm.lastStatus === 'error';
+  const tbBad = cfg.tabs.enabled && tb && tb.lastStatus === 'error';
+  if (bmBad || tbBad) {
+    const why = (bmBad && bm.lastError) || (tbBad && tb.lastError) || 'the last sync did not finish';
+    setBand('bad', '!', "Last sync didn't work.", String(why));
+    return;
+  }
+
+  const last = Math.max(bm && bm.lastSync ? bm.lastSync : 0, tb && tb.lastAt ? tb.lastAt : 0);
+  setBand('ok', '✓', 'Everything is syncing.',
+    `Saved to ${where}${shared} · last checked ${fmtWhen(last)}`);
+}
+
 function currentProvider() { return $('sync-provider').value || 'custom'; }
 
 // Cache of the last config we read/saved, so switching the "Sync method"
@@ -156,23 +224,90 @@ function updateProviderUI() {
   $('srv-profile-label').style.display = meta.needsSyncName ? 'none' : '';
   $('srv-profile-label-hint').style.display = meta.needsSyncName ? 'none' : '';
 
-  $('srv-token-label').textContent = meta.tokenLabel;
+  // Plain-language names for the credential each destination wants. The
+  // provider metadata still carries the technical name (shared/providers.js);
+  // it belongs in the hint, where someone hunting for the right field on
+  // GitHub's own settings page can find it, rather than in the label.
+  const CRED = {
+    custom: {
+      label: 'Access code',
+      hint: 'The long code inside the file you uploaded. Stored on this computer only, and sent to your ' +
+            'own server with every request.',
+    },
+    gist: {
+      label: 'GitHub access token',
+      hint: 'Create one at github.com → Settings → Developer settings → Personal access tokens, with the ' +
+            '“Gists” permission set to read and write. Stored on this computer only — treat it like a password.',
+    },
+    jsonbin: {
+      label: 'JSONBin API key',
+      hint: 'From your JSONBin account menu → API Keys (it calls this the X-Master-Key). Stored on this ' +
+            'computer only — treat it like a password.',
+    },
+  };
+  const cred = CRED[currentProvider()] || CRED.custom;
+  $('srv-token-label').textContent = cred.label;
   $('srv-token').placeholder = meta.tokenPlaceholder;
-  $('srv-token-hint').textContent = currentProvider() === 'custom'
-    ? 'Sent as Authorization: Bearer …. Stored only in this browser profile.'
-    : currentProvider() === 'gist'
-      ? 'Sent as Authorization: Bearer …. Stored only in this browser profile — treat it like a password.'
-      : 'Sent as the X-Master-Key header. Stored only in this browser profile — treat it like a password.';
+  $('srv-token-hint').textContent = cred.hint;
 
-  $('provider-hint').innerHTML = meta.setupHint || '';
+  // The provider metadata's setupHint is a dense block with a nested list —
+  // exactly the wall of text this page is trying not to be. Self-hosting keeps
+  // its one-liner; the two account-based destinations get a short summary and
+  // a button to the full walk-through in the dialog at the bottom of the page.
+  const SUMMARY = {
+    gist: 'Needs a free GitHub account and one access token, which takes about two minutes to create. ' +
+          'TabbySync makes the private file for you the first time it saves.',
+    jsonbin: 'Needs a free JSONBin.io account and one API key. TabbySync creates the storage for you the ' +
+             'first time it saves — there is nothing to upload.',
+  };
+  const summary = SUMMARY[currentProvider()];
+  $('provider-hint').innerHTML = summary || meta.setupHint || '';
+  $('guide-row').hidden = !summary;
   const disc = $('provider-disclaimer');
   if (meta.disclaimer) { disc.textContent = meta.disclaimer; disc.hidden = false; }
   else { disc.textContent = ''; disc.hidden = true; }
 
   $('selfhostCard').hidden = currentProvider() !== 'custom';
+  syncChoiceCards();
+  renumberSteps();
+  // Each provider remembers its own passphrase (shared/config.js), and the
+  // lines above just swapped one in — so the lock switch follows it.
+  updateEncryptionUI();
   preview();
 }
 $('sync-provider').addEventListener('change', updateProviderUI);
+
+// The three destination cards are a friendlier way to set the <select> above,
+// not a second source of truth: they write its value and fire the same change
+// event a dropdown would, so every save, test and lookup downstream reads the
+// value it always read. The select stays in the DOM (visually hidden) for
+// exactly that reason.
+// Step 2 (making the self-hosted file) only exists for one of the three
+// destinations, so the numbers are assigned to whatever is actually on screen
+// rather than baked into the markup — otherwise choosing GitHub leaves the
+// page counting 1, 3, 4.
+function renumberSteps() {
+  let n = 0;
+  document.querySelectorAll('.wrap > section.card').forEach((card) => {
+    const badge = card.querySelector('.step-n');
+    if (!badge) return;
+    if (card.hidden || card.offsetParent === null && card.id === 'selfhostCard') return;
+    badge.textContent = String(++n);
+  });
+}
+
+function syncChoiceCards() {
+  const active = currentProvider();
+  document.querySelectorAll('#providerChoices .choice').forEach((btn) => {
+    btn.setAttribute('aria-pressed', String(btn.dataset.provider === active));
+  });
+}
+document.querySelectorAll('#providerChoices .choice').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    $('sync-provider').value = btn.dataset.provider;
+    $('sync-provider').dispatchEvent(new Event('change'));
+  });
+});
 
 function preview() {
   const provider = currentProvider();
@@ -181,7 +316,7 @@ function preview() {
   const name = SL.sanitizeSyncName($('srv-name').value);
   if (provider === 'custom') {
     const base = $('srv-url').value.trim();
-    if (!base || !name) { $('srv-preview').textContent = 'Set a URL and sync name to see your file paths.'; return; }
+    if (!base || !name) { $('srv-preview').textContent = 'Fill in the boxes above to see where your files will go.'; return; }
     $('srv-preview').innerHTML =
       `<b>Bookmarks →</b> ${fileUrl(base, 'bookmarks-' + name + '.json')}<br>` +
       `<b>Tabs →</b> ${fileUrl(base, 'tabs-' + name + '.json')}`;
@@ -215,9 +350,17 @@ async function load() {
 
   $('tab-enable').checked = c.tabs.enabled;
   $('tab-interval').value = c.tabs.intervalMin;
-  // No default: show the "— Choose one —" placeholder until the user picks.
-  if (c.tabs.dedupe) $('tab-dedupe').value = c.tabs.dedupe;
-  else $('tab-dedupe').selectedIndex = 0;
+  // Duplicate handling used to be a required dropdown with no default, so
+  // setup could not finish until you ruled on a question you had no basis to
+  // answer yet. "Skip duplicates within the same send" is the answer almost
+  // everyone wants; it is written down here rather than left blank, so the UI
+  // and the stored setting always agree.
+  if (c.tabs.dedupe) {
+    $('tab-dedupe').value = c.tabs.dedupe;
+  } else {
+    $('tab-dedupe').value = 'group';
+    await SL.setConfig({ tabs: { dedupe: 'group' } });
+  }
   $('tab-restore-group').checked = c.tabs.restoreAsGroup;
   $('tab-remove-restore').checked = c.tabs.removeOnRestore;
   $('tab-pin-list').checked = c.tabs.pinList;
@@ -228,7 +371,9 @@ async function load() {
   $('gen-token').value = gt;
 
   updateCardsDisabled();
-  updateProviderUI();
+  updateProviderUI();   // fills enc-pass for the active provider…
+  updateEncryptionUI(); // …so the lock switch has something to read
+  refreshBand();
 }
 
 // ---------------------------------------------------------------------------
@@ -382,23 +527,90 @@ async function applyPassphrase(newPass) {
   }
 }
 
-$('enc-save').addEventListener('click', async () => {
-  const p = $('enc-pass').value;
-  if (!p) { status('enc-status', 'Enter a passphrase first, or use “Turn off encryption”.', 'bad'); return; }
-  status('enc-status', 'Saving and encrypting the server copies…');
-  try {
-    await applyPassphrase(p);
-    status('enc-status', 'Encryption on. Use the same passphrase on your other computers.', 'ok');
-  } catch (e) { status('enc-status', 'Error: ' + e.message, 'bad'); }
+// The switch is the visible state; the passphrase field and its two buttons
+// are what actually do the work. Turning it ON just opens the field (there is
+// nothing to save until a password is typed); turning it OFF runs the same
+// confirm-and-clear path the "Turn the lock off" button always ran.
+function updateEncryptionUI() {
+  const on = !!($('enc-pass').value);
+  $('enc-switch').checked = on;
+  $('enc-state').textContent = on ? 'Password lock is on' : 'Password lock is off';
+  $('enc-body').hidden = false;
+  // Nothing to turn off when it is already off — an always-visible "Turn the
+  // lock off" next to a lock that is off reads as if something is wrong.
+  $('enc-clear').hidden = !on;
+}
+
+$('enc-switch').addEventListener('change', async () => {
+  if ($('enc-switch').checked) {
+    // Nothing to turn on yet — show where to type it, and let Save do the work.
+    $('enc-state').textContent = 'Type a password, then save it';
+    $('enc-pass').focus();
+    return;
+  }
+  if (!$('enc-pass').value) { updateEncryptionUI(); return; }
+  await turnEncryptionOff();
 });
-$('enc-clear').addEventListener('click', async () => {
-  if (!confirm('Turn off encryption? Your data will be stored on the server as readable text again.')) return;
-  status('enc-status', 'Turning off and re-uploading as plain text…');
+
+async function turnEncryptionOff() {
+  if (!confirm('Turn the password lock off? Your data will be stored where you chose as readable text again.')) {
+    updateEncryptionUI();
+    return;
+  }
+  status('enc-status', 'Turning the lock off and re-uploading as plain text…');
   $('enc-pass').value = '';
   try {
     await applyPassphrase('');
-    status('enc-status', 'Encryption off.', 'ok');
+    status('enc-status', 'Password lock is off.', 'ok');
   } catch (e) { status('enc-status', 'Error: ' + e.message, 'bad'); }
+  updateEncryptionUI();
+}
+
+$('enc-save').addEventListener('click', async () => {
+  const p = $('enc-pass').value;
+  if (!p) { status('enc-status', 'Type a password first, or use “Turn the lock off”.', 'bad'); return; }
+  status('enc-status', 'Saving, and locking the copies already sent…');
+  try {
+    await applyPassphrase(p);
+    status('enc-status', 'Password lock is on. Type the same password on your other computers.', 'ok');
+  } catch (e) { status('enc-status', 'Error: ' + e.message, 'bad'); }
+  updateEncryptionUI();
+});
+$('enc-clear').addEventListener('click', turnEncryptionOff);
+
+// ---- the step-by-step setup guides ----------------------------------------
+// GitHub and JSONBin both need an account and a key fetched from someone
+// else's website, which is several screens of clicking that has to be
+// described somewhere. A dialog keeps it one click away from the field it is
+// about, instead of either a wall of text on the page or a link that sends
+// people off to hunt through documentation.
+const GUIDE_TITLES = {
+  gist: 'Setting up GitHub sync',
+  jsonbin: 'Setting up JSONBin.io sync',
+  custom: 'Setting up your own website',
+};
+
+function openGuide(provider) {
+  document.querySelectorAll('.guide-sec').forEach((sec) => {
+    sec.hidden = sec.dataset.guide !== provider;
+  });
+  $('guide-title').textContent = GUIDE_TITLES[provider] || 'Setting this up';
+  const dlg = $('guideDialog');
+  dlg.querySelector('.guide-body').scrollTop = 0;
+  // showModal gives focus trapping and Escape-to-close for free; show() is the
+  // fallback for anything that doesn't have the dialog element.
+  if (typeof dlg.showModal === 'function') dlg.showModal();
+  else dlg.setAttribute('open', '');
+}
+$('guide-open').addEventListener('click', () => openGuide(currentProvider()));
+$('guide-close').addEventListener('click', () => {
+  const dlg = $('guideDialog');
+  if (typeof dlg.close === 'function') dlg.close();
+  else dlg.removeAttribute('open');
+});
+// Clicking the backdrop closes it, the way every other dialog on the web does.
+$('guideDialog').addEventListener('click', (e) => {
+  if (e.target === $('guideDialog')) $('guideDialog').close();
 });
 
 // ---- self-hosting generator -----------------------------------------------

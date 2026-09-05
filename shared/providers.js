@@ -49,7 +49,7 @@
       tokenPlaceholder: "the token inside tabbysync.php",
       needsUrl: true,
       needsSyncName: true,
-      setupHint: "Your own server — see <a href=\"#selfhostCard\">“Self-hosting” below</a> if you don't have one yet.",
+      setupHint: "Your own web space. Don't have the file yet? Step 2 below makes it for you.",
       disclaimer: ""
     },
     gist: {
@@ -73,7 +73,7 @@
       disclaimer: "⚠️ Less private than self-hosting: your data is stored on GitHub's " +
         "servers in a “secret” gist. That means it's unlisted, not truly access-controlled — " +
         "anyone with the raw link, or anyone who gets your token, can read it. Strongly recommended: " +
-        "turn on the encryption passphrase above so GitHub only ever sees ciphertext."
+        "turn on the password lock so GitHub only ever sees scrambled text."
     },
     jsonbin: {
       id: "jsonbin",
@@ -90,7 +90,7 @@
       disclaimer: "⚠️ Least private option: your data is stored on JSONBin's free " +
         "third-party service, which doesn't offer the durability, access-control or longevity " +
         "guarantees of your own server or a GitHub account — free bins can also be rate-limited " +
-        "or reclaimed. Strongly recommended: turn on the encryption passphrase above, and avoid this " +
+        "or reclaimed. Strongly recommended: turn on the password lock, and avoid this " +
         "option for anything sensitive."
     }
   };
