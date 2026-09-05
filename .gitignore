@@ -1,5 +1,9 @@
 
-# Never commit the reCAPTCHA secret
+# Never commit reCAPTCHA keys. config.local.php holds the marketing site's
+# site key and secret key; config.local.example.php is the committed template
+# to copy from. A key that reaches a public commit is public permanently —
+# removing it in a later commit leaves it in the history and in every fork.
+website/config.local.php
 server/feedback/config.php
 
 # Build output

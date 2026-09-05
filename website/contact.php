@@ -53,6 +53,13 @@ if ($status === 'ok') {
     $notice = ['type' => 'error', 'text' => "You've sent several messages already. Please email us directly instead."];
 } elseif ($status === 'error') {
     $notice = ['type' => 'error', 'text' => "Something went wrong on our end and your message wasn't sent. Please try again, or email us directly."];
+} elseif ($status === 'nojs') {
+    // No token at all: JavaScript is off, blocked, or Google's script never
+    // loaded. Not the visitor's fault and not worth a lecture — point at the
+    // address that needs none of this to work.
+    $notice = ['type' => 'error', 'text' => "The spam check couldn't run in your browser, so we can't send this form. It needs JavaScript from google.com. Your message is still below — or email us directly at the address underneath the form, which needs neither."];
+} elseif ($status === 'spam') {
+    $notice = ['type' => 'error', 'text' => "The spam check didn't clear this submission. If you're a person — and you are — please email us directly at the address underneath the form instead. Sorry about that."];
 } elseif ($status === 'expired') {
     // The CSRF token didn't match. Overwhelmingly this is a stale tab or a
     // session that expired while the message was being written, not an
@@ -90,6 +97,11 @@ $page_description = 'Get in touch with ' . SITE_NAME . ' — questions, feedback
 // Every ?status= variant of this page is the same page. The canonical link
 // already says so; this keeps the redirect targets out of the index outright.
 $page_noindex = $status !== null;
+
+// Only this page loads reCAPTCHA, and only when it is actually configured.
+// The header uses this to widen the CSP for Google's origins — see
+// send_security_headers() — so no other page pays for it.
+$page_recaptcha = recaptcha_enabled();
 $page_schema  = [
     '@type' => 'BreadcrumbList',
     'itemListElement' => [
@@ -123,7 +135,15 @@ require __DIR__ . '/includes/header.php';
       </div>
     <?php endif; ?>
 
-    <form class="form-grid" action="<?= e($contact_form_url) ?>" method="post">
+    <?php if ($page_recaptcha): ?>
+      <p class="notice error" id="recaptchaWarning" hidden>
+        The spam check hasn't loaded — it needs JavaScript from google.com. This form
+        won't send until it does; the email address underneath works regardless.
+      </p>
+    <?php endif; ?>
+
+    <form class="form-grid" id="contactForm" action="<?= e($contact_form_url) ?>" method="post"
+      <?php if ($page_recaptcha): ?>data-recaptcha-key="<?= e(RECAPTCHA_SITE_KEY) ?>"<?php endif; ?>>
       <div class="form-row two-col">
         <div class="form-row">
           <label for="name">Name</label>
@@ -164,6 +184,9 @@ require __DIR__ . '/includes/header.php';
         autocomplete="off" aria-hidden="true">
 
       <?php csrf_field(); ?>
+      <?php if ($page_recaptcha): ?>
+        <input type="hidden" name="recaptcha_token" id="recaptchaToken" value="">
+      <?php endif; ?>
 
       <button type="submit" class="btn btn-primary">Send message</button>
     </form>
@@ -172,7 +195,33 @@ require __DIR__ . '/includes/header.php';
       Prefer email? Reach us directly at
       <a href="mailto:<?php echo_obfuscated(contact_address()); ?>"><?php echo_obfuscated(contact_address()); ?></a>.
     </p>
+
+    <?php if ($page_recaptcha): ?>
+      <!-- Google requires either its floating badge or this notice. The badge
+           is hidden by style.css and this stands in for it, which is both the
+           tidier layout and the more honest one: it says outright that a
+           third party is involved on this page, on the page itself, rather
+           than only in the privacy policy. -->
+      <p class="recaptcha-note">
+        This form is protected by reCAPTCHA — loading it sends your IP address and
+        browser details to Google, whose
+        <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy&nbsp;Policy</a>
+        and
+        <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Terms&nbsp;of&nbsp;Service</a>
+        apply. It is the only page on this site that contacts anyone but this server;
+        emailing us directly involves Google not at all.
+      </p>
+    <?php endif; ?>
   </div>
 </section>
+
+<?php if ($page_recaptcha): ?>
+  <!-- The nonce is what lets style-src stay free of 'unsafe-inline':
+       Google's script copies it onto the <style> element it injects for the
+       badge. Both files are external, because the CSP forbids inline code. -->
+  <script nonce="<?= e(csp_nonce()) ?>"
+    src="https://www.google.com/recaptcha/api.js?render=<?= e(rawurlencode(RECAPTCHA_SITE_KEY)) ?>" defer></script>
+  <script src="/assets/js/recaptcha.js" defer></script>
+<?php endif; ?>
 
 <?php require __DIR__ . '/includes/footer.php'; ?>

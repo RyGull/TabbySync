@@ -88,7 +88,14 @@ if (isset($page_schema) && is_array($page_schema)) {
 $canonical = $page_canonical ?? canonical_url();
 $og_image  = abs_url('/assets/img/og-image.png');
 
-send_security_headers();
+/**
+ * Only /contact sets this, and only when reCAPTCHA is actually configured —
+ * it widens the CSP for Google's origins, and no page that doesn't load the
+ * script should pay that price.
+ */
+$page_recaptcha = $page_recaptcha ?? false;
+
+send_security_headers($page_recaptcha);
 ?>
 <!DOCTYPE html>
 <!-- TabbySync — Copyright (c) 2026 Ryan Gulliver. All rights reserved.

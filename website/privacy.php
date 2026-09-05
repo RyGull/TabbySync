@@ -97,8 +97,33 @@ require __DIR__ . '/includes/header.php';
       <ul>
         <li><strong>No analytics, no tracking, no cookies for measurement.</strong> There
         is no Google Analytics, no tag manager, no pixel, no fingerprinting and no
-        advertising network. Nothing on these pages loads from a third-party domain —
-        no font CDN, no icon library, no embedded video.</li>
+        advertising network. No font CDN, no icon library, no embedded video. Every
+        page but one loads nothing from any third-party domain at all — the exception
+        is <a href="<?= e(CONTACT_PATH) ?>">the contact form</a>, described below.</li>
+
+        <li><strong>reCAPTCHA, on the contact page only.</strong>
+        <?php if (recaptcha_enabled()): ?>
+          <a href="<?= e(CONTACT_PATH) ?>">/contact</a> loads Google reCAPTCHA v3 to check
+          submissions for automated abuse, because it is the one place on this site where a
+          stranger can make it send mail. Loading it means your browser contacts Google and
+          Google receives what any site you visit receives — your IP address, your browser
+          and device details, and how you interacted with the page — and may set or read its
+          own cookies for that domain. That is Google's collection, under
+          <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google's
+          Privacy Policy</a> and
+          <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Terms of
+          Service</a>, and it is not something this site can promise anything about. What this
+          site does control: your IP address is <em>not</em> sent to Google by the server when
+          it checks your submission, and no other page here loads reCAPTCHA at all. If you would
+          rather not involve Google, email the address on the contact page instead — it goes to
+          the same inbox and involves them not at all.
+        <?php else: ?>
+          Not currently in use: no reCAPTCHA keys are configured on this deployment, so no page
+          on this site loads anything from Google. The contact form is protected by a hidden
+          honeypot field, a per-session rate limit and a cross-site request token, none of which
+          contacts anyone.
+        <?php endif; ?>
+        </li>
 
         <li><strong>The contact form</strong> sends exactly what you type — your name,
         your email address, the topic you pick and your message — to

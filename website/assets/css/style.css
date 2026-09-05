@@ -281,6 +281,25 @@ section { padding: 88px 0; }
 .install-alt summary:hover { color: var(--accent); }
 .install-alt .install-steps { margin-top: 14px; margin-bottom: 8px; }
 
+/* --------------------------------------------------------------- reCAPTCHA */
+
+/* Google's floating badge is hidden, which its terms allow as long as the
+   notice it stands for appears instead — .recaptcha-note under the form does
+   that, in words rather than in a logo that says nothing about what is being
+   sent where. Hiding it here also means the badge staying unstyled (if a
+   browser ever ignores the CSP nonce on Google's injected <style>) is
+   invisible rather than ugly. */
+.grecaptcha-badge { visibility: hidden; }
+
+.recaptcha-note {
+  margin: 18px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 /* ------------------------------------------------------------------ footer */
 
 .site-footer { border-top: 1px solid var(--line); padding: 64px 0 0; background: var(--panel); }

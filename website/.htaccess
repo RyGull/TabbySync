@@ -48,6 +48,15 @@ ErrorDocument 404 /404.php
   Require all denied
 </FilesMatch>
 
+# The reCAPTCHA keys and the constants file. PHP normally executes these
+# rather than serving them, so this changes nothing on a working host — it is
+# here for the day PHP is misconfigured or disabled during an upgrade, when
+# the alternative is the server handing out the secret key as plain text to
+# anyone who asks for the file by name.
+<FilesMatch "^config(\.local)?(\.example)?\.php$">
+  Require all denied
+</FilesMatch>
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
 

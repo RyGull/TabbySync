@@ -223,6 +223,14 @@ nobody can verify, and the strict Content-Security-Policy stays enforceable
 because the test fails the moment an inline `<script>`, `<style>` or
 `style=""` attribute appears anywhere in the site.
 
+The site's contact form uses reCAPTCHA v3, which is the one third-party
+request anywhere in this project — the extension itself still contacts nobody
+but the sync destination you configure. **Its keys live in
+`website/config.local.php`, which is git-ignored and must stay that way**; a
+test fails if a key-shaped string ever appears in a tracked file. See
+[website/README.md](website/README.md#recaptcha--where-the-keys-go) for the
+setup, and note that the site works with no keys configured at all.
+
 ## Changelog
 
 Notable changes are recorded in [CHANGELOG.md](CHANGELOG.md).

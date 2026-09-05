@@ -14,9 +14,15 @@
  * Deliberately dependency-free, and deliberately without reCAPTCHA: the
  * changelog records that reCAPTCHA was removed from this project because
  * merely rendering it contacted Google before the visitor had typed
- * anything. The spam defence here is a CSRF token, a honeypot and a
- * per-session rate limit, which together cost the visitor no third-party
- * request at all.
+ * anything. That objection still stands for the extension, which contacts no
+ * third party at all — but this form is on the website, it is the one place a
+ * stranger can make this project send mail, and unattended spam is what it is.
+ * So: a CSRF token, a honeypot and a per-session rate limit, all of which cost
+ * no third-party request, plus reCAPTCHA v3 when it is configured, which does
+ * — and which /contact and /privacy both say so outright, on the page.
+ *
+ * The keys live in website/config.local.php, which is git-ignored. With no
+ * keys present every check except reCAPTCHA still runs, and the form works.
  */
 
 declare(strict_types=1);
@@ -112,6 +118,49 @@ if ($sent !== [] && $now - max($sent) < CONTACT_MIN_SECONDS_BETWEEN) {
 }
 if (count($sent) >= CONTACT_MAX_PER_SESSION) {
     contact_redirect($contact_form_url, ['status' => 'toomany']);
+}
+
+// ---------------------------------------------------------------------------
+// reCAPTCHA v3
+// ---------------------------------------------------------------------------
+
+// Runs after the cheap local checks and before validation, so a submission
+// that was never going to be sent doesn't cost an outbound request to Google,
+// and one that fails the check doesn't get a field-by-field critique it has no
+// use for.
+//
+// Skipped entirely when no keys are configured (a local checkout, a fork):
+// the CSRF token, honeypot and rate limit above are then the whole defence,
+// exactly as they were before this existed.
+if (recaptcha_enabled()) {
+    $token = (string) ($_POST['recaptcha_token'] ?? '');
+    $keep = [
+        'name'    => trim((string) ($_POST['name'] ?? '')),
+        'email'   => trim((string) ($_POST['email'] ?? '')),
+        'reason'  => (string) ($_POST['reason'] ?? ''),
+        'message' => trim((string) ($_POST['message'] ?? '')),
+    ];
+
+    if ($token === '') {
+        // No token means the script never ran: JavaScript off, an extension
+        // blocking google.com, or a bot that didn't bother. All three are
+        // answered the same way — keep what was typed, and point at the email
+        // address, which needs no script at all.
+        $_SESSION['contact_old'] = $keep;
+        contact_redirect($contact_form_url, ['status' => 'nojs']);
+    }
+
+    $check = recaptcha_verify($token);
+
+    // An unreachable Google is not the visitor's problem. Letting these
+    // through loses nothing that matters: the token was still present, and
+    // the honeypot, the CSRF check and the rate limit all held.
+    if (!$check['reachable']) {
+        error_log('TabbySync contact form: reCAPTCHA verification unreachable; submission allowed through.');
+    } elseif (!$check['ok']) {
+        $_SESSION['contact_old'] = $keep;
+        contact_redirect($contact_form_url, ['status' => 'spam']);
+    }
 }
 
 // ---------------------------------------------------------------------------

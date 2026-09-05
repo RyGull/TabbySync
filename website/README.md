@@ -33,6 +33,9 @@ website/
 ├── config.php            site-wide constants — SITE_URL, CURRENT_VERSION when
 │                          you cut a release, CHROME_STORE_LIVE/_URL — plus the
 │                          security headers, CSRF helpers and session setup
+├── config.local.example.php  template for the file below; committed
+├── config.local.php     YOUR reCAPTCHA KEYS. Git-ignored, never committed,
+│                          created by hand on the server (see below)
 ├── includes/
 │   ├── header.php        <head>, all SEO metadata, JSON-LD, the nav
 │   ├── footer.php
@@ -40,8 +43,62 @@ website/
 └── assets/
     ├── css/style.css     the entire design system, no framework
     ├── js/main.js        theme toggle, mobile nav, scroll-reveal — no deps
+    ├── js/recaptcha.js   fetches a v3 token on submit; loaded only on /contact
     └── img/               logo/icon assets, the og:image card, screenshots
 ```
+
+## reCAPTCHA — where the keys go
+
+**Never put a key in a file git tracks.** A secret in a public commit is public
+permanently: deleting it in a later commit leaves it in the history, in every
+clone, in every fork, and in whatever indexed it in between. If a key of yours
+has ever been pushed anywhere public, it is burned — generate a new pair and
+delete the old one, rather than only removing it from the code.
+
+Setup, once, on the server:
+
+1. At <https://www.google.com/recaptcha/admin>, create a site, choose
+   **reCAPTCHA v3**, and list every domain the site answers on — `tabbysync.com`
+   *and* `www.tabbysync.com`, plus `localhost` if you test locally. You get two
+   keys: a **site key** (public, appears in the page's HTML) and a **secret key**
+   (private, never leaves the server).
+2. On the server, in this folder:
+   `cp config.local.example.php config.local.php`
+3. Paste both keys into `config.local.php`. That file is in the repository's
+   `.gitignore`, so `git add` refuses it even when named explicitly, and a test
+   fails if a key-shaped string ever appears in a tracked file.
+4. Nothing else to change — `config.php` picks the keys up automatically.
+
+**With no keys configured the site still works.** The contact form falls back to
+what protected it before — CSRF token, honeypot, per-session rate limit — no
+page loads anything from Google, and `/privacy` says so rather than describing a
+reCAPTCHA that isn't running. That is also what a fork or a fresh clone gets.
+
+Worth knowing about how it behaves:
+
+- **Only `/contact` loads it.** The Content-Security-Policy every other page
+  sends still forbids all off-origin loading; the contact page's policy names
+  `www.google.com` and `www.gstatic.com` and nothing else. A test fails if any
+  other host appears in it.
+- **The token is fetched on submit, not on page load.** A v3 token expires after
+  two minutes, and people take longer than that to write a bug report — fetching
+  it up front is how a form starts rejecting its longest, most considered
+  messages.
+- **No JavaScript means no send.** v3 has no non-JS path. A submission with no
+  token is refused, keeps everything that was typed, and points at the plain
+  email address, which needs neither Google nor JavaScript.
+- **If Google is unreachable, the message goes through.** A failed verification
+  *request* (DNS, a firewall, an outage) is not the visitor's problem, and the
+  other three checks still ran. A failed verification *result* — a real score
+  below `RECAPTCHA_MIN_SCORE`, 0.5 by default in `config.php` — is refused.
+- **The visitor's IP is not sent to Google by the server.** `remoteip` is
+  optional in the verify call, and Google already has the address from the
+  browser's own request; forwarding it again would only put another copy of it
+  in someone else's logs.
+- **The badge is hidden and replaced with words.** Google's terms allow hiding
+  the floating badge as long as the notice it stands for appears instead —
+  `/contact` says outright that loading the form sends data to Google, and links
+  their privacy policy and terms.
 
 ## Before the first deploy
 
@@ -63,10 +120,13 @@ themselves need no translation — PHP sends those.
 
 ## Design choices worth knowing about
 
-- **No third-party requests.** No Google Fonts, no icon CDN, no analytics,
-  no tracking pixel — system fonts and hand-drawn inline SVG only. A site
-  advertising a "no tracking" extension making third-party requests of its
-  own would be a bit rich; this one makes none.
+- **No third-party requests, with one deliberate exception.** No Google Fonts,
+  no icon CDN, no analytics, no tracking pixel — system fonts and hand-drawn
+  inline SVG only. The single exception is reCAPTCHA on `/contact`, because that
+  is the one place on the site where a stranger can make this project send mail.
+  It loads on no other page, it is disclosed on the page itself rather than only
+  in the policy, and with no keys configured it doesn't load at all. Everything
+  else still makes zero third-party requests.
 - **The contact address is never written out as a literal string.**
   `config.php`'s `contact_address()` builds it from parts, and
   `echo_obfuscated()` renders it as HTML numeric character references
@@ -121,7 +181,7 @@ themselves need no translation — PHP sends those.
   in the extension repository (`test/website.test.js`) fails if a single inline
   `<script>`, `<style>` or `style=""` attribute ever appears, because that is
   the change that would silently break every page in every browser.
-- **The contact form carries a CSRF token.** Without one, any page anywhere
+- **The contact form carries a CSRF token**, on top of reCAPTCHA. Without one, any page anywhere
   could POST to it in a visitor's name and fill the mailbox with messages
   nobody wrote — the honeypot and the rate limit don't cover that, since a
   cross-site submission is otherwise well formed. The session cookie is

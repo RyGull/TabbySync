@@ -47,6 +47,35 @@ const CHROME_STORE_URL  = 'https://chromewebstore.google.com/detail/tabbysync/lf
  * empty. Anything not a key of this array is rejected by the handler, so a
  * hand-crafted POST cannot smuggle its own label into the email subject.
  */
+// ---------------------------------------------------------------------------
+// Secrets — never in this file, never in git
+// ---------------------------------------------------------------------------
+//
+// config.local.php holds the reCAPTCHA keys. It is git-ignored, it is NOT in
+// the repository, and it must never be added to it: a key that reaches a
+// public commit is public forever, because deleting the file later leaves it
+// in the history, in every fork and in every cache that saw it. There is a
+// copy-and-fill template beside this file (config.local.example.php) and a
+// test that fails if a key-shaped string ever appears in a committed file.
+//
+// With no config.local.php present — a fresh clone, a local checkout — the
+// site runs exactly as it did before reCAPTCHA existed: the contact form
+// falls back to its CSRF token, honeypot and rate limit. Nothing 500s and
+// nothing silently sends unverified mail while pretending otherwise.
+$site_local = __DIR__ . '/config.local.php';
+$site_secrets = is_readable($site_local) ? (array) (require $site_local) : [];
+
+define('RECAPTCHA_SITE_KEY', (string) ($site_secrets['recaptcha_site_key'] ?? ''));
+define('RECAPTCHA_SECRET_KEY', (string) ($site_secrets['recaptcha_secret_key'] ?? ''));
+unset($site_local, $site_secrets);
+
+// v3 scores a request 0.0 (almost certainly a bot) to 1.0 (almost certainly a
+// person). 0.5 is Google's own suggested starting point; raise it if spam gets
+// through, lower it if real messages are being turned away. It is a judgement
+// about a probability, not a fact — which is why a rejected submission keeps
+// what was typed and points at the plain email address instead.
+const RECAPTCHA_MIN_SCORE = 0.5;
+
 const CONTACT_REASONS = [
     ''         => 'Choose one…',
     'question' => 'A question about ' . SITE_NAME,
@@ -149,9 +178,21 @@ function canonical_url(): string
  * request anywhere in it, and a test fails if that stops being true. So no
  * 'unsafe-inline', no 'unsafe-eval', and nothing may be loaded, framed,
  * submitted to or connected to off-origin.
+ *
+ * $recaptcha widens exactly four directives, on exactly one page. /contact
+ * loads Google's reCAPTCHA script, which needs to run, to frame its challenge,
+ * to talk back to Google and to fetch the badge's images. Nothing else on this
+ * site loads it, so nothing else pays for it: every other page keeps the
+ * policy above, unaltered. The named origins are Google's two — no wildcards
+ * and no scheme-wide `https:`, which would hand back most of what the policy
+ * was protecting.
  */
-function send_security_headers(): void
+function send_security_headers(bool $recaptcha = false): void
 {
+    // Both of Google's origins are needed: www.google.com serves the API and
+    // the challenge frame, www.gstatic.com the code and images it pulls in.
+    $g = $recaptcha ? ' https://www.google.com https://www.gstatic.com' : '';
+
     if (headers_sent()) {
         return;
     }
@@ -167,11 +208,17 @@ function send_security_headers(): void
         . "form-action 'self'; "
         . "frame-ancestors 'none'; "
         . "object-src 'none'; "
-        . "script-src 'self'; "
-        . "style-src 'self'; "
-        . "img-src 'self'; "
+        . "script-src 'self'" . $g . "; "
+        // reCAPTCHA injects a <style> element for its badge. Google's script
+        // copies a nonce from its own <script> tag onto that element, so the
+        // badge stays styled without 'unsafe-inline' — and if a browser ever
+        // fails to honour that, the badge is hidden by this site's own
+        // stylesheet anyway and the token still works.
+        . "style-src 'self'" . ($recaptcha ? " 'nonce-" . csp_nonce() . "'" : '') . "; "
+        . "img-src 'self' data:" . $g . "; "
         . "font-src 'self'; "
-        . "connect-src 'self'; "
+        . "connect-src 'self'" . $g . "; "
+        . ($recaptcha ? "frame-src https://www.google.com; " : "frame-src 'none'; ")
         . "manifest-src 'self'");
 
     // Never guess a type from content: a .txt that sniffs as HTML is how an
@@ -201,6 +248,105 @@ function send_security_headers(): void
     if (site_is_https()) {
         header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
     }
+}
+
+/**
+ * One random nonce per request, reused wherever it is asked for. It goes on
+ * the reCAPTCHA <script> tag so Google's script can stamp the same nonce onto
+ * the style element it injects for its badge — which is what lets /contact
+ * keep style-src without 'unsafe-inline'.
+ */
+function csp_nonce(): string
+{
+    static $nonce = null;
+    if ($nonce === null) {
+        $nonce = base64_encode(random_bytes(16));
+    }
+    return $nonce;
+}
+
+/**
+ * Whether reCAPTCHA is configured at all. Both keys or neither: a site key
+ * with no secret would load Google's script on the page and then be unable to
+ * check anything it produced, which is the worst of both — a third-party
+ * request that buys no protection.
+ */
+function recaptcha_enabled(): bool
+{
+    return RECAPTCHA_SITE_KEY !== '' && RECAPTCHA_SECRET_KEY !== '';
+}
+
+/**
+ * Checks one v3 token with Google. Returns:
+ *   ['ok' => bool, 'score' => ?float, 'reachable' => bool]
+ *
+ * `reachable` is false when the verification request itself failed — a DNS
+ * problem, a firewall, Google being down. The caller lets those through
+ * rather than losing a real message to an outage: the CSRF token, honeypot
+ * and rate limit are all still in force, and a spam wave during a Google
+ * outage is a smaller problem than silently binning the mail of anyone who
+ * writes during one.
+ *
+ * The visitor's IP is deliberately NOT sent. `remoteip` is optional, and
+ * Google already sees the address from the browser's own request to it;
+ * forwarding it a second time from the server would add nothing but another
+ * copy of a visitor's address in someone else's logs, which /privacy promises
+ * this site does not do.
+ */
+function recaptcha_verify(string $token): array
+{
+    $fail = ['ok' => false, 'score' => null, 'reachable' => true];
+
+    if ($token === '' || !recaptcha_enabled()) {
+        return $fail;
+    }
+
+    $body = http_build_query([
+        'secret'   => RECAPTCHA_SECRET_KEY,
+        'response' => $token,
+    ]);
+    $url = 'https://www.google.com/recaptcha/api/siteverify';
+    $raw = false;
+
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $body,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 5,
+            CURLOPT_CONNECTTIMEOUT => 3,
+        ]);
+        $raw = curl_exec($ch);
+        curl_close($ch);
+    } elseif (ini_get('allow_url_fopen')) {
+        $raw = @file_get_contents($url, false, stream_context_create([
+            'http' => [
+                'method'        => 'POST',
+                'header'        => "Content-Type: application/x-www-form-urlencoded\r\n",
+                'content'       => $body,
+                'timeout'       => 5,
+                'ignore_errors' => true,
+            ],
+        ]));
+    }
+
+    if (!is_string($raw) || $raw === '') {
+        return ['ok' => false, 'score' => null, 'reachable' => false];
+    }
+
+    $data = json_decode($raw, true);
+    if (!is_array($data)) {
+        return ['ok' => false, 'score' => null, 'reachable' => false];
+    }
+
+    $score = isset($data['score']) ? (float) $data['score'] : null;
+
+    return [
+        'ok'        => ($data['success'] ?? false) === true && $score !== null && $score >= RECAPTCHA_MIN_SCORE,
+        'score'     => $score,
+        'reachable' => true,
+    ];
 }
 
 /** Whether this request arrived over HTTPS, honouring a reverse proxy's

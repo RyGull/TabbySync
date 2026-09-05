@@ -18,6 +18,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 
 const root = new URL('..', import.meta.url).pathname;
@@ -149,18 +150,127 @@ test('the security headers cover the things a static site can actually be attack
     'the PHP version is being advertised in every response header');
 });
 
-test('the CSP allows no inline code and no third-party origin', () => {
+test('the CSP allows no inline code, and only the two documented Google origins', () => {
   // From the header() call itself — the docblock above it discusses
   // 'unsafe-inline' in prose, and a test that reads prose proves nothing.
   const call = config.match(/header\("Content-Security-Policy: "([\s\S]*?)\);/);
   assert.ok(call, 'no Content-Security-Policy header() call found in config.php');
-  const csp = call[1];
-  for (const forbidden of ["'unsafe-inline'", "'unsafe-eval'", 'http:', 'https:', '*']) {
+  // Strip the PHP comments interleaved between the concatenated parts — one
+  // of them explains why 'unsafe-inline' is not there, and a test that reads
+  // an explanation as if it were policy is worse than no test.
+  const csp = call[1].replace(/^\s*\/\/.*$/gm, '');
+
+  for (const forbidden of ["'unsafe-inline'", "'unsafe-eval'", "http:", "'self' *", 'https:;', "https: "]) {
     assert.ok(!csp.includes(forbidden),
       `the CSP contains ${forbidden}, which gives away most of what it was protecting`);
   }
-  for (const directive of ['default-src', 'base-uri', 'form-action', 'frame-ancestors', 'object-src', 'script-src', 'style-src']) {
+  for (const directive of ['default-src', 'base-uri', 'form-action', 'frame-ancestors', 'object-src', 'script-src', 'style-src', 'frame-src']) {
     assert.ok(csp.includes(directive), `the CSP no longer sets ${directive}`);
+  }
+
+  // Every off-origin host the policy names, anywhere in it. reCAPTCHA needs
+  // exactly two; anything else appearing here is a third party nobody
+  // decided to add on purpose.
+  const hosts = [...csp.matchAll(/https:\/\/([a-z0-9.-]+)/g)].map((m) => m[1]);
+  const allowed = new Set(['www.google.com', 'www.gstatic.com']);
+  for (const host of hosts) {
+    assert.ok(allowed.has(host), `the CSP allows ${host}, which is not one of the reCAPTCHA origins`);
+  }
+
+  // Those origins are gated behind the flag, so they apply on /contact only.
+  assert.match(config, /function send_security_headers\(bool \$recaptcha = false\)/,
+    'the reCAPTCHA CSP exception is no longer opt-in per page');
+  assert.match(config, /\$g = \$recaptcha \?/,
+    'the Google origins are no longer conditional on the reCAPTCHA flag');
+});
+
+// ---------------------------------------------------------------------------
+// reCAPTCHA: the keys, and the promises the pages make about it
+// ---------------------------------------------------------------------------
+
+test('no reCAPTCHA key is committed anywhere in the repository', () => {
+  // The one rule that matters here. A key in a public commit is public
+  // permanently: deleting it later leaves it in the history, in every clone
+  // and in every fork. Site keys are public by design and secret keys are
+  // not, but neither belongs in a commit, so this looks for the shape of
+  // both.
+  const keyShaped = /6L[A-Za-z0-9_-]{20,}/;
+
+  // Files git actually tracks — not the working directory. A real deployment
+  // has config.local.php sitting right there with both keys in it, and that
+  // is the whole point: what matters is whether git can see it.
+  const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' })
+    .split('\0')
+    .filter((f) => f && /\.(php|js|html|css|txt|md|json|yml|sh|mjs)$/.test(f));
+  assert.ok(tracked.length > 20, 'the tracked-file listing came back suspiciously short');
+
+  for (const file of tracked) {
+    assert.ok(!keyShaped.test(read(file)),
+      `${file} is tracked by git and contains something shaped like a reCAPTCHA key`);
+  }
+});
+
+test('the local key file is git-ignored and has a committed template', () => {
+  const ignore = read('.gitignore');
+  assert.match(ignore, /^website\/config\.local\.php$/m,
+    'website/config.local.php is not git-ignored — the keys would be committed');
+  assert.ok(existsSync(join(root, 'website/config.local.example.php')),
+    'there is no template to copy from, so the key file has to be invented from scratch on the server');
+  const example = read('website/config.local.example.php');
+  assert.match(example, /'recaptcha_site_key'\s*=>\s*''/, 'the template ships a non-empty site key');
+  assert.match(example, /'recaptcha_secret_key'\s*=>\s*''/, 'the template ships a non-empty secret key');
+});
+
+test('the site works with no keys configured', () => {
+  // A fork, a fresh clone, or a deploy done before the keys are in place must
+  // not 500 and must not quietly accept unverified mail while implying it
+  // checked something.
+  assert.match(config, /is_readable\(\$site_local\) \? \(array\) \(require \$site_local\) : \[\]/,
+    'a missing config.local.php is no longer handled');
+  assert.match(config, /function recaptcha_enabled\(\): bool/, 'nothing tells the pages whether reCAPTCHA is configured');
+  assert.match(read('website/includes/contact-handler.php'), /if \(recaptcha_enabled\(\)\) \{/,
+    'the handler runs the reCAPTCHA branch unconditionally');
+  assert.match(read('website/contact.php'), /\$page_recaptcha = recaptcha_enabled\(\)/,
+    'the contact page loads Google unconditionally');
+});
+
+test('the secret key is never exposed to the browser', () => {
+  const contact = read('website/contact.php');
+  assert.ok(!contact.includes('RECAPTCHA_SECRET_KEY'),
+    'the contact page references the secret key — it must never reach the HTML');
+  assert.ok(!read('website/assets/js/recaptcha.js').includes('RECAPTCHA'),
+    'the client script names a key constant; it reads the site key from a data- attribute instead');
+  assert.match(config, /'secret'\s*=>\s*RECAPTCHA_SECRET_KEY/,
+    'the secret key is not being sent to the verification endpoint');
+});
+
+test('reCAPTCHA is disclosed where a visitor can actually see it', () => {
+  // Google's terms require the badge or this notice; more to the point, a
+  // site whose whole pitch is "no third-party requests" owes the exception a
+  // plain statement on the page that makes it, not a line in a policy.
+  const contact = read('website/contact.php');
+  assert.match(contact, /policies\.google\.com\/privacy/, 'the contact page does not link Google\'s privacy policy');
+  assert.match(contact, /policies\.google\.com\/terms/, 'the contact page does not link Google\'s terms');
+  assert.match(read('website/privacy.php'), /reCAPTCHA/,
+    'the privacy page does not mention reCAPTCHA at all');
+  assert.match(read('website/assets/css/style.css'), /\.grecaptcha-badge \{ visibility: hidden; \}/,
+    'the badge is visible, in which case the standalone notice is redundant — or it is hidden with no notice, which the terms do not allow');
+});
+
+test('a submission with no token is rejected rather than silently accepted', () => {
+  const handler = read('website/includes/contact-handler.php');
+  assert.match(handler, /if \(\$token === ''\) \{[\s\S]*?'status' => 'nojs'/,
+    'a submission with no reCAPTCHA token is not rejected');
+  assert.match(handler, /'status' => 'spam'/, 'a low-scoring submission is not rejected');
+  assert.match(handler, /if \(!\$check\['reachable'\]\)/,
+    'an unreachable Google would lose real messages instead of letting them through');
+  // Both rejections have to hand the text back; losing a long message to a
+  // spam check is its own kind of failure.
+  assert.equal((handler.match(/\$_SESSION\['contact_old'\] = \$keep;/g) || []).length, 2,
+    'one of the reCAPTCHA rejections drops what the visitor typed');
+  const contact = read('website/contact.php');
+  for (const status of ['nojs', 'spam']) {
+    assert.ok(contact.includes(`$status === '${status}'`), `/contact has no message for the ${status} outcome`);
   }
 });
 
@@ -174,7 +284,10 @@ test('no page contains inline script or style, which that CSP would block', () =
     // a docblock that *mentions* an inline <script> isn't mistaken for one.
     const src = readFileSync(file, 'utf8')
       .replace(/<\?php[\s\S]*?(\?>|$)/g, '')
-      .replace(/<\?=[\s\S]*?\?>/g, '');
+      .replace(/<\?=[\s\S]*?\?>/g, '')
+      // A comment explaining that Google injects a <style> element is not a
+      // <style> element, and nothing inside a comment runs.
+      .replace(/<!--[\s\S]*?-->/g, '');
 
     // privacy.html is the extension's own page, read as data by privacy.php
     // and never served — only the body between the "Last updated" line and
