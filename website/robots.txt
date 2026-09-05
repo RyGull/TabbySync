@@ -1,0 +1,27 @@
+# robots.txt — TabbySync
+#
+# Everything on this site is meant to be found: three pages, no login, no
+# search-result pages, no infinite parameter space. The only things kept out
+# of the index are URLs that are not pages at all.
+#
+# The Sitemap line must match SITE_URL in config.php — a test in the extension
+# repository (test/website.test.js) fails if the two ever drift apart.
+
+User-agent: *
+
+# The site's own machinery, not content: PHP includes, the legacy form shim,
+# and the copy of the extension's privacy policy that /privacy reads and
+# renders. Blocking that last one keeps an unstyled duplicate of the policy
+# from competing with the real page.
+Disallow: /includes/
+Disallow: /contact-send.php
+Disallow: /privacy.html
+
+# Post/redirect/get status URLs. Each carries a canonical link and a noindex
+# already; this saves a crawler the trip.
+Disallow: /contact?status=
+Disallow: /contact.php?status=
+
+Allow: /
+
+Sitemap: https://tabbysync.com/sitemap.xml

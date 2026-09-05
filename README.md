@@ -213,7 +213,15 @@ than the artifact of there being no server on the machine that took them.
 `website/` is a separate, fancy, responsive PHP landing page for
 tabbysync.com — not part of the extension bundle, not loaded by it, and not
 loading it. See [website/README.md](website/README.md) for what it is and
-how to deploy it.
+how to deploy it; `.htaccess` there forces HTTPS and pins the host name, so
+read its header before a first deploy.
+
+Its SEO and security posture is checked by `test/website.test.js` rather than
+left to drift: canonical links and the sitemap have to agree on one origin,
+the 404 page has to answer 404, the structured data may not claim a rating
+nobody can verify, and the strict Content-Security-Policy stays enforceable
+because the test fails the moment an inline `<script>`, `<style>` or
+`style=""` attribute appears anywhere in the site.
 
 ## Changelog
 

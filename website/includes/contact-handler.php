@@ -14,8 +14,9 @@
  * Deliberately dependency-free, and deliberately without reCAPTCHA: the
  * changelog records that reCAPTCHA was removed from this project because
  * merely rendering it contacted Google before the visitor had typed
- * anything. The spam defence here is a honeypot plus a per-session rate
- * limit, which costs the visitor no third-party request at all.
+ * anything. The spam defence here is a CSRF token, a honeypot and a
+ * per-session rate limit, which together cost the visitor no third-party
+ * request at all.
  */
 
 declare(strict_types=1);
@@ -23,9 +24,7 @@ declare(strict_types=1);
 if (!defined('SITE_NAME')) {
     require_once __DIR__ . '/../config.php';
 }
-if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_start();
-}
+start_session();
 
 /** Where to send the visitor back to. The caller normally sets this. */
 $contact_form_url = $contact_form_url ?? '/contact';
@@ -60,6 +59,30 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 }
 if ($_POST === []) {
     contact_redirect($contact_form_url, ['status' => 'notsent', 'why' => 'empty']);
+}
+
+// ---------------------------------------------------------------------------
+// The submission has to have come from our own form
+// ---------------------------------------------------------------------------
+
+// Without this, any page anywhere could POST here in a visitor's name and the
+// mailbox on the other end would fill with messages nobody wrote. The
+// honeypot and the rate limit below don't cover that: a cross-site submission
+// is otherwise perfectly well formed. SameSite=Lax on the session cookie
+// stops the same attack a layer earlier; this is the layer that doesn't
+// depend on the browser being recent.
+//
+// What was typed is kept, because the overwhelmingly likely cause is a form
+// left open until its session expired — not an attack — and losing a long
+// message to a security check is its own kind of failure.
+if (!csrf_valid(isset($_POST['csrf']) && is_string($_POST['csrf']) ? $_POST['csrf'] : null)) {
+    $_SESSION['contact_old'] = [
+        'name'    => trim((string) ($_POST['name'] ?? '')),
+        'email'   => trim((string) ($_POST['email'] ?? '')),
+        'reason'  => (string) ($_POST['reason'] ?? ''),
+        'message' => trim((string) ($_POST['message'] ?? '')),
+    ];
+    contact_redirect($contact_form_url, ['status' => 'expired']);
 }
 
 // ---------------------------------------------------------------------------

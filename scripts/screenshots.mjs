@@ -22,6 +22,8 @@
 //   web/    downscaled PNGs used by the marketing site and the README
 //   store/  1280x800 framed images for the Chrome Web Store, which accepts
 //           only 1280x800 or 640x400, no alpha
+//   og/     the 1200x630 social card the marketing site points every Open
+//           Graph and Twitter tag at
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -33,10 +35,18 @@ const DIR = path.join(ROOT, 'docs', 'screenshots');
 const RAW = path.join(DIR, 'raw');
 const WEB = path.join(DIR, 'web');
 const STORE = path.join(DIR, 'store');
-for (const d of [RAW, WEB, STORE]) fs.mkdirSync(d, { recursive: true });
+const OG = path.join(DIR, 'og');
+for (const d of [RAW, WEB, STORE, OG]) fs.mkdirSync(d, { recursive: true });
 
 const THEMES = ['light', 'dark'];
-const now = Date.now();
+
+// A fixed clock, not Date.now(). Every "last sync" and "3 tabs · <date>" in
+// these screenshots is derived from it, so a re-run with no UI change produces
+// byte-identical files instead of a fresh set of PNGs whose only difference is
+// the minute they were taken — which is the difference between a generator you
+// can re-run freely and one that quietly adds a megabyte to the repository
+// every time. Move it forward if the dates ever start looking archaeological.
+const now = Date.parse('2026-09-05T19:40:00Z');
 const min = 60 * 1000;
 
 // ---- the demo profile ------------------------------------------------------
@@ -327,11 +337,70 @@ async function frame(browser) {
   await page.close();
 }
 
+// ---- 4. the social card ----------------------------------------------------
+
+// One 1200x630 image, the size every link preview crops toward. The site
+// pointed og:image at the 256px app icon before this existed, which every
+// platform letterboxes into a grey square — a card that shows the actual
+// product is the whole difference between a link that looks like software and
+// a link that looks like nothing.
+async function socialCard(browser) {
+  const page = await browser.newPage({ viewport: { width: 1200, height: 630 }, deviceScaleFactor: 1 });
+  const logo = 'data:image/png;base64,' +
+    fs.readFileSync(path.join(ROOT, 'icons', 'logo-light.png')).toString('base64');
+  const shot = dataUri(RAW, 'popup-light.png');
+  await page.setContent(`<style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{width:1200px;height:630px;overflow:hidden;color:#131925;
+      background:radial-gradient(900px 600px at 8% -20%, #ffffff, #e6ecf6);
+      font:400 16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
+    .accent{height:8px;background:linear-gradient(90deg,#2563eb 0%,#2563eb 50%,#ea580c 50%,#ea580c 100%);}
+    .row{display:flex;align-items:center;gap:54px;padding:0 72px;height:622px;}
+    .copy{flex:1 1 auto;}
+    .logo{height:62px;width:auto;display:block;margin-bottom:26px;}
+    h1{font-size:44px;line-height:1.14;font-weight:800;letter-spacing:-.02em;max-width:15ch;}
+    p{margin-top:18px;font-size:21px;line-height:1.45;color:#4d5866;max-width:26ch;}
+    .tags{margin-top:26px;display:flex;gap:10px;flex-wrap:wrap;}
+    .tag{font-size:15px;font-weight:600;padding:7px 13px;border-radius:999px;
+      border:1px solid rgba(19,25,37,.14);background:rgba(255,255,255,.75);color:#3b4553;}
+    .shot{flex:0 0 auto;width:300px;border:1px solid rgba(19,25,37,.12);border-radius:16px;
+      overflow:hidden;box-shadow:0 26px 60px rgba(19,25,37,.22);background:#fff;}
+    .shot img{display:block;width:100%;}
+  </style>
+  <div class="accent"></div>
+  <div class="row">
+    <div class="copy">
+      <img class="logo" src="${logo}" alt="TabbySync">
+      <h1>Your bookmarks and tabs, synced to your own server</h1>
+      <p>One extension, two engines, one destination you control.</p>
+      <div class="tags">
+        <span class="tag">Self-hosted</span>
+        <span class="tag">End-to-end encryption</span>
+        <span class="tag">No account, no tracking</span>
+      </div>
+    </div>
+    <div class="shot"><img src="${shot}" alt=""></div>
+  </div>`);
+  await page.waitForTimeout(300);
+  const out = path.join(OG, 'og-image.png');
+  await page.screenshot({ path: out, clip: { x: 0, y: 0, width: 1200, height: 630 } });
+  await page.close();
+  console.log('og    ', path.relative(ROOT, out));
+
+  // The site is deployed on its own, so it carries its own copy of anything
+  // it serves rather than reaching back into this repository at runtime.
+  const sitePath = path.join(ROOT, 'website', 'assets', 'img', 'og-image.png');
+  fs.copyFileSync(out, sitePath);
+  console.log('og    ', path.relative(ROOT, sitePath));
+}
+
 // ---- run -------------------------------------------------------------------
 
 await capture();
 const browser = await chromium.launch();
 await downscale(browser);
 await frame(browser);
+await socialCard(browser);
 await browser.close();
-console.log('\nDone. Store images are exactly 1280x800 with no alpha channel.');
+console.log('\nDone. Store images are exactly 1280x800 with no alpha channel;'
+  + ' the social card is 1200x630.');

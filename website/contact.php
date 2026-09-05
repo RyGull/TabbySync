@@ -1,9 +1,10 @@
 <?php
 declare(strict_types=1);
 
-session_start();
-
 require_once __DIR__ . '/config.php';
+
+// Cookie flags first, then the session — see start_session() in config.php.
+start_session();
 
 /**
  * The URL this page is being served from, used both as the form's action and
@@ -52,6 +53,12 @@ if ($status === 'ok') {
     $notice = ['type' => 'error', 'text' => "You've sent several messages already. Please email us directly instead."];
 } elseif ($status === 'error') {
     $notice = ['type' => 'error', 'text' => "Something went wrong on our end and your message wasn't sent. Please try again, or email us directly."];
+} elseif ($status === 'expired') {
+    // The CSRF token didn't match. Overwhelmingly this is a stale tab or a
+    // session that expired while the message was being written, not an
+    // attack — so say something a person can act on, and keep what they
+    // typed, rather than accusing them of anything.
+    $notice = ['type' => 'error', 'text' => 'This form had been open a while and its security token expired. Your message is still below — please send it again.'];
 }
 
 // Re-populate the form after a validation error, without persisting anything.
@@ -79,6 +86,17 @@ function field_invalid_attrs(array $errors, string $field): void
 
 $page_title       = 'Contact — ' . SITE_NAME;
 $page_description = 'Get in touch with ' . SITE_NAME . ' — questions, feedback, and bug reports all welcome.';
+
+// Every ?status= variant of this page is the same page. The canonical link
+// already says so; this keeps the redirect targets out of the index outright.
+$page_noindex = $status !== null;
+$page_schema  = [
+    '@type' => 'BreadcrumbList',
+    'itemListElement' => [
+        ['@type' => 'ListItem', 'position' => 1, 'name' => 'Home', 'item' => SITE_URL . '/'],
+        ['@type' => 'ListItem', 'position' => 2, 'name' => 'Contact', 'item' => SITE_URL . CONTACT_PATH],
+    ],
+];
 require __DIR__ . '/includes/header.php';
 ?>
 
@@ -144,6 +162,8 @@ require __DIR__ . '/includes/header.php';
            messages as spam. -->
       <input type="text" name="tsc_hp" class="honeypot" tabindex="-1"
         autocomplete="off" aria-hidden="true">
+
+      <?php csrf_field(); ?>
 
       <button type="submit" class="btn btn-primary">Send message</button>
     </form>

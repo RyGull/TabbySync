@@ -58,6 +58,14 @@ function policy_parts(): array
 
 $page_title       = 'Privacy Policy — ' . SITE_NAME;
 $page_description = SITE_NAME . "'s privacy policy: what data the browser extension touches, where it goes, and who can see it.";
+
+$page_schema = [
+    '@type' => 'BreadcrumbList',
+    'itemListElement' => [
+        ['@type' => 'ListItem', 'position' => 1, 'name' => 'Home', 'item' => SITE_URL . '/'],
+        ['@type' => 'ListItem', 'position' => 2, 'name' => 'Privacy Policy', 'item' => SITE_URL . PRIVACY_PATH],
+    ],
+];
 require __DIR__ . '/includes/header.php';
 ?>
 

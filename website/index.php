@@ -2,7 +2,14 @@
 declare(strict_types=1);
 require_once __DIR__ . '/config.php';
 
-$page_title = SITE_NAME . ' — ' . TAGLINE;
+// The home page's own title and description, rather than the header's
+// fallbacks. Both are written for a search result: the title names the thing
+// and what it does inside ~60 characters, and the description says who it is
+// for and what makes it different inside ~155, because past that Google
+// truncates and the rest is written for nobody.
+$page_title       = SITE_NAME . ' — self-hosted bookmark and tab sync for Chrome';
+$page_description = 'Sync your bookmarks and open tabs to a server you control — or a private '
+    . 'GitHub Gist — with optional end-to-end encryption. No account, no analytics, no tracking.';
 require __DIR__ . '/includes/header.php';
 ?>
 
