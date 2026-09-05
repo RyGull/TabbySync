@@ -45,6 +45,12 @@
     .headBox { flex:1 1 50%; min-width:0; display:flex; align-items:center; justify-content:center; gap:8px;
       padding:5px 8px; border-radius:9px; background:var(--panel); border:1px solid var(--line); }
     .syncBox { font-size:12px; font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    /* one dot, same meaning as the band at the top of the settings page:
+       green = syncing, amber = nothing set up yet, red = the last try failed */
+    .syncDot { width:7px; height:7px; border-radius:50%; background:var(--muted); flex:0 0 auto; }
+    .syncDot.ok { background:var(--ok); }
+    .syncDot.setup { background:var(--busy); }
+    .syncDot.err { background:var(--err); }
     /* logo swaps with the effective theme */
     :root .logo-light { display:block; }
     @media (prefers-color-scheme: dark) {
@@ -181,13 +187,14 @@
     <div class="headBox">
       <button class="opts" id="opts">Options</button>
     </div>
-    <div class="headBox syncBox">
-      <span id="syncLabel">Sync: —</span>
+    <div class="headBox syncBox" id="syncBox">
+      <span class="syncDot" id="syncDot"></span><span id="syncLabel">—</span>
     </div>
   </div>
 
   <div id="setup" class="banner" hidden>
-    No server set up yet. <a id="setupLink">Open Options</a> to add your server URL, token and sync name — one setup covers both tools.
+    Not set up yet — it takes about two minutes. <a id="setupLink">Open settings</a> to choose where your
+    bookmarks and tabs should live.
   </div>
 
   <div class="cards">
@@ -195,7 +202,7 @@
     <section class="card bm" id="bmCard">
       <div class="card-h">
         <span class="badge">📑</span>
-        <span class="title">Bookmarks<small id="bmSub">sync your bookmark tree</small></span>
+        <span class="title">Bookmarks<small id="bmSub">the same on every computer</small></span>
         <span class="dot" id="bmDot"></span>
         <label class="sw" title="Enable bookmark sync">
           <input type="checkbox" id="bmEnable"><span class="track"></span>
@@ -216,7 +223,7 @@
     <section class="card tab" id="tabCard">
       <div class="card-h">
         <span class="badge">🗂️</span>
-        <span class="title">Tabs<small id="tabSub">collapse &amp; sync open tabs</small></span>
+        <span class="title">Tabs<small id="tabSub">save tabs, reopen anywhere</small></span>
         <span class="dot" id="tabDot"></span>
         <label class="sw" title="Enable tab sync">
           <input type="checkbox" id="tabEnable"><span class="track"></span>
@@ -228,8 +235,8 @@
         <div class="kv" id="tabErrRow" hidden><span>Error</span><span class="v err" id="tabErr"></span></div>
       </div>
       <div class="acts">
-        <button class="primary grow" id="stashAllTabs">Stash tabs</button>
-        <button class="accent" id="tabOpen">Open tabs</button>
+        <button class="primary grow" id="stashAllTabs">Save my tabs</button>
+        <button class="accent" id="tabOpen">My lists</button>
         <button id="tabSync">Sync</button>
       </div>
     </section>
@@ -239,7 +246,7 @@
     <span class="note" id="footNote" hidden>One server · one token · one sync name</span>
     <div class="profileRow" id="profileRow" hidden>
       <div class="profileBox">
-        <span class="profileTag">Profile</span>
+        <span class="profileTag">Shared as</span>
         <span class="profileName" id="profileName"></span>
       </div>
       <button class="encBadge" id="encBadge" type="button"></button>

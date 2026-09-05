@@ -165,7 +165,7 @@ async function refreshBand() {
 
   const last = Math.max(bm && bm.lastSync ? bm.lastSync : 0, tb && tb.lastAt ? tb.lastAt : 0);
   setBand('ok', '✓', 'Everything is syncing.',
-    `Saved to ${where}${shared} · last checked ${fmtWhen(last)}`);
+    `Saved to ${where}${shared} · last synced ${fmtWhen(last)}`);
 }
 
 function currentProvider() { return $('sync-provider').value || 'custom'; }

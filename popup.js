@@ -77,10 +77,11 @@ async function refreshTabs() {
 
 var encBadgeWired = false;
 
-// Short display names for the sync-method box under the logo — the
-// provider metadata's own .label is the longer Options-dropdown text
-// (e.g. "JSONBin.io (free, no server)"), too long for that compact box.
-var SYNC_METHOD_SHORT = { custom: "Self-Hosted", gist: "GitHub Gist", jsonbin: "JSONBin.io" };
+// Where the data goes, in the same plain words the settings page asks the
+// question in ("My own website" / "My GitHub account" / "Just get me going").
+// The provider metadata's own .label is the longer technical name, which is
+// both too long for this box and not what someone chose by.
+var SYNC_METHOD_SHORT = { custom: "Your website", gist: "Your GitHub", jsonbin: "Free storage" };
 
 async function refreshBanner() {
   var c = await self.TabbySyncConfig.getConfig();
@@ -88,8 +89,13 @@ async function refreshBanner() {
 
   var syncLabel = $("syncLabel");
   var shortName = SYNC_METHOD_SHORT[c.provider] || self.TabbySyncProviders.providerMeta(c.provider).label;
-  syncLabel.textContent = "Sync: " + shortName;
-  syncLabel.title = self.TabbySyncProviders.providerMeta(c.provider).label;
+  syncLabel.textContent = configured ? shortName : "Not set up";
+  syncLabel.title = configured
+    ? "Saved to " + shortName.toLowerCase() + " — " + self.TabbySyncProviders.providerMeta(c.provider).label
+    : "Nothing is syncing yet. Open settings to choose where your data should live.";
+  // The dot mirrors the status band at the top of the settings page rather
+  // than inventing a second vocabulary for the same three states.
+  $("syncDot").className = "syncDot" + (configured ? "" : " setup");
 
   $("setup").hidden = configured;
   var note = $("footNote");
@@ -97,7 +103,7 @@ async function refreshBanner() {
   if (!configured) {
     note.hidden = false;
     row.hidden = true;
-    note.textContent = "Not set up yet — open Options to pick a sync method.";
+    note.textContent = "Not set up yet — open settings to choose where your data lives.";
     return configured;
   }
   note.hidden = true;
@@ -111,12 +117,12 @@ async function refreshBanner() {
   var badge = $("encBadge");
   if (c.passphrase) {
     badge.className = "encBadge on";
-    badge.textContent = "🔒 Encryption on";
-    badge.title = "Encryption is on. Click to manage it in Options.";
+    badge.textContent = "🔒 Password lock on";
+    badge.title = "Your data is scrambled before it leaves this computer. Click to manage it in settings.";
   } else {
     badge.className = "encBadge off";
-    badge.textContent = "⚠️ Encryption off";
-    badge.title = "Encryption is off — click to turn it on in Options.";
+    badge.textContent = "⚠️ No password lock";
+    badge.title = "Whoever stores your data can read it. Click to turn the password lock on in settings.";
   }
   // The badge itself never changes identity, so wire the click once rather
   // than re-binding a fresh listener on every refresh.
@@ -126,7 +132,17 @@ async function refreshBanner() {
 }
 
 async function refreshAll() {
-  await Promise.all([refreshBanner(), refreshBookmarks(), refreshTabs()]);
+  var r = await Promise.all([refreshBanner(), refreshBookmarks(), refreshTabs()]);
+  var configured = r[0], bm = r[1], tb = r[2];
+  // A red dot on a card and a neutral one up here would be the popup
+  // disagreeing with itself, so the top dot takes the worse of the two.
+  if (configured) {
+    var failed = (bm && bm.enabled && bm.lastStatus === "error") ||
+                 (tb && tb.enabled && tb.lastStatus === "error");
+    var anyOn = (bm && bm.enabled) || (tb && tb.enabled);
+    $("syncDot").className = "syncDot" + (failed ? " err" : anyOn ? " ok" : " setup");
+    if (failed) $("syncLabel").title = "The last sync did not finish — see the error below.";
+  }
 }
 
 // ---- wiring ----------------------------------------------------------------

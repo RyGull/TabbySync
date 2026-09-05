@@ -6,6 +6,64 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.3.9 — 2026-09-05
+
+**The Options page was rebuilt around four questions instead of forty
+controls, and the popup now speaks the same language.** No setting was
+removed and nothing syncs differently; this is about what the pages ask you,
+and in what order.
+
+- Options opened on **Server URL** and **Bearer token** — the most technical
+  things in the extension — above any mention of bookmarks or tabs, and then
+  ran roughly forty controls down a single scroll, ending in a fully expanded
+  section that permanently deletes your synced data. It is now four numbered
+  steps: where the data lives, how to reach it, what to call this group of
+  computers, and a password to lock it with. Everything else is one
+  disclosure deeper.
+- **Two different fields were both labelled "Sync name."** One's help text
+  began "Unlike the Sync name for other methods…", which only parsed if you
+  already understood the model. They are now "Name for this group of
+  computers" and "Name for this computer", and only one shows at a time.
+- **Three separate boxes asked for a passphrase**, meaning three different
+  things: the encryption passphrase, a bookmark backup passphrase, and a tab
+  backup passphrase. The encryption one is now a single "password lock" with
+  an on/off switch; the two backup fields say on their face that they are
+  about the file you save to your own computer.
+- **The sync-method dropdown became three choices phrased as outcomes** —
+  "My own website" (still the default and still the most private), "My GitHub
+  account", "Just get me going" — each carrying the privacy trade-off it
+  makes. The `<select>` behind them is unchanged and still the single source
+  of truth, so nothing about how a destination is saved or reached moved.
+- **GitHub and JSONBin now have real setup guides.** Both need an account and
+  a key fetched from someone else's website, which used to be explained in a
+  dense block of prose wedged under the dropdown. A "Show me how, step by
+  step" button opens a full walk-through: every screen, what to choose for
+  token expiry and permissions, and what to do when it fails. Both open with
+  what the choice costs you in privacy.
+- **Self-hosting is no longer a card everyone scrolls past.** It appears as
+  step 2 only for the destination that needs it, as a numbered walk-through
+  with the file generator as its first step. The remaining steps renumber, so
+  the page never counts 1, 3, 4.
+- **A status band answers the question the page never answered:** whether any
+  of this is actually working. It reads the same status both engines already
+  report to the popup, and says so plainly when the last sync failed rather
+  than showing green while the popup shows red.
+- **"Test connection" no longer reports a 404 as good news.** Same check,
+  answer in words.
+- **Duplicate handling has a default.** It was a required dropdown with no
+  default, so setup could not finish until you ruled on a question you had no
+  basis to answer yet. It now defaults to skipping repeats within a single
+  send, and that default is written to storage on first load so the setting
+  and the UI can never disagree. An install that already had a choice saved
+  keeps it.
+- **The popup follows the same vocabulary.** "Sync: Self-Hosted" became "Your
+  website" with a status dot that mirrors the settings band; "Encryption
+  on/off" became "Password lock"; "Stash tabs" and "Open tabs" became "Save
+  my tabs" and "My lists"; the profile box says what the name is for. The
+  popup's height is unchanged, so it still never scrolls.
+- **Screenshots** in `docs/screenshots/` and on the marketing site were
+  regenerated from the rebuilt UI by `scripts/screenshots.mjs`.
+
 ## 1.3.8 — 2026-09-04
 
 **Self-hosted server URLs must now use HTTPS.** This is a deliberate
