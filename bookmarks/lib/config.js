@@ -73,6 +73,12 @@ export function isConfigured(cfg) {
 // --- sync state (not user-editable), under bookmark-only keys ---
 const S = {
   cacheTree: 'sl.bm.cacheTree',
+  // Which destination cacheTree was written against — see destinationKey()
+  // in engine.js. A merge base only means anything for the destination it
+  // came from; used against a different one it reads as "everything was
+  // deleted remotely", which is precisely how a sync-method switch used to
+  // delete every bookmark on the machine.
+  cacheKey: 'sl.bm.cacheKey',
   stableToLocal: 'sl.bm.stableToLocal',
   lastSync: 'sl.bm.lastSync',
   lastError: 'sl.bm.lastError',
@@ -84,6 +90,7 @@ export async function getState() {
   const s = await chrome.storage.local.get(STATE_KEYS);
   return {
     cacheTree: s[S.cacheTree] || null,
+    cacheKey: s[S.cacheKey] || '',
     stableToLocal: s[S.stableToLocal] || {},
     lastSync: s[S.lastSync] || 0,
     lastError: s[S.lastError] || '',

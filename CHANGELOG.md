@@ -6,6 +6,46 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.3.10 — 2026-09-05
+
+**Fixes data loss: switching sync method could delete every bookmark in the
+browser.** If you had synced to one destination and then changed the sync
+method, server URL or sync name, the next sync emptied your bookmarks. This
+was reported by a user who hit it while trying out the rebuilt Options page,
+and it is fixed here.
+
+- **What went wrong.** A three-way merge needs a base — "what both sides last
+  agreed on". The engine cached that base after every sync but never recorded
+  *which destination* it agreed with. Point it at a different destination,
+  which has no file yet, and the merge is asked a question with only one
+  sensible answer: base has 400 bookmarks, the remote has none, therefore the
+  remote deleted 400 bookmarks — so it deleted them locally too, and then
+  pushed the emptied tree up. The merge behaved exactly as designed; the
+  inputs it was handed were wrong. `deleteWins` made no difference, because
+  this was never a conflict.
+- **The fix.** The cached base is now stamped with the destination it belongs
+  to (sync method, server URL and sync name), and the engine refuses it when
+  that no longer matches. It also refuses it when the destination has no file
+  at all, which covers the same hazard arriving by other routes — a new
+  account, a server restored from backup, a file deleted by hand. In both
+  cases the sync merges as a first sync, which unions and can never delete.
+  A genuine deletion made on another computer still propagates, because that
+  arrives as a remote file that exists and is empty, which is a different
+  thing entirely.
+- **If this happened to you**, your bookmarks are almost certainly still on
+  the destination you started with: the emptied tree was pushed to the *new*
+  destination, not the old one. Update to this version first, then set the
+  sync method back to the original one, with the same server URL, token and
+  sync name, and sync. Do not change the password lock before you do — that
+  path overwrites the destination with what is currently in the browser.
+- **How it is guarded now.** `test/switch-destination.test.js` pins the
+  engine's two refusals and the merge behaviour around them, and
+  `scripts/e2e-switch-destination.mjs` reproduces the whole thing end to end:
+  it loads the extension for real, makes actual bookmarks, syncs them to a
+  mock server, switches destination underneath it and checks the bookmarks are
+  still there. Run with `npm run e2e:switch`. The unit test alone could not
+  have caught this, because nothing was wrong with the merge.
+
 ## 1.3.9 — 2026-09-05
 
 **The Options page was rebuilt around four questions instead of forty
