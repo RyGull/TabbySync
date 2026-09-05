@@ -15,6 +15,9 @@ require_once __DIR__ . '/../config.php';
     <div class="footer-col">
       <h3>Project</h3>
       <ul>
+<?php if (CHROME_STORE_LIVE): ?>
+        <li><a href="<?= e(CHROME_STORE_URL) ?>" target="_blank" rel="noopener">Chrome Web Store listing</a></li>
+<?php endif; ?>
         <li><a href="<?= e(GITHUB_URL) ?>" target="_blank" rel="noopener">Source on GitHub</a></li>
         <li><a href="<?= e(LICENSE_URL) ?>" target="_blank" rel="noopener">License</a></li>
         <li><a href="<?= e(CHANGELOG_URL) ?>" target="_blank" rel="noopener">Changelog</a></li>

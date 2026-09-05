@@ -25,12 +25,43 @@ because each engine namespaces its own file on the server:
 Same **sync name** on another computer → that computer shares the same data.
 Different names stay separate. Nothing ever leaves your own server.
 
-## Install (unpacked)
+**[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/tabbysync/lfbdjnceepjfamkjclkeahnjhebedfdk)**
+· [tabbysync.com](https://tabbysync.com) · [Privacy policy](https://rygull.github.io/TabbySync/privacy.html)
+
+## Screenshots
+
+Real captures of the shipping UI, regenerated from this working tree by
+`node scripts/screenshots.mjs` — see [regenerating them](#screenshots-regenerating-them)
+below for how that works. Light mode shown; the dark files sit beside each one in
+`docs/screenshots/web/`.
+
+| The popup | The tab list |
+| --- | --- |
+| <img src="docs/screenshots/web/popup-light.png" alt="TabbySync popup" width="240"> | <img src="docs/screenshots/web/tablist-light.png" alt="TabbySync tab list" width="420"> |
+
+| Options — server &amp; sync | Options — the two engines |
+| --- | --- |
+| <img src="docs/screenshots/web/options-light.png" alt="TabbySync options, server and sync" width="420"> | <img src="docs/screenshots/web/options-engines-light.png" alt="TabbySync options, bookmarks and tabs cards" width="420"> |
+
+## Install
+
+**[Add TabbySync from the Chrome Web Store](https://chromewebstore.google.com/detail/tabbysync/lfbdjnceepjfamkjclkeahnjhebedfdk)**
+— one click, and it auto-updates. Works in any Chromium browser (Chrome, Edge,
+Brave, Vivaldi, Opera).
+
+Then click the TabbySync icon → the popup lets you enable Bookmarks, Tabs, or
+both, and open **Options**.
+
+### Or load it unpacked
+
+Running from source instead (to audit it, or to track `main`):
 
 1. In your browser open `chrome://extensions`, turn on **Developer mode**.
 2. **Load unpacked** → select this repo's folder (the one containing `manifest.json`).
-3. Click the TabbySync icon → the popup lets you enable Bookmarks, Tabs, or
-   both, and open **Options**.
+3. Click the TabbySync icon → **Options**.
+
+An unpacked copy never auto-updates — you pull the repo yourself when a new
+version lands.
 
 ## Set up your server (once)
 
@@ -146,6 +177,36 @@ The toolbar/extension icons (`icons/icon-16.png` … `icon-256.png`) are just th
 a transparent background, so they sit cleanly on any toolbar. They were
 rasterized from the mark; if you change the logo, regenerate the PNGs at those
 four sizes (Chrome requires PNG for toolbar icons — it doesn't accept SVG).
+
+## Screenshots (regenerating them)
+
+`scripts/screenshots.mjs` loads this working tree as an unpacked extension in a
+throwaway Chromium profile, seeds a demo profile into `chrome.storage.local`,
+and photographs the real popup, tab list and options pages in both light and
+dark mode. Nothing is mocked up, so a UI change is one command away from being
+reflected everywhere the screenshots appear:
+
+```
+npm install          # playwright is the only dev dependency
+npm run screenshots
+```
+
+It writes three sets under `docs/screenshots/`:
+
+| Set | What it's for |
+|-----|---------------|
+| `raw/` | 2x captures straight out of the browser (git-ignored — regenerate them) |
+| `web/` | downscaled PNGs used by this README and the marketing site |
+| `store/` | 1280x800 framed images for the Chrome Web Store listing |
+
+The Chrome Web Store accepts screenshots at exactly 1280x800 or 640x400 with no
+alpha channel, which is what the `store/` set is; the site copies live in
+`website/assets/img/screenshots/`, so copy `web/` across after regenerating.
+
+The demo profile points at `https://sync.example.com/tabbysync.php`, which
+doesn't answer — the script waits for that first doomed sync and then stamps a
+settled "synced" status, so the pictures show an ordinary healthy profile rather
+than the artifact of there being no server on the machine that took them.
 
 ## Marketing site
 

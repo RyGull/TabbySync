@@ -28,11 +28,12 @@ const CONTACT_PATH   = '/contact';
 const PRIVACY_PATH   = '/privacy';
 const PAYPAL_URL     = 'https://www.paypal.com/ncp/payment/B25W7V9VRGQG4';
 
-// No Chrome Web Store listing exists yet. Flip this on and set the URL the
-// day the extension is actually published there — until then the install
-// button correctly points at the GitHub source instead of a dead link.
-const CHROME_STORE_LIVE = false;
-const CHROME_STORE_URL  = '';
+// The Chrome Web Store listing is live. CHROME_STORE_LIVE stays as a switch
+// rather than being edited out: if the listing is ever pulled or suspended,
+// flipping it back to false returns every call-to-action on the site to the
+// "load unpacked from GitHub" path with no other edits.
+const CHROME_STORE_LIVE = true;
+const CHROME_STORE_URL  = 'https://chromewebstore.google.com/detail/tabbysync/lfbdjnceepjfamkjclkeahnjhebedfdk';
 
 /**
  * The "What's this about?" options on /contact. The first entry is an empty

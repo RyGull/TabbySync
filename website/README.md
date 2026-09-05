@@ -52,11 +52,19 @@ website/
   confirms the element isn't already on screen — nothing in the CSS hides
   content unconditionally. A visitor with JavaScript blocked sees the full
   page, just without the fade-in.
-- **No Chrome Web Store link yet**, because there isn't a listing yet. The
-  primary call-to-action points at the GitHub source and the "Load unpacked"
-  instructions instead of a link that would otherwise go nowhere. Flip
-  `CHROME_STORE_LIVE` to `true` and set `CHROME_STORE_URL` in `config.php`
-  once that listing exists.
+- **The Chrome Web Store listing is the primary call-to-action.**
+  `CHROME_STORE_LIVE` is `true` and `CHROME_STORE_URL` holds the listing URL in
+  `config.php`; the hero button, the install section, the "How it works" first
+  step and the footer all read from those two constants. If the listing is ever
+  pulled or suspended, flipping `CHROME_STORE_LIVE` back to `false` returns the
+  whole site to the "load unpacked from GitHub" path with no other edits.
+- **The screenshots are generated, not hand-made.**
+  `assets/img/screenshots/` is a copy of `docs/screenshots/web/` in the
+  extension repository, produced by `scripts/screenshots.mjs` from the real
+  extension UI. Each shot ships a light and a dark file, swapped by the same
+  `data-theme` rules the logo uses, so the pictures match the theme the visitor
+  is reading in. Re-run that script and re-copy the folder after any UI change —
+  nothing here regenerates them for you.
 - **The privacy policy isn't duplicated here.** `/privacy` (privacy.php)
   *reads* `website/privacy.html` and renders it inside the site chrome,
   rather than restating it in PHP. That file is generated from the canonical

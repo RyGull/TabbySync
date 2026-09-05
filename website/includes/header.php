@@ -40,6 +40,7 @@ $page_description = $page_description ?? TAGLINE . ' No servers of ours involved
 
     <nav class="site-nav" id="siteNav" aria-label="Primary">
       <a href="/#features">Features</a>
+      <a href="/#screenshots">Screenshots</a>
       <a href="/#how-it-works">How it works</a>
       <a href="/#privacy">Privacy</a>
       <a href="/#install">Install</a>

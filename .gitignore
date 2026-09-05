@@ -4,3 +4,10 @@ server/feedback/config.php
 
 # Build output
 dist/
+
+# Local dev tooling (playwright, for scripts/screenshots.mjs)
+node_modules/
+
+# 2x source captures — regenerate with scripts/screenshots.mjs; the web/ and
+# store/ sets derived from them are committed.
+docs/screenshots/raw/

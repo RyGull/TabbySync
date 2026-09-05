@@ -103,6 +103,76 @@ require __DIR__ . '/includes/header.php';
   </div>
 </section>
 
+<!-- =========================== SCREENSHOTS ============================== -->
+<section class="shots" id="screenshots">
+  <div class="wrap">
+    <h2 class="section-title">See it before you install it</h2>
+    <p class="section-lede">Real screenshots of the extension, not mockups — every one is generated
+      from the shipping code by <code>scripts/screenshots.mjs</code>. Light and dark follow whichever
+      theme you're reading this page in.</p>
+
+    <div class="shot-row portrait">
+      <div class="shot-copy">
+        <h3>The popup — both engines at a glance</h3>
+        <p>Bookmarks and Tabs each get their own switch, status dot, saved counts and last-sync
+          time. One click stashes every tab in the window; another opens the list.</p>
+        <p class="shot-note">Shown: a self-hosted profile with the encryption passphrase on.</p>
+      </div>
+      <figure class="shot-figure shot-figure-narrow">
+        <img class="shot-light" src="/assets/img/screenshots/popup-light.png" width="480" height="897"
+             alt="TabbySync popup in light mode, showing the Bookmarks and Tabs cards with their sync status." loading="lazy" decoding="async">
+        <img class="shot-dark" src="/assets/img/screenshots/popup-dark.png" width="480" height="897"
+             alt="The same TabbySync popup in dark mode." loading="lazy" decoding="async">
+      </figure>
+    </div>
+
+    <div class="shot-block">
+      <div class="shot-copy">
+        <h3>The tab list — stashed tabs you can actually manage</h3>
+        <p>Name a list, pin it to the top, lock it against accidental deletion, search across every
+          title and URL, drag links between lists, then restore one link, one list, or everything —
+          as plain tabs or a browser tab group. Deleted lists go to Trash for 30 days, and sync there too.</p>
+      </div>
+      <figure class="shot-figure">
+        <img class="shot-light" src="/assets/img/screenshots/tablist-light.png" width="1280" height="800"
+             alt="The TabbySync tab list in light mode with a pinned reading list and a locked work list." loading="lazy" decoding="async">
+        <img class="shot-dark" src="/assets/img/screenshots/tablist-dark.png" width="1280" height="800"
+             alt="The same TabbySync tab list in dark mode." loading="lazy" decoding="async">
+      </figure>
+    </div>
+
+    <div class="shot-block">
+      <div class="shot-copy">
+        <h3>Options — one destination, one token, one sync name</h3>
+        <p>Pick the sync method, paste the server URL and bearer token once, and both engines use
+          them. The self-hosting card generates the PHP file and its <code>.htaccess</code> guards
+          with a fresh token already in place.</p>
+      </div>
+      <figure class="shot-figure">
+        <img class="shot-light" src="/assets/img/screenshots/options-light.png" width="1280" height="800"
+             alt="TabbySync options in light mode, showing the shared server and sync settings." loading="lazy" decoding="async">
+        <img class="shot-dark" src="/assets/img/screenshots/options-dark.png" width="1280" height="800"
+             alt="The same TabbySync options page in dark mode." loading="lazy" decoding="async">
+      </figure>
+    </div>
+
+    <div class="shot-block">
+      <div class="shot-copy">
+        <h3>…and a switch for everything each engine does</h3>
+        <p>Separate auto-sync intervals, duplicate handling when you stash tabs, restore behaviour,
+          and plain or encrypted import/export — bookmarks and tabs are configured independently,
+          and either one can be turned off entirely.</p>
+      </div>
+      <figure class="shot-figure">
+        <img class="shot-light" src="/assets/img/screenshots/options-engines-light.png" width="1280" height="800"
+             alt="The Bookmarks and Tabs cards in TabbySync options, light mode." loading="lazy" decoding="async">
+        <img class="shot-dark" src="/assets/img/screenshots/options-engines-dark.png" width="1280" height="800"
+             alt="The same Bookmarks and Tabs option cards in dark mode." loading="lazy" decoding="async">
+      </figure>
+    </div>
+  </div>
+</section>
+
 <!-- ========================== HOW IT WORKS =============================== -->
 <section class="how" id="how-it-works">
   <div class="wrap">
@@ -112,8 +182,8 @@ require __DIR__ . '/includes/header.php';
         <span class="step-num">1</span>
         <div>
           <h3>Install the extension</h3>
-          <p>Load it unpacked today (see <a href="#install">Install</a>) — Chrome Web
-            Store listing coming soon.</p>
+          <p>Add it from the <a href="<?= e(CHROME_STORE_URL) ?>" target="_blank" rel="noopener">Chrome
+            Web Store</a>, or load the source unpacked (see <a href="#install">Install</a>).</p>
         </div>
       </li>
       <li>
@@ -175,16 +245,28 @@ require __DIR__ . '/includes/header.php';
   <div class="wrap install-inner">
     <h2 class="section-title">Install it today</h2>
     <p class="section-lede">
-      <?= e(SITE_NAME) ?> isn't on the Chrome Web Store yet. Until then, loading it
-      unpacked takes about a minute:
+      <?= e(SITE_NAME) ?> is on the Chrome Web Store — one click in any Chromium
+      browser (Chrome, Edge, Brave, Vivaldi, Opera):
     </p>
     <ol class="install-steps">
-      <li>Clone or download the <a href="<?= e(GITHUB_URL) ?>" target="_blank" rel="noopener">source</a>.</li>
-      <li>Open <code>chrome://extensions</code>, turn on <strong>Developer mode</strong>.</li>
-      <li><strong>Load unpacked</strong> → select the folder containing <code>manifest.json</code>.</li>
+      <li>Add it from the <a href="<?= e(CHROME_STORE_URL) ?>" target="_blank" rel="noopener">Chrome Web Store</a>.</li>
       <li>Click the <?= e(SITE_NAME) ?> icon, choose Bookmarks, Tabs, or both, and open Options.</li>
+      <li>Point it at a destination — your own server, a private GitHub Gist, or JSONBin.io.</li>
     </ol>
-    <a class="btn btn-primary" href="<?= e(GITHUB_URL) ?>" target="_blank" rel="noopener">Get the source on GitHub</a>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="<?= e(CHROME_STORE_URL) ?>" target="_blank" rel="noopener">Add to Chrome</a>
+      <a class="btn btn-ghost" href="<?= e(GITHUB_URL) ?>" target="_blank" rel="noopener">Get the source on GitHub</a>
+    </div>
+    <details class="install-alt">
+      <summary>Prefer to load it unpacked from source?</summary>
+      <ol class="install-steps">
+        <li>Clone or download the <a href="<?= e(GITHUB_URL) ?>" target="_blank" rel="noopener">source</a>.</li>
+        <li>Open <code>chrome://extensions</code>, turn on <strong>Developer mode</strong>.</li>
+        <li><strong>Load unpacked</strong> → select the folder containing <code>manifest.json</code>.</li>
+      </ol>
+      <p class="shot-note">An unpacked copy never auto-updates — you pull the repo yourself when a
+        new version lands.</p>
+    </details>
   </div>
 </section>
 
