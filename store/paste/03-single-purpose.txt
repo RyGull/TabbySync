@@ -1,0 +1,1 @@
+TabbySync synchronises the user's bookmarks and saved tab lists between their own computers, via a storage destination the user chooses and controls. Everything in the extension serves that one purpose: reading and writing the browser's bookmarks and tabs, and sending them to (and fetching them from) that destination.

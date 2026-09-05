@@ -1,0 +1,26 @@
+Paste-ready text for the Chrome Web Store dashboard
+===================================================
+
+One file per box. Open it, select all, paste. No markdown, no code fences,
+nothing to strip out first — the store's fields are plain text and render
+none of it.
+
+  01-detailed-description.txt   Store listing → Description
+  02-short-description.txt      Store listing → Summary (132 char limit; this is 124)
+  03-single-purpose.txt         Privacy practices → Single purpose
+  04..10-permission-*.txt       Privacy practices → one box per permission
+  11-permission-host.txt        Privacy practices → host permission justification
+  12-whats-new.txt              Optional; some listings show it, some don't
+
+Two things about the description that are easy to get wrong:
+
+* Paragraphs are single long lines on purpose. The store reflows them to
+  the width of the page. Hard-wrapping them here would look raggedly narrow
+  on a wide screen.
+* Blank lines and emoji both survive the paste. Bullet characters (•) and
+  ticks (✓) are literal text, not a list format the store understands, so
+  they render exactly as typed.
+
+The wording, and every claim in it, is the same as store/listing.md — that
+file explains the reasoning and the dashboard settings around them; these
+files are the text itself.

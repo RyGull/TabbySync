@@ -1,0 +1,1 @@
+Reads the URL and title of open tabs when the user chooses to save them to a list, and opens tabs again when the user reopens a saved list. Tabs are only read at the moment the user acts — the extension never listens for navigation and has no content scripts.

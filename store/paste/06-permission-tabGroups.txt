@@ -1,0 +1,1 @@
+Optional feature: when reopening a saved list, the user can have it restored as a native browser tab group rather than as loose tabs. Used only to create and name that group.

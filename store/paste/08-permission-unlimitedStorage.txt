@@ -1,0 +1,1 @@
+A large bookmark collection or a long list of saved tabs can exceed the default chrome.storage.local quota. Without this, sync fails once the user's own data grows past it.

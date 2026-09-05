@@ -1,0 +1,1 @@
+Schedules the periodic background sync at the interval the user sets in settings. Required because a Manifest V3 service worker cannot hold a timer of its own.

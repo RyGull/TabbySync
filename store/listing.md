@@ -21,11 +21,7 @@ TabbySync
 
 ### Short description (132 characters max)
 
-```
-Sync bookmarks and tabs to a server you control — your own site, a private GitHub Gist, or JSONBin. No account, no tracking.
-```
-
-(124 characters.)
+Paste from `paste/02-short-description.txt` — 124 of the 132 characters allowed.
 
 ### Category
 
@@ -37,65 +33,13 @@ English (UK/US — the copy uses "colour"-free spellings throughout).
 
 ### Detailed description
 
-```
-TabbySync keeps your bookmarks and your open tabs in step across your
-computers — and sends them only where you tell it to.
+**Paste from `paste/01-detailed-description.txt`.** It is not repeated here: two
+copies of the same 3,500 words is two things to keep in step, and the paste file
+is the one that has to be exactly right.
 
-Most sync tools ask you to trust a company with your browsing. TabbySync
-has no account, no analytics, and no server of its own. You choose the
-destination, and your data goes there and nowhere else.
-
-WHERE YOUR DATA GOES — YOU PICK
-
-• Your own website — upload one small PHP file to your web space.
-  TabbySync writes the file for you, with an access code already inside.
-  Nobody but you can read your data. This is the recommended setup.
-• Your GitHub account — free, no server needed. TabbySync creates a
-  private gist and keeps the file there.
-• A free storage service (JSONBin.io) — quickest to set up, no account
-  with us and no server of yours.
-
-Turn on the password lock and your data is encrypted with AES-256-GCM on
-your computer before it is sent, so whoever stores it only ever holds
-text they cannot read. The password never leaves your device.
-
-TWO TOOLS, ONE SETUP
-
-• Bookmarks — keeps your whole bookmark tree the same everywhere.
-  Changes made on two computers are merged, not overwritten, by a
-  three-way merge with a test suite written specifically to catch silent
-  data loss.
-• Tabs — closes the tabs you are done with and saves them as a named
-  list, freeing the memory they were holding. Reopen one link, one list,
-  or everything, on any of your computers, as ordinary tabs or as a
-  browser tab group.
-
-Use one, use both, or turn either off. They share one destination, one
-access code and one name.
-
-BUILT TO BE CHECKED, NOT TRUSTED
-
-• No analytics, no telemetry, no usage tracking of any kind.
-• No history, webRequest or cookies permission — it cannot read your
-  browsing.
-• Contacts no server operated by the developer, ever.
-• Requests access to your sync destination one address at a time, when
-  you set it up — never a wildcard, and nothing at install time.
-• The source is published so it can be audited rather than taken on
-  faith: github.com/RyGull/TabbySync
-
-SENSIBLE ABOUT YOUR DATA
-
-• A sync that would delete most of the bookmarks in your browser stops
-  and asks you first, rather than doing it and syncing the result.
-• Reopening a large list asks before it opens hundreds of tabs, and
-  opens them in batches you can stop.
-• Deleted tab lists wait 30 days in "Recently deleted" and sync there
-  too.
-• Backups you can save to your own computer, plain or password-locked.
-
-Free, and free of any of the usual reasons software is free.
-```
+It runs to about 3,500 of the 16,000 characters allowed, uses emoji section
+headers, and keeps paragraphs as single long lines so the store reflows them to
+the page width instead of leaving them raggedly narrow.
 
 ### Screenshots
 
@@ -136,70 +80,27 @@ against the manifest and the source.
 
 ### Single purpose description
 
-```
-TabbySync synchronises the user's bookmarks and saved tab lists between
-their own computers, via a storage destination the user chooses and
-controls. Everything in the extension serves that one purpose: reading and
-writing the browser's bookmarks and tabs, and sending them to (and fetching
-them from) that destination.
-```
+Paste from `paste/03-single-purpose.txt`.
 
 ### Permission justifications
 
-**bookmarks**
-```
-Reads and writes the user's bookmarks. This is the data one half of the
-extension synchronises: it reads the bookmark tree to send it to the
-user's chosen destination, and applies incoming changes from their other
-computers.
-```
+One box per permission in the dashboard, one file per box:
 
-**tabs**
-```
-Reads the URL and title of open tabs when the user chooses to save them
-to a list, and opens tabs again when the user reopens a saved list. Tabs
-are only read at the moment the user acts — the extension never listens
-for navigation and has no content scripts.
-```
+| Permission | File |
+|---|---|
+| `bookmarks` | `paste/04-permission-bookmarks.txt` |
+| `tabs` | `paste/05-permission-tabs.txt` |
+| `tabGroups` | `paste/06-permission-tabGroups.txt` |
+| `storage` | `paste/07-permission-storage.txt` |
+| `unlimitedStorage` | `paste/08-permission-unlimitedStorage.txt` |
+| `contextMenus` | `paste/09-permission-contextMenus.txt` |
+| `alarms` | `paste/10-permission-alarms.txt` |
+| host permissions (optional) | `paste/11-permission-host.txt` |
 
-**tabGroups**
-```
-Optional feature: when reopening a saved list, the user can have it
-restored as a native browser tab group rather than as loose tabs. Used
-only to create and name that group.
-```
-
-**storage / unlimitedStorage**
-```
-Stores the user's settings, their saved tab lists, and the cached copy of
-the bookmark tree that the merge compares against, in chrome.storage.local
-on the device. unlimitedStorage is needed because a large bookmark
-collection or a long list of saved tabs can exceed the default quota.
-```
-
-**contextMenus**
-```
-Adds right-click entries on the toolbar icon for saving tabs — this tab,
-the others, or the ones to the left or right of it.
-```
-
-**alarms**
-```
-Schedules the periodic background sync at the interval the user sets in
-settings. Required because a Manifest V3 service worker cannot hold a
-timer of its own.
-```
-
-**Host permissions (optional, requested at runtime)**
-```
-The extension requests no host access at install time. When the user
-saves a sync destination, it asks for access to that one address —
-their own server, api.github.com, or api.jsonbin.io — through the
-browser's own permission prompt, which names the site. It is declared
-under optional_host_permissions and is limited to https:// (plus
-http://localhost for local testing), because the access code travels
-with every request.
-```
+Each one is a claim about the manifest — "no host access at install time", "no
+content scripts", "tabs read only when you act". They were written by reading
+the manifest and the source, and they are what a reviewer compares against it.
+If the manifest ever changes, these change with it or the listing becomes a lie.
 
 ### Remote code
 
@@ -243,24 +144,7 @@ Then certify all three:
 
 ## What's new in this version
 
-```
-1.3.12 — Reopening a large list of saved tabs now asks first and opens
-them in batches you can stop, instead of opening hundreds at once.
-
-1.3.11 — A sync that would delete most of the bookmarks in your browser
-now stops and asks which copy is right, instead of applying it.
-
-1.3.10 — Fixes data loss: changing sync method, server address or sync
-name could delete the bookmarks in your browser on the next sync. If this
-happened to you, your data is almost certainly still on the destination
-you started with — set it back and sync.
-
-1.3.9 — Settings rebuilt around four questions instead of forty controls,
-with step-by-step guides for GitHub and JSONBin. The popup and the
-saved-tabs page now use the same plain wording.
-```
-
----
+Paste from `paste/12-whats-new.txt`, which covers 1.3.9 through 1.3.12.
 
 ## Before you hit submit
 

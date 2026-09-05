@@ -1,0 +1,1 @@
+Stores the user's settings, their saved tab lists, and the cached copy of the bookmark tree that the merge compares against, in chrome.storage.local on the device.

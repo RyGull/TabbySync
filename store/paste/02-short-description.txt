@@ -1,0 +1,1 @@
+Sync bookmarks and tabs to a server you control — your own site, a private GitHub Gist, or JSONBin. No account, no tracking.

@@ -1,0 +1,1 @@
+Adds right-click entries on the toolbar icon for saving tabs — this tab, the others, or the ones to the left or right of it.
