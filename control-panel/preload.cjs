@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('tabbysync', {
     // Options… item lives in the main process and has no other way to
     // reach into the renderer to open its modal.
     onOpenOptions: (cb) => ipcRenderer.on('menu:open-options', () => cb()),
+    onOpenPrivacy: (cb) => ipcRenderer.on('menu:open-privacy', () => cb()),
   },
 
   settings: {
@@ -75,6 +76,7 @@ contextBridge.exposeInMainWorld('tabbysync', {
     duplicateList: (profileId, args) => call('tabs:duplicateList', profileId, args),
     reorderLists: (profileId, args) => call('tabs:reorderLists', profileId, args),
     addTab: (profileId, args) => call('tabs:addTab', profileId, args),
+    editTab: (profileId, args) => call('tabs:editTab', profileId, args),
     removeTab: (profileId, args) => call('tabs:removeTab', profileId, args),
     moveTab: (profileId, args) => call('tabs:moveTab', profileId, args),
     copyTab: (profileId, args) => call('tabs:copyTab', profileId, args),

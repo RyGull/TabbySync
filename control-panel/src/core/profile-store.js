@@ -23,6 +23,37 @@ import { sanitizeSyncName } from './provider-shim.js';
 const FILE_NAME = 'profiles.json';
 const SECRET_FIELDS = ['token', 'passphrase'];
 const KNOWN_PROVIDERS = new Set(['custom', 'gist', 'jsonbin']);
+// Loopback is the one exception to the https-only rule below — it never
+// leaves the machine. Deliberately the same list and the same reasoning as
+// the extension's own options.js (not vendored — that file is UI code, not
+// a shared engine module — so this is a hand-kept parity, not automatic).
+const LOOPBACK_HOSTS = ['localhost', '127.0.0.1'];
+
+/**
+ * A self-hosted server's access token rides in an Authorization header on
+ * every request, outside whatever the sync passphrase encrypts — so a plain
+ * http:// destination hands that long-lived credential to anyone on the
+ * network path. Mirrors the extension's options.js serverUrlProblem() check
+ * exactly, so a self-hosted profile gets the same protection here as it
+ * would in the extension.
+ */
+function serverUrlProblem(url) {
+  let u;
+  try { u = new URL(url); } catch {
+    return 'Server URL must be a full address, e.g. https://example.com/tabbysync/tabbysync.php';
+  }
+  if (u.protocol === 'https:') return '';
+  if (u.protocol === 'http:' && LOOPBACK_HOSTS.includes(u.hostname)) return '';
+  if (u.protocol === 'http:') {
+    return 'Server URL must use https:// — your token is sent on every request and would cross the network in the clear. http:// is accepted only for localhost.';
+  }
+  return `Server URL must use https:// (this one uses "${u.protocol}").`;
+}
+// Kept on the record but currently unused by the UI — the sidebar's dot
+// shows live connection status instead (renderer/app.js's combinedStatus),
+// not an arbitrary per-profile color. Left in place rather than removed:
+// it's harmless, still a reasonable place to hang a future "pick your own
+// color" feature, and ripping it out isn't what was asked for.
 const DEFAULT_COLORS = ['#5b8def', '#3ec28f', '#f2994a', '#eb5757', '#9b6bd9', '#2ea6b7', '#c2825b', '#6b7280'];
 
 function emptyStore() {
@@ -101,6 +132,10 @@ export function createProfileStore(dir, opts = {}) {
   function validate(profile) {
     if (!KNOWN_PROVIDERS.has(profile.provider)) throw new Error(`Unknown provider "${profile.provider}".`);
     if (profile.provider === 'custom' && !profile.serverUrl) throw new Error('A self-hosted profile needs a server address.');
+    if (profile.provider === 'custom' && profile.serverUrl) {
+      const problem = serverUrlProblem(profile.serverUrl);
+      if (problem) throw new Error(problem);
+    }
     if (!profile.label || !profile.label.trim()) throw new Error('A profile needs a name.');
     return profile;
   }

@@ -146,6 +146,20 @@ export function addTab(state, groupId, { url, title, favIconUrl } = {}) {
   return { state: next };
 }
 
+export function editTab(state, groupId, index, { url, title } = {}) {
+  const next = cloneState(state);
+  const g = requireGroup(next, groupId);
+  const tab = g.tabs[index];
+  if (!tab) throw new Error('No such tab at that position.');
+  if (url !== undefined) {
+    if (!url || !String(url).trim()) throw new Error('A tab needs a URL.');
+    tab.url = url;
+  }
+  if (title !== undefined) tab.title = title || tab.url;
+  touch(g);
+  return { state: next };
+}
+
 export function removeTab(state, groupId, index) {
   const next = cloneState(state);
   const g = requireGroup(next, groupId);

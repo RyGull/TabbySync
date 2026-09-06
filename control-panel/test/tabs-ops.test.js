@@ -107,6 +107,18 @@ test('addTab / removeTab', () => {
   assert.throws(() => ops.removeTab(s2, id, 0), /No such tab/);
 });
 
+test('editTab updates url and/or title, defaulting title to the new url when cleared', () => {
+  let s = ops.addList(ops.emptyState(), { name: 'L', tabs: [tab('https://old/', 'Old title')] });
+  const id = s.id; s = s.state;
+  s = ops.editTab(s, id, 0, { url: 'https://new/' }).state;
+  assert.equal(s.groups[0].tabs[0].url, 'https://new/');
+  assert.equal(s.groups[0].tabs[0].title, 'Old title'); // untouched field survives
+  s = ops.editTab(s, id, 0, { title: '' }).state;
+  assert.equal(s.groups[0].tabs[0].title, 'https://new/'); // falls back to the url, like addTab does
+  assert.throws(() => ops.editTab(s, id, 0, { url: '' }), /URL/);
+  assert.throws(() => ops.editTab(s, id, 5, { title: 'x' }), /No such tab/);
+});
+
 test('moveTab moves a tab between two lists', () => {
   let s = ops.emptyState();
   const from = ops.addList(s, { name: 'From', tabs: [tab('https://x/')] }); s = from.state;

@@ -35,17 +35,43 @@ to one destination at a time).
   rename, edit, delete, reorder, move and copy bookmarks and folders
   (drag-and-drop or the right-click menu), **including copying or moving
   a bookmark or folder straight into a different profile**. Import/export
-  the Netscape bookmarks HTML format any browser uses.
+  the Netscape bookmarks HTML format any browser uses. Double-clicking a
+  bookmark opens it in your default browser (editing moved to the
+  right-click menu); hovering a row surfaces a red ↗ open button and a
+  blue ✎ edit button so the two most common actions don't hide among a
+  row of identical grey icons.
 - **Saved tabs** — add, rename, pin, lock, duplicate, reorder and delete
-  lists; add, remove, move and copy individual tabs — again including
-  across profiles. Deleted lists go to **Recently deleted** for 30 days,
-  same as the extension.
+  lists; add, edit, remove, move and copy individual tabs — again
+  including across profiles. Double-click a tab (or its ↗ button) to open
+  it in your default browser; a list's own ↗ button or its right-click
+  menu opens **every** tab in it the same way. Opening more than 15 at
+  once asks first and offers "open the first 25" as an alternative to
+  "open all", then opens them a handful at a time with a Stop button —
+  the same ceiling protection as the browser extension's own restore-all,
+  because nothing stops "restore this 400-tab list" from being one click
+  otherwise. The one thing it can't do that the extension can:
+  **group the opened tabs into a browser tab group** —
+  `chrome.tabs.group()`/`chrome.tabGroups` are extension-only APIs a
+  desktop process has no access to, so tabs open ungrouped. Deleted lists
+  go to **Recently deleted** for 30 days, same as the extension.
+- **Live connection status** — each profile's sidebar dot and the header
+  dot on its detail view reflect what actually happened on the last
+  load/save/test for that profile: green once either bookmarks or saved
+  tabs has loaded or saved successfully, red once either has failed, grey
+  until either has been tried. Not a fixed colour you picked when creating
+  the profile — the same "worst engine wins, but either one succeeding
+  counts" logic as the extension's own combined status badge
+  (`shared/status.js`).
 - **Safe by construction, not by luck** — every save re-fetches the
   destination and merges instead of overwriting, so something changed by
   the extension (or another device) between your last load and your save
   is folded in, not clobbered. A save that would delete most of a
   substantial bookmark tree in one go is refused unless you confirm it —
-  the same safety brake `bookmarks/lib/engine.js` uses.
+  the same safety brake `bookmarks/lib/engine.js` uses. A self-hosted
+  profile's server address must be `https://` (the exception is
+  `localhost`/`127.0.0.1`) — same rule and same reason as the extension's
+  options page: the access token rides in a header on every request,
+  outside whatever the sync passphrase encrypts.
 - **Secrets encrypted at rest** where the OS supports it — tokens and
   passphrases go through Electron's `safeStorage` (DPAPI on Windows) before
   touching disk. If that's unavailable, the app says so plainly (sidebar
@@ -62,6 +88,11 @@ to one destination at a time).
   and "minimize to tray" recoverable rather than a dead end with no way
   back in. None of this makes the app sync in the background; minimizing
   just keeps the window a click away.
+- **Help menu** — links to the TabbySync website, the GitHub repo, and a
+  Donate page, plus an in-app **Privacy Policy** (its own document, not
+  the extension's — this app stores multiple profiles and has no
+  equivalent of a single active provider, so the two policies read
+  similarly but aren't the same document).
 
 ## How it stays compatible with the extension
 

@@ -199,9 +199,33 @@ const state = {
   expandedGroups: new Set(),
   selectedNodeId: null,
   providerMeta: null,
+  // Per-profile, per-engine live connection status this session — not
+  // persisted, reset on every launch, since "is this reachable right now"
+  // is a live question, not something to trust from a previous run.
+  // id -> { bookmarks: 'unknown'|'ok'|'error', tabs: 'unknown'|'ok'|'error' }
+  engineStatus: new Map(),
 };
 
 function activeProfile() { return state.profiles.find((p) => p.id === state.activeId) || null; }
+
+/** Mirrors shared/status.js's own combined-badge rule: error beats ok beats unknown, and either engine alone being confirmed ok is enough — the profile doesn't have to have touched both to read as "this is working". */
+function setEngineStatus(id, engine, status) {
+  const cur = state.engineStatus.get(id) || { bookmarks: 'unknown', tabs: 'unknown' };
+  cur[engine] = status;
+  state.engineStatus.set(id, cur);
+  renderProfileList();
+  if (id === state.activeId) applyHeaderStatusDot();
+}
+function combinedStatus(id) {
+  const s = state.engineStatus.get(id);
+  if (!s) return 'unknown';
+  if (s.bookmarks === 'error' || s.tabs === 'error') return 'error';
+  if (s.bookmarks === 'ok' || s.tabs === 'ok') return 'ok';
+  return 'unknown';
+}
+function statusColorVar(status) {
+  return status === 'ok' ? 'var(--success)' : status === 'error' ? 'var(--danger)' : 'var(--text-faint)';
+}
 
 // ---------------------------------------------------------------------------
 // profile sidebar
@@ -221,12 +245,13 @@ function renderProfileList() {
   }
   state.profiles.forEach((p) => {
     const dirty = (p.id === state.activeId) && (state.bm.dirty || state.tb.dirty);
+    const status = combinedStatus(p.id);
     const item = h('div', {
       class: `profile-item${p.id === state.activeId ? ' active' : ''}`,
       role: 'option',
       onclick: () => selectProfile(p.id),
     }, [
-      h('span', { class: 'color-dot' }, ''),
+      h('span', { class: 'color-dot', title: statusTitle(status) }, ''),
       h('span', { class: 'p-label' }, [
         document.createTextNode(p.label),
       ]),
@@ -237,9 +262,13 @@ function renderProfileList() {
         onclick: (e) => { e.stopPropagation(); openProfileMenu(p, e.currentTarget); },
       }, '⋯'),
     ]);
-    item.querySelector('.color-dot').style.background = p.color || '#5b8def';
+    item.querySelector('.color-dot').style.background = statusColorVar(status);
     root.appendChild(item);
   });
+}
+
+function statusTitle(status) {
+  return status === 'ok' ? 'Connected' : status === 'error' ? 'Connection error' : 'Not checked yet this session';
 }
 
 function providerShortLabel(id) {
@@ -290,6 +319,7 @@ async function removeProfile(profile) {
   if (!ok) return;
   try {
     await api.profiles.remove(profile.id);
+    state.engineStatus.delete(profile.id);
     if (state.activeId === profile.id) { state.activeId = null; showEmptyState(); }
     await refreshProfiles();
   } catch (e) { showError(e, 'Could not remove profile.'); }
@@ -462,8 +492,17 @@ function showProfileView() {
   $('#empty-state').hidden = true;
   $('#profile-view').hidden = false;
   $('#pv-label').textContent = p.label;
-  $('#pv-color').style.background = p.color || '#5b8def';
   $('#pv-provider').textContent = providerShortLabel(p.provider);
+  applyHeaderStatusDot();
+}
+
+function applyHeaderStatusDot() {
+  const p = activeProfile();
+  if (!p) return;
+  const status = combinedStatus(p.id);
+  const dot = $('#pv-color');
+  dot.style.background = statusColorVar(status);
+  dot.title = statusTitle(status);
 }
 
 document.querySelectorAll('.tab-btn').forEach((btn) => {
@@ -480,6 +519,8 @@ $('#btn-test-connection').addEventListener('click', async () => {
   btn.disabled = true;
   try {
     const r = await api.profiles.testConnection(p.id);
+    setEngineStatus(p.id, 'bookmarks', r.bookmarks.ok ? 'ok' : 'error');
+    setEngineStatus(p.id, 'tabs', r.tabs.ok ? 'ok' : 'error');
     const parts = [];
     parts.push(r.bookmarks.ok ? '✅ Bookmarks reachable' : `❌ Bookmarks: ${r.bookmarks.message}`);
     parts.push(r.tabs.ok ? '✅ Saved tabs reachable' : `❌ Saved tabs: ${r.tabs.message}`);
@@ -521,9 +562,11 @@ async function loadBookmarks(force) {
     state.bm.tree = tree;
     state.bm.dirty = dirty;
     state.bm.status = 'loaded';
+    setEngineStatus(p.id, 'bookmarks', 'ok');
     renderBookmarkTree();
   } catch (e) {
     state.bm.status = 'error';
+    setEngineStatus(p.id, 'bookmarks', 'error');
     showError(e, 'Could not load bookmarks for this profile.');
   }
   renderStatusLine();
@@ -568,6 +611,14 @@ function renderTreeNode(node, depth) {
     h('span', { class: 'title' }, node.title || (node.type === 'bookmark' ? node.url : '(untitled)')),
     node.type === 'bookmark' ? h('span', { class: 'url' }, node.url) : h('span', { class: 'url' }, isFolder ? `${(node.children || []).length} item${(node.children || []).length === 1 ? '' : 's'}` : ''),
     h('div', { class: 'row-actions' }, [
+      !isFolder ? h('button', {
+        class: 'btn btn-sm btn-icon btn-icon-open', type: 'button', title: 'Open in browser',
+        onclick: (e) => { e.stopPropagation(); api.app.openExternal(node.url); },
+      }, '↗') : null,
+      h('button', {
+        class: 'btn btn-sm btn-icon btn-icon-edit', type: 'button', title: isFolder ? 'Rename' : 'Edit',
+        onclick: (e) => { e.stopPropagation(); isFolder ? openRenameModal(node) : openEditBookmarkModal(node); },
+      }, '✎'),
       h('button', { class: 'btn btn-sm btn-icon', type: 'button', title: 'More', onclick: (e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); openBookmarkContextMenu(node, r.left, r.bottom + 4); } }, '⋯'),
     ]),
   ]);
@@ -829,10 +880,14 @@ async function saveBookmarks(allowLargeDeletion) {
   try {
     const { tree, stats } = await api.bookmarks.save(p.id, { allowLargeDeletion });
     state.bm.tree = tree; state.bm.dirty = false;
+    setEngineStatus(p.id, 'bookmarks', 'ok');
     renderBookmarkTree(); renderStatusLine();
     showToast(`Saved — ${stats.bookmarks} bookmark${stats.bookmarks === 1 ? '' : 's'} in ${stats.folders} folder${stats.folders === 1 ? '' : 's'}.`, 'success');
   } catch (e) {
     if (e.code === 'LARGE_DELETION') {
+      // Refused by the safety brake, not a connection problem — the fetch
+      // that produced this answer already succeeded.
+      setEngineStatus(p.id, 'bookmarks', 'ok');
       const ok = await confirmDialog({
         title: 'This looks like a big deletion',
         message: e.message,
@@ -841,6 +896,7 @@ async function saveBookmarks(allowLargeDeletion) {
       });
       if (ok) return saveBookmarks(true);
     } else {
+      setEngineStatus(p.id, 'bookmarks', 'error');
       showError(e, 'Could not save bookmarks.');
     }
   } finally { btn.disabled = false; }
@@ -859,9 +915,11 @@ async function loadTabs(force) {
     state.tb.state = s;
     state.tb.dirty = dirty;
     state.tb.status = 'loaded';
+    setEngineStatus(p.id, 'tabs', 'ok');
     renderTabLists();
   } catch (e) {
     state.tb.status = 'error';
+    setEngineStatus(p.id, 'tabs', 'error');
     showError(e, 'Could not load saved tabs for this profile.');
   }
   renderStatusLine();
@@ -888,6 +946,7 @@ function renderGroup(g) {
     h('span', { class: 'g-flags' }, [g.pinned ? '📌' : '', g.locked ? '🔒' : '']),
     h('span', { class: 'g-name' }, g.name || 'Untitled list'),
     h('span', { class: 'g-count' }, `${g.tabs.length} tab${g.tabs.length === 1 ? '' : 's'}`),
+    h('button', { class: 'btn btn-sm btn-icon btn-icon-open', type: 'button', title: 'Open all in browser…', onclick: (e) => { e.stopPropagation(); openTabsBulk(g); } }, '↗'),
     h('button', { class: 'btn btn-sm btn-icon', type: 'button', onclick: (e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); openGroupContextMenu(g, r.left, r.bottom + 4); } }, '⋯'),
   ]);
   wireGroupDrop(card, g);
@@ -927,17 +986,40 @@ function renderTabRow(g, t, idx) {
   const row = h('div', {
     class: 'tab-row',
     draggable: 'true',
+    // Same reasoning as the bookmark tree: double-click opens, matching
+    // what double-clicking a link/tab does everywhere else.
+    ondblclick: () => api.app.openExternal(t.url),
     oncontextmenu: (e) => { e.preventDefault(); openTabContextMenu(g, t, idx, e.clientX, e.clientY); },
   }, [
     h('span', { class: 't-title' }, t.title || t.url),
     h('span', { class: 't-url' }, t.url),
     h('div', { class: 'row-actions' }, [
-      h('button', { class: 'btn btn-sm btn-icon', type: 'button', title: 'Open', onclick: () => api.app.openExternal(t.url) }, '↗'),
+      h('button', { class: 'btn btn-sm btn-icon btn-icon-open', type: 'button', title: 'Open in browser', onclick: () => api.app.openExternal(t.url) }, '↗'),
+      h('button', { class: 'btn btn-sm btn-icon btn-icon-edit', type: 'button', title: 'Edit', onclick: () => openEditTabModal(g, t, idx) }, '✎'),
       h('button', { class: 'btn btn-sm btn-icon', type: 'button', title: 'More', onclick: (e2) => { const r = e2.currentTarget.getBoundingClientRect(); openTabContextMenu(g, t, idx, r.left, r.bottom + 4); } }, '⋯'),
     ]),
   ]);
   row.addEventListener('dragstart', () => { dragTab = { groupId: g.id, index: idx }; });
   return row;
+}
+
+function openEditTabModal(g, t, idx) {
+  const urlInput = h('input', { type: 'url', value: t.url || '' });
+  const titleInput = h('input', { type: 'text', value: t.title || '' });
+  const m = openModal({
+    title: 'Edit tab',
+    body: h('div', {}, [
+      h('div', { class: 'field' }, [h('label', {}, 'URL'), urlInput]),
+      h('div', { class: 'field' }, [h('label', {}, 'Title'), titleInput]),
+    ]),
+    footer: [
+      h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => m.close() }, 'Cancel'),
+      h('button', { class: 'btn btn-primary', type: 'button', onclick: async () => {
+        m.close();
+        await doTabsOp(() => api.tabs.editTab(activeProfile().id, { groupId: g.id, index: idx, url: urlInput.value.trim(), title: titleInput.value.trim() }));
+      } }, 'Save'),
+    ],
+  });
 }
 
 async function doTabsOp(callFn) {
@@ -950,8 +1032,104 @@ async function doTabsOp(callFn) {
   } catch (e) { showError(e, 'That change could not be applied.'); }
 }
 
+// ---------------------------------------------------------------------------
+// Bulk-opening a whole list — mirrors the browser extension's own tabs/
+// tablist.js ceiling protection exactly (same constants, same "ask, then
+// batch, then let the user stop" shape). Opening a saved list of a few
+// hundred tabs would otherwise hand the OS a few hundred "launch the
+// browser" requests back to back, which is enough to make even a capable
+// PC crawl — reported against the extension itself before this existed
+// there.
+//
+// One thing this can't do that the extension's own "restore as a tab
+// group" can: put the opened tabs into a browser tab group. Creating or
+// naming a tab group is chrome.tabs.group()/chrome.tabGroups.update() — a
+// privileged API a browser only grants to its own installed extensions.
+// This app opens tabs the same way any other desktop program does — by
+// asking Windows to hand each URL to your default browser — and that
+// surface has no concept of tab groups at all. So this opens every chosen
+// tab into your browser, same as the extension, just not grouped.
+// ---------------------------------------------------------------------------
+
+const BULK_WARN_AT = 15;   // open up to this many without asking
+const BULK_FIRST_N = 25;   // what "just some of them" means
+const BATCH_SIZE = 5;      // tabs opened per tick
+const BATCH_PAUSE = 140;   // ms between ticks — keeps things responsive
+
+/** Resolves with how many to open (a number), or null for "don't". Skips the question entirely at or under BULK_WARN_AT. */
+function askHowMany(total, listName) {
+  if (total <= BULK_WARN_AT) return Promise.resolve(total);
+  return new Promise((resolve) => {
+    const some = Math.min(BULK_FIRST_N, total);
+    const overlay = h('div', { class: 'bulk-overlay' });
+    function done(value) { overlay.remove(); resolve(value); }
+    overlay.appendChild(h('div', { class: 'bulk-box' }, [
+      h('div', { class: 'bulk-title' }, `Open ${total} tabs?`),
+      h('div', { class: 'bulk-msg' }, `Opening "${listName}" would open ${total} tabs at once in your browser. That's enough to make most browsers crawl, and can run your machine out of memory. Nothing is removed from your list either way.`),
+      h('div', { class: 'bulk-choices' }, [
+        h('button', { class: 'btn btn-primary', type: 'button', onclick: () => done(some) }, `Open the first ${some}`),
+        h('button', { class: 'btn', type: 'button', onclick: () => done(total) }, `Open all ${total}`),
+        h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => done(null) }, 'Cancel'),
+      ]),
+    ]));
+    // Deliberately no backdrop-click / Escape dismissal here (unlike openModal) —
+    // this is a decision with real consequences (could open dozens of tabs),
+    // so it only ever closes via one of the three buttons above.
+    document.body.appendChild(overlay);
+  });
+}
+
+/** Opens urls a few at a time. Resolves with { opened, stopped }. Shows a stoppable progress overlay only above BULK_WARN_AT, matching askHowMany's own threshold for staying silent on small lists. */
+function runBulkOpen(urls) {
+  return new Promise((resolve) => {
+    let i = 0;
+    let stopped = false;
+    let countEl = null;
+    let overlay = null;
+    if (urls.length > BULK_WARN_AT) {
+      const stopBtn = h('button', { class: 'btn btn-danger', type: 'button', onclick: () => { stopped = true; } }, 'Stop');
+      countEl = h('div', { class: 'bulk-msg' }, `Opened 0 of ${urls.length}…`);
+      overlay = h('div', { class: 'bulk-overlay' }, [
+        h('div', { class: 'bulk-box' }, [
+          h('div', { class: 'bulk-title' }, 'Opening tabs…'),
+          countEl,
+          h('div', { class: 'bulk-choices' }, [stopBtn]),
+        ]),
+      ]);
+      document.body.appendChild(overlay);
+    }
+    (function tick() {
+      if (stopped || i >= urls.length) {
+        if (overlay) overlay.remove();
+        resolve({ opened: i, stopped });
+        return;
+      }
+      const end = Math.min(i + BATCH_SIZE, urls.length);
+      for (; i < end; i++) {
+        api.app.openExternal(urls[i]).catch(() => {}); // one bad URL shouldn't stop the rest
+      }
+      if (countEl) countEl.textContent = `Opened ${i} of ${urls.length}…`;
+      setTimeout(tick, BATCH_PAUSE);
+    })();
+  });
+}
+
+async function openTabsBulk(g) {
+  const urls = g.tabs.map((t) => t.url).filter(Boolean);
+  if (!urls.length) { showToast('This list has no tabs.', 'warning'); return; }
+  const limit = await askHowMany(urls.length, g.name || 'Untitled list');
+  if (limit == null) return;
+  const { opened, stopped } = await runBulkOpen(urls.slice(0, limit));
+  showToast(
+    stopped ? `Stopped after opening ${opened} of ${limit}.` : `Opened ${opened} tab${opened === 1 ? '' : 's'}.`,
+    stopped ? 'warning' : 'success',
+  );
+}
+
 function openGroupContextMenu(g, x, y) {
   openContextMenu(x, y, [
+    { label: 'Open all in browser…', disabled: !g.tabs.length, onClick: () => openTabsBulk(g) },
+    '-',
     { label: 'Rename…', onClick: () => openRenameListModal(g) },
     { label: g.pinned ? 'Unpin' : 'Pin', onClick: () => doTabsOp(() => api.tabs.setPinned(activeProfile().id, { id: g.id, pinned: !g.pinned })) },
     { label: g.locked ? 'Unlock' : 'Lock', onClick: () => doTabsOp(() => api.tabs.setLocked(activeProfile().id, { id: g.id, locked: !g.locked })) },
@@ -1143,9 +1321,10 @@ async function saveTabs() {
   try {
     const { state: s } = await api.tabs.save(p.id);
     state.tb.state = s; state.tb.dirty = false;
+    setEngineStatus(p.id, 'tabs', 'ok');
     renderTabLists(); renderStatusLine();
     showToast('Saved tabs synced.', 'success');
-  } catch (e) { showError(e, 'Could not save saved tabs.'); }
+  } catch (e) { setEngineStatus(p.id, 'tabs', 'error'); showError(e, 'Could not save saved tabs.'); }
   finally { btn.disabled = false; }
 }
 
@@ -1210,6 +1389,7 @@ async function init() {
   else showEmptyState();
 
   api.app.onOpenOptions(() => openOptionsModal());
+  api.app.onOpenPrivacy(() => openPrivacyModal());
 }
 
 $('#theme-select').addEventListener('change', (e) => {
@@ -1253,6 +1433,108 @@ async function openOptionsModal() {
       h('div', { class: 'field' }, [h('label', { for: 'opt-close-behavior' }, 'When closing the window (✕)'), closeBehavior]),
       h('p', {}, "This app doesn't sync in the background — minimizing to the tray just keeps the window a click away, nothing more."),
     ]),
+    footer: [h('button', { class: 'btn btn-primary', type: 'button', onclick: () => m.close() }, 'Close')],
+  });
+}
+
+/** An inline text link that opens externally — this app never uses a raw <a href> (see the ↗ open-in-browser buttons), so this is a button styled to read like one. */
+function extLink(text, url) {
+  return h('button', { class: 'link-btn', type: 'button', onclick: () => api.app.openExternal(url) }, text);
+}
+
+function openPrivacyModal() {
+  const body = h('div', { class: 'privacy-body' }, [
+    h('p', { class: 'updated' }, 'Last updated: September 6, 2026'),
+
+    h('div', { class: 'callout' }, [
+      'This covers the ', h('strong', {}, 'Control Panel desktop app'), ' specifically. If you also use the ',
+      'TabbySync browser extension, it has its own, similar-but-not-identical policy — for one, this app can hold ',
+      'several sync profiles side by side, where the extension has just one active provider at a time. See ',
+      extLink('tabbysync.com/privacy.html', 'https://tabbysync.com/privacy.html'), ' for the extension.',
+    ]),
+
+    h('p', {}, [
+      'TabbySync Control Panel is a Windows desktop app for managing one or more TabbySync sync profiles — ',
+      'bookmarks and saved tab lists — side by side, each pointed at a destination ', h('strong', {}, 'you choose and control'),
+      ': your own self-hosted server, a private GitHub Gist, or a JSONBin.io bin.',
+    ]),
+    h('div', { class: 'callout' }, [
+      h('strong', {}, 'The short version: '),
+      'this app has no server of its own and no analytics. Everything it stores lives on your own PC. Each ',
+      'profile\'s data is sent — directly from your machine — only to that profile\'s own configured destination. ',
+      'The developer never receives, stores, or has access to it.',
+    ]),
+
+    h('h4', {}, 'What the Control Panel stores on your PC'),
+    h('ul', {}, [
+      h('li', {}, [h('code', {}, 'profiles.json'), ' — normally under ', h('code', {}, '%APPDATA%\\TabbySync Control Panel\\'), '. Holds every profile you\'ve added: its name, provider type, server address / Gist id / JSONBin bin ids, and its access token and optional sync passphrase.']),
+      h('li', {}, [h('code', {}, 'settings.json'), ' in the same folder — app preferences: theme, whether the app starts with Windows, starts minimized, what the close (✕) button does, and (if turned on) which profile to reopen automatically.']),
+    ]),
+    h('p', {}, 'Neither file is sent anywhere by the Control Panel itself — they just sit on your disk like any other application\'s settings.'),
+
+    h('h4', {}, 'How saved tokens and passphrases are protected'),
+    h('p', {}, [
+      'Before writing a profile\'s access token or sync passphrase to ', h('code', {}, 'profiles.json'), ', the Control Panel ',
+      'encrypts it using Windows\' own Data Protection API (via Electron\'s ', h('code', {}, 'safeStorage'), ') — tied to your ',
+      'Windows user account and this PC. Nobody else logging into Windows, and no copy of the file taken off this machine, ',
+      'can decrypt it. If that protection isn\'t available for some reason, the app says so rather than claiming a ',
+      'protection it doesn\'t have — in that case, tokens are stored as plain text.',
+    ]),
+
+    h('h4', {}, 'Encryption of your synced data (optional)'),
+    h('p', {}, [
+      'The optional passphrase you can set on a profile works exactly like the browser extension\'s own: your bookmark/tab ',
+      'data is encrypted on your device with AES-256-GCM before it is ever sent to that profile\'s destination, so a ',
+      'self-hosted server, GitHub, or JSONBin.io only ever sees ciphertext. The passphrase itself is never transmitted, ',
+      'and is stored only on this PC (protected as above). If you forget it, that profile\'s encrypted data cannot be recovered.',
+    ]),
+
+    h('h4', {}, 'Where each profile\'s data goes'),
+    h('ul', {}, [
+      h('li', {}, [h('em', {}, 'Self-hosted'), ' — a server you set up and control. The Control Panel requires an ', h('code', {}, 'https://'), ' address (the only exception is ', h('code', {}, 'localhost'), '/', h('code', {}, '127.0.0.1'), ', which never leaves this PC) — the access token rides in a header on every request, so a plain ', h('code', {}, 'http://'), ' address would expose it to anyone on the network path.']),
+      h('li', {}, [h('em', {}, 'GitHub Gist'), ' — stored in a private gist in your own GitHub account. Governed by ', extLink("GitHub's own Privacy Statement", 'https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement'), '.']),
+      h('li', {}, [h('em', {}, 'JSONBin.io'), ' — stored in a bin under your own JSONBin.io account. Governed by ', extLink("JSONBin.io's own Privacy Policy", 'https://jsonbin.io/privacy-policy'), '.']),
+    ]),
+    h('p', {}, 'Moving or copying a bookmark or a saved tab list between two profiles works the same way: the Control Panel reads it from the source profile\'s destination and writes it to the target profile\'s destination, using the credentials saved for each. It is never relayed anywhere else in between.'),
+
+    h('h4', {}, 'Opening bookmarks and tabs'),
+    h('p', {}, 'Double-clicking a bookmark or a tab, or using the ↗ button, hands that one address to Windows\' own default-browser setting — the same as clicking a link anywhere else on your PC. The Control Panel has no browser of its own and does not load or inspect the pages you open. Opening a whole list at once asks first and opens tabs in small batches, the same ceiling protection the browser extension uses, so it can\'t be used to accidentally open hundreds of tabs at once.'),
+
+    h('h4', {}, 'Starting with Windows / staying in the tray'),
+    h('p', {}, 'If turned on in Options, "Start with Windows" and "Start minimized" register the Control Panel as a normal Windows startup item — the same mechanism any desktop app uses — and minimizing to the tray just keeps the window a click away. Neither one starts any background syncing; nothing syncs unless the window is open and you ask it to.'),
+
+    h('h4', {}, "What TabbySync's developer does — and does not — do"),
+    h('ul', {}, [
+      h('li', {}, 'No server that receives, stores, or processes your bookmarks or tabs.'),
+      h('li', {}, 'No analytics, telemetry, or usage tracking of any kind — not even whether the app was opened.'),
+      h('li', {}, 'No selling, renting, or sharing your data, and no use of it for advertising.'),
+      h('li', {}, 'No visibility into your self-hosted server, your GitHub Gist, or your JSONBin.io bin.'),
+    ]),
+
+    h('h4', {}, 'Deleting your data'),
+    h('ul', {}, [
+      h('li', {}, 'Removing a profile from the sidebar only removes it from profiles.json on this PC — it does not touch that profile\'s remote data, and does not affect any other profile.'),
+      h('li', {}, '"Delete synced data" (per profile) sends an explicit delete request to that profile\'s destination, gated behind typing DELETE and a second confirmation — the same discipline as the browser extension. TabbySync can only ask the destination to delete; what happens after is up to that provider.'),
+      h('li', {}, 'Uninstalling the Control Panel removes the application itself but, like most Windows apps, leaves the profiles/settings folder in place — delete it by hand, or use "Delete synced data" from within the app first, if you want the saved profiles gone too.'),
+    ]),
+
+    h('h4', {}, "Children's privacy"),
+    h('p', {}, 'The Control Panel is not directed at children and does not knowingly collect data from children.'),
+
+    h('h4', {}, 'Changes to this policy'),
+    h('p', {}, 'If this policy changes, the "Last updated" date at the top will be revised, and material changes will be noted in the app\'s release notes.'),
+
+    h('h4', {}, 'Who is responsible for this'),
+    h('p', {}, 'TabbySync Control Panel is developed and published by Ryan Gulliver, an individual developer, who is responsible for this policy. There is no company, no team, and no third party with access to anything it stores.'),
+
+    h('h4', {}, 'Contact'),
+    h('p', {}, ['Questions about this policy or your data go to ', extLink('contact@tabbysync.com', 'mailto:contact@tabbysync.com'), '.']),
+  ]);
+
+  const m = openModal({
+    title: 'Privacy Policy',
+    wide: true,
+    body,
     footer: [h('button', { class: 'btn btn-primary', type: 'button', onclick: () => m.close() }, 'Close')],
   });
 }

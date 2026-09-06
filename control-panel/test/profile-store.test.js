@@ -117,6 +117,28 @@ test('validate() rejects an unknown provider, a serverless self-hosted profile, 
   await assert.rejects(() => store.add({ label: '   ', provider: 'jsonbin', token: 't' }), /needs a name/);
 });
 
+test('validate() requires https:// for a self-hosted server, except localhost/127.0.0.1', async () => {
+  const store = createProfileStore(await freshDir());
+  await assert.rejects(
+    () => store.add({ label: 'X', provider: 'custom', serverUrl: 'http://example.com/tabbysync.php', token: 't' }),
+    /must use https/,
+  );
+  await assert.rejects(
+    () => store.add({ label: 'X', provider: 'custom', serverUrl: 'not a url', token: 't' }),
+    /full address/,
+  );
+  // loopback is exempt — never leaves the machine
+  const local = await store.add({ label: 'Local', provider: 'custom', serverUrl: 'http://localhost:8080/tabbysync.php', token: 't' });
+  assert.equal(local.serverUrl, 'http://localhost:8080/tabbysync.php');
+  const loop = await store.add({ label: 'Loop', provider: 'custom', serverUrl: 'http://127.0.0.1/tabbysync.php', token: 't' });
+  assert.equal(loop.serverUrl, 'http://127.0.0.1/tabbysync.php');
+  // update() runs the same validation, not just add()
+  await assert.rejects(
+    () => store.update(local.id, { serverUrl: 'http://not-localhost.example/' }),
+    /must use https/,
+  );
+});
+
 test('a corrupt profiles.json is reported clearly rather than silently overwritten', async () => {
   const dir = await freshDir();
   const store = createProfileStore(dir);

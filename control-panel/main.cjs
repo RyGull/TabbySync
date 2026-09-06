@@ -208,6 +208,10 @@ function buildMenu() {
       submenu: [
         { label: 'TabbySync website', click: () => shell.openExternal(WEBSITE_URL) },
         { label: 'TabbySync on GitHub', click: () => shell.openExternal(GITHUB_URL) },
+        {
+          label: 'Privacy Policy',
+          click: () => mainWindow && mainWindow.webContents.send('menu:open-privacy'),
+        },
         { type: 'separator' },
         { label: 'Donate…', click: () => shell.openExternal(DONATE_URL) },
       ],
@@ -349,6 +353,109 @@ async function runSmokeTest(win, core, profileStore, settingsStore) {
     await win.webContents.executeJavaScript(`document.getElementById('theme-select').value = 'light'; document.getElementById('theme-select').dispatchEvent(new Event('change'))`);
     await new Promise((r) => setTimeout(r, 200));
     await shot('07-light-theme.png');
+
+    // --- batch #2, items 1/2: tab double-click opens externally, and the
+    // ↗/✎ row-action buttons are colour-coded, not identical grey ghosts ---
+    const readingListId = await win.webContents.executeJavaScript(
+      `state.tb.state.groups.find((g) => g.name === 'Reading list').id`
+    );
+    await win.webContents.executeJavaScript(`state.expandedGroups.add('${readingListId}'); renderTabLists(); openAddTabModal('${readingListId}')`);
+    await new Promise((r) => setTimeout(r, 200));
+    await win.webContents.executeJavaScript(`document.querySelector('.modal-body input[type=url]').value = 'https://example.org/tab-one'`);
+    await win.webContents.executeJavaScript(`document.querySelector('.modal-footer .btn-primary').click()`);
+    await new Promise((r) => setTimeout(r, 200));
+
+    let openedTabUrl = null;
+    shell.openExternal = async (url) => { openedTabUrl = url; };
+    try {
+      await win.webContents.executeJavaScript(`document.querySelector('.tab-row').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))`);
+      await new Promise((r) => setTimeout(r, 150));
+      const modalCountAfterTabDblClick = await win.webContents.executeJavaScript(`document.querySelectorAll('.modal').length`);
+      console.log('[smoke-test] double-click tab: opened =', openedTabUrl, ' modals open =', modalCountAfterTabDblClick);
+      if (openedTabUrl !== 'https://example.org/tab-one' || modalCountAfterTabDblClick !== 0) {
+        throw new Error(`tab double-click regression: expected an external open and no modal, got openedUrl=${openedTabUrl} modals=${modalCountAfterTabDblClick}`);
+      }
+    } finally {
+      shell.openExternal = originalOpenExternal;
+    }
+
+    // The ↗/✎ buttons only reveal on hover (CSS) — check computed colour
+    // directly rather than trying to fake a hover state for a screenshot.
+    const rowActionColors = await win.webContents.executeJavaScript(`(() => {
+      const row = document.querySelector('.tab-row');
+      return {
+        open: getComputedStyle(row.querySelector('.btn-icon-open')).color,
+        edit: getComputedStyle(row.querySelector('.btn-icon-edit')).color,
+      };
+    })()`);
+    console.log('[smoke-test] row-action colours:', JSON.stringify(rowActionColors));
+    if (rowActionColors.open === rowActionColors.edit) {
+      throw new Error(`open/edit row-action buttons must be visually distinct, both got ${rowActionColors.open}`);
+    }
+    // Force them visible (normally hover-only) for one screenshot so this is
+    // actually seen, not just asserted by computed style.
+    await win.webContents.executeJavaScript(`document.querySelectorAll('.row-actions').forEach((el) => { el.style.display = 'flex'; })`);
+    await shot('08-row-actions.png');
+    await win.webContents.executeJavaScript(`document.querySelectorAll('.row-actions').forEach((el) => { el.style.display = ''; })`);
+
+    // --- item 3: the profile dot reflects live connection status ---
+    const dotColor = await win.webContents.executeJavaScript(`getComputedStyle(document.getElementById('pv-color')).backgroundColor`);
+    console.log('[smoke-test] profile status dot colour:', dotColor);
+
+    // --- item 4: Privacy Policy, opened the same way the Help menu does it ---
+    win.webContents.send('menu:open-privacy');
+    await new Promise((r) => setTimeout(r, 200));
+    const privacyText = await win.webContents.executeJavaScript(
+      `(document.querySelector('.privacy-body') || {}).textContent || ''`
+    );
+    if (!privacyText.includes('Data Protection API') || !privacyText.includes('AES-256-GCM')) {
+      throw new Error('Privacy Policy modal is missing expected content');
+    }
+    await shot('09-privacy-policy.png');
+    await win.webContents.executeJavaScript(`document.querySelector('.modal-header .close-x').click()`);
+
+    // --- item 5: bulk-open ceiling protection, mirrors the browser
+    // extension's own tabs/tablist.js thresholds exactly ---
+    await win.webContents.executeJavaScript(`(async () => {
+      let s;
+      for (let i = 0; i < 29; i++) {
+        s = (await window.tabbysync.tabs.addTab(${JSON.stringify(p.id)}, { groupId: '${readingListId}', url: 'https://example.org/bulk-' + i })).state;
+      }
+      state.tb.state = s;
+      renderTabLists();
+    })()`);
+    const bulkTotal = await win.webContents.executeJavaScript(`state.tb.state.groups.find((g) => g.id === '${readingListId}').tabs.length`);
+    console.log('[smoke-test] bulk-open list size:', bulkTotal); // 30 = 1 (tab-one, above) + 29 here — above BULK_WARN_AT (15)
+    if (bulkTotal !== 30) throw new Error(`expected 30 tabs in the bulk-open list, got ${bulkTotal}`);
+
+    const openedBulkUrls = [];
+    shell.openExternal = async (url) => { openedBulkUrls.push(url); };
+    try {
+      // Not awaited: askHowMany's promise only resolves once a dialog button
+      // is clicked, which happens further down.
+      win.webContents.executeJavaScript(
+        `openTabsBulk(state.tb.state.groups.find((g) => g.id === '${readingListId}'))`
+      ).catch((e) => console.error('[smoke-test] openTabsBulk threw:', e));
+      await new Promise((r) => setTimeout(r, 250));
+      await shot('10-bulk-ask.png');
+      const askText = await win.webContents.executeJavaScript(`(document.querySelector('.bulk-msg') || {}).textContent || ''`);
+      console.log('[smoke-test] bulk-open ask dialog text:', askText);
+      if (!askText.includes('30 tabs')) throw new Error(`bulk-open ask dialog missing expected count, got: ${askText}`);
+
+      // First button is "Open the first 25" (min(BULK_FIRST_N, total)).
+      const chooseFirst25Text = await win.webContents.executeJavaScript(`document.querySelectorAll('.bulk-choices button')[0].textContent`);
+      if (chooseFirst25Text !== 'Open the first 25') throw new Error(`expected "Open the first 25", got "${chooseFirst25Text}"`);
+      await win.webContents.executeJavaScript(`document.querySelectorAll('.bulk-choices button')[0].click()`);
+      await new Promise((r) => setTimeout(r, 200));
+      await shot('11-bulk-progress.png');
+      await new Promise((r) => setTimeout(r, 1800)); // 25 tabs / 5 per batch / 140ms tick ≈ 700ms — generous margin
+      const overlaysLeft = await win.webContents.executeJavaScript(`document.querySelectorAll('.bulk-overlay').length`);
+      console.log('[smoke-test] bulk-open finished: opened', openedBulkUrls.length, 'of 25 chosen, overlays left =', overlaysLeft);
+      if (openedBulkUrls.length !== 25) throw new Error(`bulk-open should have opened exactly the 25 chosen, got ${openedBulkUrls.length}`);
+      if (overlaysLeft !== 0) throw new Error('bulk-open progress overlay did not close itself once done');
+    } finally {
+      shell.openExternal = originalOpenExternal;
+    }
 
     console.log('[smoke-test] done, screenshots in', outDir);
   } catch (e) {
@@ -536,6 +643,7 @@ function registerIpc(core, profileStore, sessions, settingsStore, appMeta) {
   handle('tabs:duplicateList', (profileId, { id }) => sessions.applyTabsOp(profileId, (state) => tabOps.duplicateList(state, id)));
   handle('tabs:reorderLists', (profileId, { orderedIds }) => sessions.applyTabsOp(profileId, (state) => tabOps.reorderLists(state, orderedIds)));
   handle('tabs:addTab', (profileId, { groupId, url, title, favIconUrl }) => sessions.applyTabsOp(profileId, (state) => tabOps.addTab(state, groupId, { url, title, favIconUrl })));
+  handle('tabs:editTab', (profileId, { groupId, index, url, title }) => sessions.applyTabsOp(profileId, (state) => tabOps.editTab(state, groupId, index, { url, title })));
   handle('tabs:removeTab', (profileId, { groupId, index }) => sessions.applyTabsOp(profileId, (state) => tabOps.removeTab(state, groupId, index)));
   handle('tabs:moveTab', (profileId, { fromGroupId, fromIndex, toGroupId, toIndex }) => sessions.applyTabsOp(profileId, (state) => tabOps.moveTab(state, fromGroupId, fromIndex, toGroupId, toIndex)));
   handle('tabs:copyTab', (profileId, { fromGroupId, fromIndex, toGroupId, toIndex }) => sessions.applyTabsOp(profileId, (state) => tabOps.copyTab(state, fromGroupId, fromIndex, toGroupId, toIndex)));
