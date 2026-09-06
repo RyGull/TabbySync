@@ -1,0 +1,11 @@
+**Before you install:** TabbySync has no server of its own, so it needs somewhere to put your data. You pick that in Settings, and there are three options — your own web space (a small PHP file the extension writes for you), a private GitHub gist, or a free JSONBin.io bin. The first is the private one and takes about three minutes; the other two need a free account and a token. Until you set one up, nothing syncs.
+
+**About Firefox's install screen.** It lists "bookmarks" and "browsing activity" as data collection, worded as sharing with the extension developer. That wording is Mozilla's and is the same for every add-on. It appears because Mozilla requires an add-on to declare anything that leaves the browser, and syncing means your bookmarks and saved tab addresses leave the browser — to the destination you chose. Nothing is sent to me. There is no TabbySync server to send it to, no analytics, and no tracking of any kind. Declaring "no data" would have been the easier answer and an untrue one. The privacy policy explains it in full.
+
+**Optional password lock.** Turn it on and everything is encrypted on your device with AES-256-GCM before it leaves, so even the place you store it only ever holds ciphertext. The passphrase never leaves your machine, and there is no reset — if you lose it, that data is gone.
+
+**On Firefox specifically:** desktop only, Firefox 140 or newer. Reopening a saved list as a browser tab group is a Chrome-only feature; on Firefox the tabs simply reopen as ordinary tabs. Everything else works the same way in both.
+
+Source code: https://github.com/RyGull/TabbySync — readable and auditable by anyone, which is the point when an extension handles your bookmarks and your sync credentials.
+
+Bugs and questions: contact [at] tabbysync [dot] com. I read all of it.

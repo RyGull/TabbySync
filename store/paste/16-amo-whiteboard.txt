@@ -1,0 +1,9 @@
+Standing notes for reviewers (the per-version notes carry the detail for each submission).
+
+BUILD: no bundler, minifier or transpiler; every .js/.html/.css file in the upload is the source as written. The only generated file is manifest.json, derived from the Chrome one by scripts/make-manifest.mjs at package time — hence the source upload. `npm test` (187 tests, no dependencies) and `bash scripts/package.sh firefox` rebuild it from the source archive's root.
+
+SOURCE: also public at https://github.com/RyGull/TabbySync. The licence is proprietary but LICENSE section 1 explicitly permits reading, studying and auditing the code, so nothing in it restricts review.
+
+DATA: bookmarksInfo and browsingActivity are declared required because bookmarks and saved tab URLs leave the browser, to a destination the end user configures and controls. There is no developer-operated server, no telemetry, and no remote code — every fetch() lives in bookmarks/lib/sync.js and tabs/storage.js.
+
+TESTING: all three destinations are free (JSONBin.io key, GitHub token with the gists scope, or self-hosted via Settings step 2). If you would rather not create an account, email contact [at] tabbysync [dot] com and I will supply a temporary endpoint and token for review.

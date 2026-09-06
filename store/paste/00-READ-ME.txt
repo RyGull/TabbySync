@@ -16,16 +16,33 @@ Firefox (addons.mozilla.org) asks for two of its own:
 
   13-amo-privacy-policy.txt     "This add-on has a Privacy Policy" -> the box
   14-amo-reviewer-notes.txt     "Notes to Reviewer"
+  15-amo-developer-comments.txt Technical Details -> Developer Comments (public)
+  16-amo-whiteboard.txt         Technical Details -> Whiteboard (reviewers only)
 
-Two AMO limits, from its own source (addons-server): "Notes to Reviewer"
-(approval_notes) is capped at 3000 characters and silently truncates what
-you paste past it -- file 14 is 2893, so it fits, and it has to stay that
-way. Release notes are capped at 3000 too (file 12 is well under). The
-privacy policy field allows 150000, so length is not a concern there.
+AMO's limits, read out of its own source (addons-server) after "Notes to
+Reviewer" silently swallowed everything past character 3000:
 
-The privacy policy field renders Markdown, which is why file 13 has a blank
-line after every heading and before every list: without them, Markdown
-folds a heading into the paragraph below it.
+  Notes to Reviewer (approval_notes)      3000   file 14 is 2933
+  Developer Comments                      3000   file 15 is 1807
+  Release notes                           3000   file 12 is 645
+  Summary (no URLs allowed in it)          250   file 02 is 125
+  Description                            15000
+  Privacy policy                        150000   file 13 is ~6500
+  Whiteboard                            100000   file 16 is 1258
+
+The two 3000s are the ones to watch: paste past them and the rest is gone
+without a warning.
+
+The privacy policy and Developer Comments fields render Markdown, which is
+why file 13 has a blank line after every heading and before every list --
+without them, Markdown folds a heading into the paragraph below it -- and
+why file 15 uses **bold** rather than capitals. Notes to Reviewer and the
+Whiteboard are plain text.
+
+The UUID shown on that page is read-only: it is browser_specific_settings
+.gecko.id from the manifest (GECKO_ID in scripts/make-manifest.mjs), and it
+must never change once published, or Firefox and AMO stop recognising an
+update as the same add-on.
 
 AMO's other listing fields (name, summary, description) take the same text as
 files 01 and 02. It has no per-permission justification boxes -- the data
