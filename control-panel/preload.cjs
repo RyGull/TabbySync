@@ -27,10 +27,11 @@ contextBridge.exposeInMainWorld('tabbysync', {
     checkForUpdates: () => call('app:checkForUpdates'),
     getUpdateStatus: () => call('app:getUpdateStatus'),
     installUpdate: () => call('app:installUpdate'),
+    copyToClipboard: (text) => call('app:copyToClipboard', text),
     // Unlike onOpenOptions/onOpenPrivacy (one fixed listener for the app's
-    // whole lifetime), the About modal opens and closes repeatedly — each
+    // whole lifetime), the Update popup opens and closes repeatedly — each
     // open registering another ipcRenderer listener with no matching
-    // teardown would mean an old modal's callback still firing (harmlessly,
+    // teardown would mean an old popup's callback still firing (harmlessly,
     // but wastefully and multiply) after it's long gone. Returns an
     // unsubscribe function; the modal calls it when it closes.
     onUpdateStatus: (cb) => {

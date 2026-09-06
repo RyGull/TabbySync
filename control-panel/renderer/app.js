@@ -660,32 +660,32 @@ $('#btn-edit-profile').addEventListener('click', () => { const p = activeProfile
 $('#btn-profile-menu').addEventListener('click', (e) => { const p = activeProfile(); if (p) openProfileMenu(p, e.currentTarget); });
 $('#btn-new-profile').addEventListener('click', () => openProfileModal(null));
 $('#btn-about').addEventListener('click', () => openAboutModal());
-// Same modal, just also fires off a check immediately — a quick "is there
-// something new" without digging into About first.
-$('#btn-check-updates').addEventListener('click', () => openAboutModal(true));
+// Its own dedicated popup, not About — opens straight into the live
+// check/progress UI and fires a check immediately.
+$('#btn-check-updates').addEventListener('click', () => openUpdateModal(true));
 
 /**
  * The live "check for updates" UI — status text, progress bar, Check/
- * Restart buttons — shared by the About modal and Options' own Updates
- * section rather than built twice, so both stay in sync with each other
- * and with main.cjs's push channel by construction, not by remembering to
- * update two copies. Sized and coloured to stand out (not the small, muted
- * text/buttons this started as) since this is the one thing on the page
- * someone opens either modal specifically to check.
+ * Restart/Copy-link buttons — built once here and used by the Update
+ * popup (openUpdateModal) alone, so there's exactly one place this exists
+ * rather than one to remember to keep in sync with another. Sized and
+ * coloured to stand out (not the small, muted text/buttons this started
+ * as) since checking is the entire reason someone opens this popup.
  *
- * @param {string} currentVersion
+ * @param {{version: string, latestReleaseUrl: string}} info
  * @returns {{root: HTMLElement, cleanup: () => void, runCheck: () => Promise<void>}}
  *   cleanup MUST be called when the surrounding modal closes (wire it to
  *   openModal's onClose) or the onUpdateStatus subscription leaks.
  */
-function buildUpdateStatusUI(currentVersion) {
+function buildUpdateStatusUI(info) {
   const updateLine = h('p', { class: 'update-status' }, '');
   const progressBar = h('div', { class: 'update-progress', hidden: true }, [h('div', { class: 'update-progress-fill' })]);
   const checkBtn = h('button', { class: 'btn', type: 'button' }, 'Check for updates');
   const restartBtn = h('button', { class: 'btn btn-primary', type: 'button', hidden: true }, 'Restart and install');
+  const copyLinkBtn = h('button', { class: 'btn', type: 'button' }, 'Copy download link');
 
   function renderStatus(status) {
-    updateLine.textContent = describeUpdateStatus(status, currentVersion);
+    updateLine.textContent = describeUpdateStatus(status, info.version);
     updateLine.className = `update-status ${updateStatusClass(status)}`;
     const showBar = !!(status && status.state === 'downloading' && typeof status.percent === 'number');
     progressBar.hidden = !showBar;
@@ -710,6 +710,15 @@ function buildUpdateStatusUI(currentVersion) {
   }
   checkBtn.addEventListener('click', runCheck);
   restartBtn.addEventListener('click', () => api.app.installUpdate().catch((e) => showError(e, 'Could not start the install.')));
+  copyLinkBtn.addEventListener('click', async () => {
+    try {
+      await api.app.copyToClipboard(info.latestReleaseUrl);
+      const original = copyLinkBtn.textContent;
+      copyLinkBtn.textContent = 'Copied!';
+      copyLinkBtn.disabled = true;
+      setTimeout(() => { copyLinkBtn.textContent = original; copyLinkBtn.disabled = false; }, 1500);
+    } catch (e) { showError(e, 'Could not copy the link.'); }
+  });
 
   // Live updates for as long as whichever modal holds this stays open — a
   // download's progress ticking up, or it finishing after the initial
@@ -727,7 +736,7 @@ function buildUpdateStatusUI(currentVersion) {
   const root = h('div', { class: 'update-section' }, [
     updateLine,
     progressBar,
-    h('div', { class: 'update-actions' }, [checkBtn, restartBtn]),
+    h('div', { class: 'update-actions' }, [checkBtn, restartBtn, copyLinkBtn]),
   ]);
   return { root, cleanup, runCheck };
 }
@@ -757,10 +766,9 @@ function updateStatusClass(status) {
   }
 }
 
-/** @param {boolean} [autoCheck] - true from the sidebar's "Check updates" button; runs a check as soon as the modal opens instead of waiting for its own button. */
-async function openAboutModal(autoCheck) {
+/** Purely informational — version, where things are stored, what's protected. Update checking lives in its own popup (openUpdateModal) now, opened from the sidebar's "Updates" button or Options, not from here. */
+async function openAboutModal() {
   const info = await api.app.info();
-  const updateUI = buildUpdateStatusUI(info.version);
 
   const m = openModal({
     title: 'About TabbySync Control Panel',
@@ -771,6 +779,20 @@ async function openAboutModal(autoCheck) {
         ? 'Tokens and passphrases are encrypted at rest using your operating system’s secure storage.'
         : '⚠️ Your OS secure storage is not available — tokens and passphrases are stored in plain text in the file above.'),
       h('p', {}, 'A companion desktop app for TabbySync: manages the same self-hosted / GitHub Gist / JSONBin sync destinations your browser extension uses, so you can add, remove, move and copy bookmarks and saved tabs across every profile from one place.'),
+    ]),
+    footer: [h('button', { class: 'btn btn-primary', type: 'button', onclick: () => m.close() }, 'Close')],
+  });
+}
+
+/** The dedicated "Check for Updates" popup — opened from the sidebar's "Updates" button and from Options' Updates section, both the same way. @param {boolean} [autoCheck] runs a check as soon as the modal opens instead of waiting for its own button; both current callers pass true. */
+async function openUpdateModal(autoCheck) {
+  const info = await api.app.info();
+  const updateUI = buildUpdateStatusUI(info);
+
+  const m = openModal({
+    title: 'Check for Updates',
+    body: h('div', {}, [
+      h('p', {}, `You're running version ${info.version}.`),
       updateUI.root,
     ]),
     footer: [h('button', { class: 'btn btn-primary', type: 'button', onclick: () => m.close() }, 'Close')],
@@ -1645,8 +1667,8 @@ $('#theme-select').addEventListener('change', (e) => {
 $('#btn-options').addEventListener('click', () => openOptionsModal());
 
 async function openOptionsModal() {
-  let settings, info;
-  try { [settings, info] = await Promise.all([api.settings.get(), api.app.info()]); }
+  let settings;
+  try { settings = await api.settings.get(); }
   catch (e) { return showError(e, 'Could not load options.'); }
 
   const startWithWindows = h('input', { type: 'checkbox', id: 'opt-start-with-windows', checked: settings.startWithWindows });
@@ -1669,7 +1691,8 @@ async function openOptionsModal() {
   updateFrequency.value = settings.updateCheckFrequency;
   const lastCheckedHint = h('div', { class: 'hint' },
     settings.lastUpdateCheckAt ? `Last checked ${fmtWhen(settings.lastUpdateCheckAt)}.` : 'Never checked yet.');
-  const updateUI = buildUpdateStatusUI(info.version);
+  const openUpdatePopupBtn = h('button', { class: 'btn', type: 'button' }, 'Check for updates…');
+  openUpdatePopupBtn.addEventListener('click', () => openUpdateModal(true));
 
   function bindCheckbox(input, key) {
     input.addEventListener('change', () => {
@@ -1702,11 +1725,10 @@ async function openOptionsModal() {
           lastCheckedHint,
         ]),
         h('p', { class: 'hint' }, 'A found update always downloads in the background and asks before installing, regardless of how often it looks for one — this only controls how often it looks.'),
-        updateUI.root,
+        openUpdatePopupBtn,
       ]),
     ]),
     footer: [h('button', { class: 'btn btn-primary', type: 'button', onclick: () => m.close() }, 'Close')],
-    onClose: updateUI.cleanup,
   });
 }
 

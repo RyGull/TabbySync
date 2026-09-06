@@ -1,7 +1,7 @@
 {
   "name": "tabbysync-control-panel",
   "productName": "TabbySync Control Panel",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "description": "Windows desktop app for managing every TabbySync sync profile, bookmark and saved tab list in one place.",
   "private": true,
   "type": "module",

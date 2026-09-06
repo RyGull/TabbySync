@@ -8,7 +8,7 @@
 
 const path = require('node:path');
 const fs = require('node:fs/promises');
-const { app, BrowserWindow, ipcMain, dialog, shell, safeStorage, Menu, Tray, nativeTheme, Notification } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, safeStorage, Menu, Tray, nativeTheme, Notification, clipboard } = require('electron');
 const { autoUpdater } = require('electron-updater');
 
 const ICON_PATH = path.join(__dirname, 'build', 'icon.ico');
@@ -541,35 +541,54 @@ async function runSmokeTest(win, core, profileStore, settingsStore) {
     );
     await new Promise((r) => setTimeout(r, 250)); // let buildUpdateStatusUI's getUpdateStatus() call resolve
 
-    // Updates is now its own clearly separated section within Options
-    // (heading + divider), not just another field blended into the rest —
-    // and its own Check/Restart buttons and status text are sized like
-    // the rest of the app's real buttons, not the small muted text this
-    // used to be.
+    // Updates is its own clearly separated section within Options (heading
+    // + divider), not just another field blended into the rest — but the
+    // live status/progress/actions themselves no longer live inline here;
+    // this section is just the frequency setting plus a button that opens
+    // the same dedicated popup the sidebar's "Updates" button does.
     const optionsUpdateSection = await win.webContents.executeJavaScript(`(() => {
       const section = document.querySelector('.options-section');
       const title = section && section.querySelector('.options-section-title');
-      const checkBtn = section && Array.from(section.querySelectorAll('button')).find((b) => b.textContent === 'Check for updates');
-      const statusLine = section && section.querySelector('.update-status');
+      const popupBtn = section && Array.from(section.querySelectorAll('button')).find((b) => b.textContent === 'Check for updates…');
       return {
         sectionExists: !!section,
         titleText: title && title.textContent,
-        checkBtnExists: !!checkBtn,
-        checkBtnIsSmall: checkBtn && checkBtn.classList.contains('btn-sm'),
-        statusFontSize: statusLine && getComputedStyle(statusLine).fontSize,
+        popupBtnExists: !!popupBtn,
+        popupBtnIsSmall: popupBtn && popupBtn.classList.contains('btn-sm'),
+        inlineStatusStillHere: !!(section && section.querySelector('.update-status')),
       };
     })()`);
     console.log('[smoke-test] Options Updates section:', JSON.stringify(optionsUpdateSection));
     if (!optionsUpdateSection.sectionExists || optionsUpdateSection.titleText !== 'Updates') {
       throw new Error(`expected a distinct "Updates" section in Options, got: ${JSON.stringify(optionsUpdateSection)}`);
     }
-    if (!optionsUpdateSection.checkBtnExists || optionsUpdateSection.checkBtnIsSmall) {
-      throw new Error(`expected a normal-sized (not btn-sm) Check for updates button in Options, got: ${JSON.stringify(optionsUpdateSection)}`);
+    if (!optionsUpdateSection.popupBtnExists || optionsUpdateSection.popupBtnIsSmall) {
+      throw new Error(`expected a normal-sized (not btn-sm) "Check for updates…" button in Options, got: ${JSON.stringify(optionsUpdateSection)}`);
     }
-    if (parseFloat(optionsUpdateSection.statusFontSize) < 14) {
-      throw new Error(`expected the Options update status text at 14px or larger, got: ${JSON.stringify(optionsUpdateSection)}`);
+    if (optionsUpdateSection.inlineStatusStillHere) {
+      throw new Error('the live update status UI should no longer be embedded inline in Options — it moved to its own popup');
     }
     await shot('07-options-updates-section.png');
+
+    // Clicking it opens the popup (stacked on top of Options) and checks
+    // right away, same as the sidebar button.
+    await win.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.options-section button')).find((b) => b.textContent === 'Check for updates…').click()`);
+    await new Promise((r) => setTimeout(r, 400));
+    const stackedModalTitles = await win.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.modal-header span')).map((s) => s.textContent)`);
+    console.log('[smoke-test] Options -> popup button opened:', JSON.stringify(stackedModalTitles));
+    if (stackedModalTitles[stackedModalTitles.length - 1] !== 'Check for Updates') {
+      throw new Error(`Options' button should open the "Check for Updates" popup on top, got stack: ${JSON.stringify(stackedModalTitles)}`);
+    }
+    const fromOptionsStatusText = await win.webContents.executeJavaScript(`document.querySelector('.update-status').textContent`);
+    if (!/dev build/i.test(fromOptionsStatusText)) {
+      throw new Error(`Options' popup button should have auto-triggered a check, got: "${fromOptionsStatusText}"`);
+    }
+    // Close the popup (topmost modal), leaving Options open underneath.
+    await win.webContents.executeJavaScript(`(() => {
+      const closeButtons = document.querySelectorAll('.modal-header .close-x');
+      closeButtons[closeButtons.length - 1].click();
+    })()`);
+    await new Promise((r) => setTimeout(r, 150));
 
     await win.webContents.executeJavaScript(`document.querySelector('.modal-header .close-x').click()`);
     await win.webContents.executeJavaScript(`document.getElementById('theme-select').value = 'dark'; document.getElementById('theme-select').dispatchEvent(new Event('change'))`);
@@ -691,10 +710,26 @@ async function runSmokeTest(win, core, profileStore, settingsStore) {
       shell.openExternal = originalOpenExternal;
     }
 
-    // --- item 6: update checking should identify itself as unavailable in
-    // this dev/unpackaged run, not crash or silently do nothing ---
+    // --- update checking now lives in its own popup, not About. About was
+    // checked earlier (03-bookmark-added.png etc. all show it without any
+    // update UI); confirm explicitly that neither the button nor the
+    // status text are still there. ---
     await win.webContents.executeJavaScript(`openAboutModal()`);
     await new Promise((r) => setTimeout(r, 200));
+    const aboutHasNoUpdateUi = await win.webContents.executeJavaScript(`(() => {
+      const body = document.querySelector('.modal-body');
+      return !body.querySelector('.update-status') && !Array.from(body.querySelectorAll('button')).some((b) => /check for updates/i.test(b.textContent));
+    })()`);
+    if (!aboutHasNoUpdateUi) throw new Error('About still has update-related UI in it — it should have been removed entirely');
+    await win.webContents.executeJavaScript(`document.querySelector('.modal-header .close-x').click()`);
+
+    // --- item 6: update checking should identify itself as unavailable in
+    // this dev/unpackaged run, not crash or silently do nothing. Its own
+    // popup now (openUpdateModal), not About. ---
+    await win.webContents.executeJavaScript(`openUpdateModal()`);
+    await new Promise((r) => setTimeout(r, 200));
+    const updatePopupTitle = await win.webContents.executeJavaScript(`document.querySelector('.modal-header span').textContent`);
+    if (updatePopupTitle !== 'Check for Updates') throw new Error(`expected the popup titled "Check for Updates", got "${updatePopupTitle}"`);
     await win.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.modal-body button')).find((b) => b.textContent === 'Check for updates').click()`);
     await new Promise((r) => setTimeout(r, 300));
     const updateStatusText = await win.webContents.executeJavaScript(`document.querySelector('.update-status').textContent`);
@@ -702,7 +737,29 @@ async function runSmokeTest(win, core, profileStore, settingsStore) {
     if (!/dev build/i.test(updateStatusText)) {
       throw new Error(`expected the update-check button to report a dev build, got: "${updateStatusText}"`);
     }
-    await shot('12-about-update-check.png');
+    await shot('12-update-popup.png');
+
+    // Copy-link button: writes the real (not simulated) OS clipboard, read
+    // back directly here rather than through any renderer-side proxy.
+    // clipboard.readText()/writeText() are documented as synchronous (and
+    // are, on Windows — this app's actual target) but this sandbox's
+    // headless Linux clipboard is backed by X11's own inherently
+    // asynchronous selection protocol, so Electron hands back a genuine
+    // pending Promise here instead of a string — confirmed directly with
+    // a standalone script, not assumed. Promise.resolve(...) unwraps
+    // either shape (a plain string included) the same way.
+    const releaseUrlSent = await win.webContents.executeJavaScript(`(async () => {
+      const btn = Array.from(document.querySelectorAll('.modal-body button')).find((b) => b.textContent === 'Copy download link');
+      btn.click();
+      await new Promise((r) => setTimeout(r, 100));
+      return btn.textContent; // should read "Copied!" right after
+    })()`);
+    const clipboardText = await Promise.resolve(clipboard.readText());
+    console.log('[smoke-test] copy-link button:', JSON.stringify({ releaseUrlSent, clipboardText }));
+    if (releaseUrlSent !== 'Copied!') throw new Error(`expected the button to say "Copied!" right after clicking, got "${releaseUrlSent}"`);
+    if (clipboardText !== 'https://github.com/RyGull/TabbySync/releases/latest') {
+      throw new Error(`expected the OS clipboard to hold the latest-release URL, got: "${clipboardText}"`);
+    }
 
     // --- fix: a progress bar + percent, live while the modal stays open —
     // setUpdateStatus() is called directly (same function
@@ -757,20 +814,23 @@ async function runSmokeTest(win, core, profileStore, settingsStore) {
     await shot('14-update-downloaded.png');
     await win.webContents.executeJavaScript(`document.querySelector('.modal-header .close-x').click()`);
 
-    // Reopening About (no auto-check) should show that "downloaded" state
-    // immediately, from app:getUpdateStatus — not a blank slate that needs
-    // its own click to reveal a download that's already sitting there.
-    await win.webContents.executeJavaScript(`openAboutModal()`);
+    // Reopening the popup (no auto-check) should show that "downloaded"
+    // state immediately, from app:getUpdateStatus — not a blank slate that
+    // needs its own click to reveal a download that's already sitting
+    // there.
+    await win.webContents.executeJavaScript(`openUpdateModal()`);
     await new Promise((r) => setTimeout(r, 200));
     const reopenedText = await win.webContents.executeJavaScript(`document.querySelector('.update-status').textContent`);
-    console.log('[smoke-test] About reopened, status shown immediately:', reopenedText);
-    if (!reopenedText.includes('9.9.9')) throw new Error(`reopening About should show the still-downloaded state immediately, got: "${reopenedText}"`);
+    console.log('[smoke-test] popup reopened, status shown immediately:', reopenedText);
+    if (!reopenedText.includes('9.9.9')) throw new Error(`reopening the popup should show the still-downloaded state immediately, got: "${reopenedText}"`);
     await win.webContents.executeJavaScript(`document.querySelector('.modal-header .close-x').click()`);
 
-    // The sidebar's own "Updates" button (next to About) opens the same
-    // modal AND fires a check immediately, rather than requiring About to
-    // be opened first and its own button clicked.
+    // The sidebar's own "Updates" button opens this same dedicated popup
+    // (not About) AND fires a check immediately.
     await win.webContents.executeJavaScript(`document.getElementById('btn-check-updates').click()`);
+    await new Promise((r) => setTimeout(r, 200));
+    const sidebarOpenedTitle = await win.webContents.executeJavaScript(`document.querySelector('.modal-header span').textContent`);
+    if (sidebarOpenedTitle !== 'Check for Updates') throw new Error(`sidebar Updates button should open the "Check for Updates" popup, got "${sidebarOpenedTitle}"`);
     await new Promise((r) => setTimeout(r, 400));
     const sidebarButtonText = await win.webContents.executeJavaScript(`document.querySelector('.update-status').textContent`);
     console.log('[smoke-test] sidebar Updates button auto-checked:', sidebarButtonText);
@@ -1053,7 +1113,14 @@ function registerIpc(core, profileStore, sessions, settingsStore, appMeta) {
     secretsAvailable: appMeta.secretsAvailable,
     profilesFile: profileStore.filePath,
     platform: process.platform,
+    // GitHub's own stable "whatever's newest" redirect — never points at a
+    // specific version, so the Update popup's Copy-link button doesn't
+    // need to know the current version's exact filename to hand someone a
+    // link that resolves to it.
+    latestReleaseUrl: `${GITHUB_URL}/releases/latest`,
   }));
+
+  handle('app:copyToClipboard', (text) => { clipboard.writeText(String(text)); });
 
   // Whatever's true right now, with no side effect — so opening the About
   // modal shows a download already under way (started from the sidebar
