@@ -236,11 +236,33 @@ work in both. **Everything in the extension must therefore stay promise-style**
 code already checks for the API and falls back to ordinary tabs, so nothing
 breaks; the option simply has no effect there.
 
+### Loading it in Firefox
+
+Firefox has no persistent "load unpacked" — it has a temporary one, and it
+wants a `manifest.json` on disk. The one at the repository root is Chrome's, so
+build the Firefox tree first:
+
+```
+npm run dev:firefox            # -> dist/firefox/
+```
+
+Then `about:debugging` → **This Firefox** → **Load Temporary Add-on…** → pick
+`dist/firefox/manifest.json`. It stays until Firefox restarts; re-run the
+command and press **Reload** there after changing anything.
+
+Release Firefox will not permanently install an unsigned add-on. Developer
+Edition, Nightly or ESR can, with `xpinstall.signatures.required` set to
+`false` in `about:config`.
+
+Mozilla's own tool is worth having for this: `npx web-ext run --source-dir
+dist/firefox` launches a clean Firefox with it loaded and reloads on change,
+and `npx web-ext lint --source-dir dist/firefox` runs the same validation AMO
+runs at review — including on the manifest assumptions this port had to make
+without access to the documentation.
+
 **Untested on Firefox as of 1.3.13** — the port is written and reasoned about
-but has never been run in Firefox. Load it with `about:debugging` →
-*This Firefox* → *Load Temporary Add-on* → pick `manifest.json` from a
-directory built by `sh scripts/package.sh firefox`, and expect to find things
-this could not.
+but has never been run in the browser it targets. Expect to find things this
+could not.
 
 ## Releasing
 

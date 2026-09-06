@@ -10,7 +10,8 @@
     "e2e:switch": "node scripts/e2e-switch-destination.mjs",
     "e2e:bulk": "node scripts/e2e-bulk-open.mjs",
     "package": "sh scripts/package.sh",
-    "package:firefox": "sh scripts/package.sh firefox"
+    "package:firefox": "sh scripts/package.sh firefox",
+    "dev:firefox": "sh scripts/package.sh firefox --dir"
   },
   "devDependencies": {
     "playwright": "^1.56.0"
