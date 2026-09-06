@@ -395,7 +395,18 @@ async function openProfileModal(existing) {
       else await api.profiles.add(payload);
       m.close();
       await refreshProfiles();
-      if (existing && existing.id === state.activeId) showProfileView(); // header shows label/color/provider live
+      if (existing && existing.id === state.activeId) {
+        showProfileView(); // header shows label/color/provider live
+        // The connection details just changed — whatever's cached (data or
+        // a cached error, e.g. an auth failure from a token just corrected
+        // above) was fetched under the OLD settings. Reload so the panel
+        // reflects the fix now instead of only on the next app restart.
+        // Skipped when there are unsaved local edits so this never
+        // silently discards them — Refresh's own discard-confirmation
+        // covers that case instead.
+        if (!state.bm.dirty) await loadBookmarks(true);
+        if (!state.tb.dirty) await loadTabs(true);
+      }
       if (!existing) showToast('Profile added.', 'success');
     } catch (e) { showError(e, 'Could not save this profile.'); }
   }

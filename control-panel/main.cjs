@@ -165,6 +165,18 @@ async function runSmokeTest(win, core, profileStore) {
     await win.webContents.executeJavaScript(`document.querySelector('.modal-body input[type=text]').value = 'Reading list'`);
     await win.webContents.executeJavaScript(`document.querySelector('.modal-footer .btn-primary').click()`);
     await shot('04-list-added.png');
+    // Reproduce the reported bug: edit the active profile's connection
+    // details and confirm the panel reloads WITHOUT an app restart, rather
+    // than silently keeping whatever was cached under the old settings.
+    await win.webContents.executeJavaScript(`openProfileModal(state.profiles.find((p) => p.id === state.activeId))`);
+    await new Promise((r) => setTimeout(r, 200));
+    await win.webContents.executeJavaScript(`document.querySelector('.modal-body input[type="text"]').value = 'Demo (renamed)'`);
+    await win.webContents.executeJavaScript(`document.querySelector('.modal-footer .btn-primary').click()`);
+    await new Promise((r) => setTimeout(r, 400));
+    await shot('05-after-edit-reload.png');
+    const headerLabel = await win.webContents.executeJavaScript(`document.getElementById('pv-label').textContent`);
+    console.log('[smoke-test] header after edit:', headerLabel);
+
     console.log('[smoke-test] done, screenshots in', outDir);
   } catch (e) {
     console.error('[smoke-test] FAILED:', e);
