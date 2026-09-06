@@ -1,15 +1,12 @@
-TabbySync syncs bookmarks and saved tab lists between a user's own computers. There is no TabbySync server: the user picks the destination in Settings (their own https:// endpoint, a private GitHub gist, or a JSONBin.io bin) and enters their own credentials, which are stored only in storage.local.
+TabbySync syncs bookmarks and saved tab lists between a user's own computers. There is no TabbySync server: the user picks the destination in Settings (their own https:// endpoint, a private GitHub gist, or a JSONBin.io bin) and enters their own credentials, kept only in storage.local.
 
 BUILD PROCESS
 No bundler, minifier or transpiler. Every .js, .html and .css file in the zip is the source as written and matches the public repository. The one generated file is manifest.json: the repository's is Chrome's, and scripts/make-manifest.mjs derives the Firefox one at package time, changing three things (each commented there) — service_worker becomes background.scripts, the Chrome-only tabGroups permission is dropped, browser_specific_settings is added.
 
-To reproduce this upload (node 22, bash, zip; no npm install needed):
+The source upload is that repository, whole, and is public at https://github.com/RyGull/TabbySync. To rebuild this upload from its root (node 22, bash, zip; no npm install needed):
 
-  git clone https://github.com/RyGull/TabbySync.git
-  cd TabbySync
-  git checkout d76ad52
   npm test                          # 187 tests, no dependencies
-  bash scripts/package.sh firefox
+  bash scripts/package.sh firefox   # -> dist/tabbysync-1.3.15-firefox.zip
 
 addons-linter on the result: 0 errors, 0 warnings, 0 notices.
 
@@ -17,7 +14,7 @@ NO REMOTE CODE
 No eval, no new Function, no remote or CDN scripts. Every fetch() is in bookmarks/lib/sync.js and tabs/storage.js and goes only to the destination the user configured.
 
 PERMISSIONS
-No host permissions up front and no content scripts. Host access is requested at runtime, one origin at a time, from the click on "Save and connect" or "Check it works" (options.js, requestAccess) — only the host the user just typed, or api.github.com / api.jsonbin.io. Never a wildcard. A plain http:// server address is refused at save time, because the bearer token travels in an Authorization header outside the encrypted body; optional_host_permissions allows http:// for localhost and 127.0.0.1 only.
+No host permissions up front and no content scripts. Host access is requested at runtime, one origin at a time, from the click on "Save and connect" or "Check it works" (options.js, requestAccess) — only the host just typed, or api.github.com / api.jsonbin.io, never a wildcard. A plain http:// server address is refused at save time, because the bearer token travels in an Authorization header outside the encrypted body; optional_host_permissions allows http:// for localhost and 127.0.0.1 only.
 
 DATA COLLECTION
 bookmarksInfo and browsingActivity are required because bookmarks and saved tab URLs leave the browser — to a destination the user chooses. The developer receives nothing and runs no server. Nothing is optional and technicalAndInteraction is absent: there is no telemetry.
@@ -29,4 +26,5 @@ tabs/tablist.js calls chrome.tabs.group behind a feature check, so on Firefox a 
 TO TEST SYNC
 Quickest: a free JSONBin.io account — copy the X-MASTER-KEY, choose "Just get me going" in Settings, paste, Save and connect; the bins are created on first save. Or a GitHub token with the "gists" scope. Then Sync now, change a bookmark, sync again. If you would rather not create an account, ask and I will supply a temporary endpoint and token.
 
-Source: https://github.com/RyGull/TabbySync — the licence is proprietary, but LICENSE section 1 explicitly permits anyone to read, study and audit the code.
+LICENCE
+Proprietary and source-available: LICENSE section 1 explicitly permits anyone to read, study and audit the code, so nothing in it restricts review.

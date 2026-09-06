@@ -4,6 +4,7 @@
 #   bash scripts/package.sh              -> dist/tabbysync-<version>.zip          (Chrome Web Store)
 #   bash scripts/package.sh firefox      -> dist/tabbysync-<version>-firefox.zip  (addons.mozilla.org)
 #   bash scripts/package.sh firefox --dir-> dist/firefox/                         (unpacked, for about:debugging)
+#   bash scripts/package.sh source     -> dist/tabbysync-<version>-source.zip   (AMO's source upload)
 #
 # The --dir form exists because Firefox's "Load Temporary Add-on" wants a
 # manifest.json on disk, and the one in this repository is Chrome's — it
@@ -23,8 +24,8 @@ cd "$(dirname "$0")/.."
 target="${1:-chrome}"
 unpacked="${2:-}"
 case "$target" in
-  chrome|firefox) ;;
-  *) echo "usage: bash scripts/package.sh [chrome|firefox] [--dir]" >&2; exit 1 ;;
+  chrome|firefox|source) ;;
+  *) echo "usage: bash scripts/package.sh [chrome|firefox|source] [--dir]" >&2; exit 1 ;;
 esac
 if [ -n "$unpacked" ] && [ "$unpacked" != "--dir" ]; then
   echo "usage: bash scripts/package.sh [chrome|firefox] [--dir]" >&2; exit 1
@@ -34,6 +35,28 @@ if [ "$unpacked" = "--dir" ] && [ "$target" != "firefox" ]; then
 fi
 
 version=$(grep -m1 '"version"' manifest.json | sed 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+
+# AMO asks for the source when anything in the upload is generated, which for
+# this add-on is the one manifest.json that make-manifest.mjs derives. The
+# honest answer to "do you use a tool that generates files in the extension" is
+# yes, so this produces what that question then asks for: the repository at the
+# commit the upload was built from, which is the only thing needed to
+# reproduce it. git archive rather than a hand-picked file list, so nothing can
+# be left out by accident — and untracked files (config.local.php among them)
+# cannot get in by accident either.
+if [ "$target" = "source" ]; then
+  out="dist/tabbysync-${version}-source.zip"
+  mkdir -p dist
+  rm -f "$out"
+  git archive --format=zip -o "$out" HEAD
+  echo "$out"
+  echo "built from commit $(git rev-parse --short HEAD)"
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "WARNING: the working tree has changes that are NOT in this archive" >&2
+  fi
+  unzip -l "$out" | tail -3
+  exit 0
+fi
 suffix=""
 [ "$target" = "firefox" ] && suffix="-firefox"
 out="dist/tabbysync-${version}${suffix}.zip"
