@@ -17,6 +17,16 @@ Firefox (addons.mozilla.org) asks for two of its own:
   13-amo-privacy-policy.txt     "This add-on has a Privacy Policy" -> the box
   14-amo-reviewer-notes.txt     "Notes to Reviewer"
 
+Two AMO limits, from its own source (addons-server): "Notes to Reviewer"
+(approval_notes) is capped at 3000 characters and silently truncates what
+you paste past it -- file 14 is 2893, so it fits, and it has to stay that
+way. Release notes are capped at 3000 too (file 12 is well under). The
+privacy policy field allows 150000, so length is not a concern there.
+
+The privacy policy field renders Markdown, which is why file 13 has a blank
+line after every heading and before every list: without them, Markdown
+folds a heading into the paragraph below it.
+
 AMO's other listing fields (name, summary, description) take the same text as
 files 01 and 02. It has no per-permission justification boxes -- the data
 declaration in the manifest does that job there -- and its licence picker

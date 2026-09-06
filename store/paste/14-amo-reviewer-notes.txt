@@ -1,45 +1,32 @@
-WHAT IT DOES
-TabbySync syncs bookmarks and saved tab lists between a user's own computers. There is no TabbySync server. The user picks the destination in Settings: their own https:// endpoint (a small PHP file the extension generates for them), a private GitHub gist, or a JSONBin.io bin. Credentials are entered by the user and stored only in browser.storage.local.
+TabbySync syncs bookmarks and saved tab lists between a user's own computers. There is no TabbySync server: the user picks the destination in Settings (their own https:// endpoint, a private GitHub gist, or a JSONBin.io bin) and enters their own credentials, which are stored only in storage.local.
 
 BUILD PROCESS
-There is no bundler, no minifier, no transpiler and no package step over the JavaScript. Every .js, .html and .css file in the uploaded zip is the source as written, and matches the public repository byte for byte.
+No bundler, minifier or transpiler. Every .js, .html and .css file in the zip is the source as written and matches the public repository. The one generated file is manifest.json: the repository's is Chrome's, and scripts/make-manifest.mjs derives the Firefox one at package time, changing three things (each commented there) — service_worker becomes background.scripts, the Chrome-only tabGroups permission is dropped, browser_specific_settings is added.
 
-The one generated file is manifest.json. The repository's manifest.json is the Chrome one; the Firefox manifest is derived from it at package time by scripts/make-manifest.mjs, which changes exactly three things (each commented in that file): background.service_worker becomes background.scripts, the Chrome-only tabGroups permission is dropped, and browser_specific_settings is added. Everything else is copied from the same file, so the two stores cannot drift apart.
-
-To reproduce this exact upload (needs node 22, bash, zip; no npm install is required for packaging):
+To reproduce this upload (node 22, bash, zip; no npm install needed):
 
   git clone https://github.com/RyGull/TabbySync.git
   cd TabbySync
-  git checkout d76ad52   # or the v1.3.15 tag
+  git checkout d76ad52
   npm test                          # 187 tests, no dependencies
-  bash scripts/package.sh firefox   # -> dist/tabbysync-<version>-firefox.zip
+  bash scripts/package.sh firefox
 
-npx addons-linter on the result reports 0 errors, 0 warnings, 0 notices.
+addons-linter on the result: 0 errors, 0 warnings, 0 notices.
 
 NO REMOTE CODE
-No eval, no new Function, no remotely hosted scripts, no CDN. Nothing is fetched and executed. The only network requests are to the sync destination the user configured — see bookmarks/lib/sync.js and tabs/storage.js for every fetch() in the extension.
+No eval, no new Function, no remote or CDN scripts. Every fetch() is in bookmarks/lib/sync.js and tabs/storage.js and goes only to the destination the user configured.
 
-PERMISSIONS AND HOST ACCESS
-The manifest requests no host permissions up front and registers no content scripts. Host access is requested at runtime, for one origin at a time, from the click on "Save and connect" or "Check it works" in Settings (options.js, requestAccess). It is only ever the host the user just typed, or api.github.com / api.jsonbin.io for the two account-based options — never a wildcard. optional_host_permissions covers https://*/* plus http:// for localhost and 127.0.0.1 only; a plain http:// server address is refused at save time, because the bearer token travels in an Authorization header outside the encrypted body.
+PERMISSIONS
+No host permissions up front and no content scripts. Host access is requested at runtime, one origin at a time, from the click on "Save and connect" or "Check it works" (options.js, requestAccess) — only the host the user just typed, or api.github.com / api.jsonbin.io. Never a wildcard. A plain http:// server address is refused at save time, because the bearer token travels in an Authorization header outside the encrypted body; optional_host_permissions allows http:// for localhost and 127.0.0.1 only.
 
-DATA COLLECTION DECLARATION
-data_collection_permissions declares bookmarksInfo and browsingActivity as required. Nothing is optional and technicalAndInteraction is absent, because there is no telemetry of any kind. The declaration reflects that bookmarks and saved tab URLs leave the browser — to a destination the user chooses and controls. The developer receives nothing and operates no server. The privacy policy has a section explaining this, since Firefox's install screen phrases it as sharing with the developer.
+DATA COLLECTION
+bookmarksInfo and browsingActivity are required because bookmarks and saved tab URLs leave the browser — to a destination the user chooses. The developer receives nothing and runs no server. Nothing is optional and technicalAndInteraction is absent: there is no telemetry.
 
-VERSION FLOOR
-strict_min_version is 140 (desktop) and 142 (Android) because that is where the built-in data-consent screen exists in each. The add-on has been tested on Firefox desktop only.
+strict_min_version is 140 (desktop) and 142 (Android): that is where the built-in consent screen exists. Tested on desktop only.
 
-TAB GROUPS
-tabs/tablist.js calls chrome.tabs.group / chrome.tabGroups.update behind a feature check (`if (!chrome.tabs || !chrome.tabs.group)`), so on Firefox a saved list reopens as plain tabs. The tabGroups permission is not requested in this build. Those two calls use Chrome's callback form deliberately; they are unreachable on Firefox.
+tabs/tablist.js calls chrome.tabs.group behind a feature check, so on Firefox a saved list reopens as plain tabs. tabGroups is not requested in this build.
 
-HOW TO TEST SYNC
-Any of the three destinations works, and all three are free:
-- JSONBin.io: create a free account, copy the X-MASTER-KEY, choose "Just get me going" in Settings, paste it, Save and connect. The bins are created on the first save.
-- GitHub: a personal access token with the "gists" scope, then "My GitHub account".
-- Self-hosted: Settings step 2 generates tabbysync.php with a token already inside; drop it on any https:// web space and paste the URL back.
-Then use "Sync now" in the popup, edit a bookmark, and sync again. If you would rather not create an account, ask through the review system and I will supply a temporary self-hosted endpoint and token.
+TO TEST SYNC
+Quickest: a free JSONBin.io account — copy the X-MASTER-KEY, choose "Just get me going" in Settings, paste, Save and connect; the bins are created on first save. Or a GitHub token with the "gists" scope. Then Sync now, change a bookmark, sync again. If you would rather not create an account, ask and I will supply a temporary endpoint and token.
 
-SOURCE AND LICENCE
-Public repository: https://github.com/RyGull/TabbySync
-The licence is proprietary (source-available, non-commercial, no redistribution), and it explicitly permits anyone to read, study and audit the code for any purpose — see LICENSE section 1. Nothing in it restricts review.
-
-Contact: contact [at] tabbysync [dot] com
+Source: https://github.com/RyGull/TabbySync — the licence is proprietary, but LICENSE section 1 explicitly permits anyone to read, study and audit the code.
