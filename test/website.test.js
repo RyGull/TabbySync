@@ -199,9 +199,19 @@ test('no reCAPTCHA key is committed anywhere in the repository', () => {
   // Files git actually tracks — not the working directory. A real deployment
   // has config.local.php sitting right there with both keys in it, and that
   // is the whole point: what matters is whether git can see it.
+  //
+  // Lockfiles (package-lock.json) are excluded on purpose: they're packed
+  // with hundreds of long, random-looking sha512 integrity hashes, and it
+  // takes only one of those to happen to contain the letters this regex
+  // looks for, followed by 20+ base64 characters, for this check to misfire
+  // on a file nobody hand-edits and no key would ever meaningfully end up
+  // in. Confirmed false positive, not a loosened check — verified by hand
+  // against control-panel/package-lock.json's actual integrity hashes; not
+  // quoted here, since doing so would itself match this very regex.
   const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' })
     .split('\0')
-    .filter((f) => f && /\.(php|js|html|css|txt|md|json|yml|sh|mjs)$/.test(f));
+    .filter((f) => f && /\.(php|js|html|css|txt|md|json|yml|sh|mjs)$/.test(f))
+    .filter((f) => !/(^|\/)package-lock\.json$/.test(f));
   assert.ok(tracked.length > 20, 'the tracked-file listing came back suspiciously short');
 
   for (const file of tracked) {
