@@ -20,7 +20,8 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { firefoxManifest, GECKO_ID, GECKO_MIN_VERSION } from '../scripts/make-manifest.mjs';
+import { firefoxManifest, GECKO_ID, GECKO_MIN_VERSION, GECKO_ANDROID_MIN_VERSION, DATA_COLLECTION }
+  from '../scripts/make-manifest.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
 const read = (p) => readFileSync(join(root, p), 'utf8');
@@ -55,6 +56,48 @@ test('the Firefox build carries a stable add-on identity', () => {
   assert.equal(firefox.browser_specific_settings.gecko.strict_min_version, GECKO_MIN_VERSION);
   assert.match(GECKO_ID, /^[^@\s]+@[^@\s]+$/, 'a gecko id is an email-shaped string');
   assert.equal(chrome.browser_specific_settings, undefined, 'Chrome has no use for it');
+});
+
+test('the Firefox build declares what leaves the browser', () => {
+  // AMO rejects a new add-on without this key outright — 1.3.14 was rejected
+  // for exactly that. Mozilla's own definition of data transmission is "any
+  // data collected, used, transferred, shared, or handled outside the add-on
+  // or the local browser", which a sync tool does by definition, so "none"
+  // would be a false declaration however little the developer can see.
+  const dc = firefox.browser_specific_settings.gecko.data_collection_permissions;
+  assert.deepEqual(dc, DATA_COLLECTION);
+  assert.ok(Array.isArray(dc.required) && dc.required.length > 0,
+    'the "required" list must exist and cannot be empty');
+  assert.ok(!dc.required.includes('none'),
+    'TabbySync sends bookmarks and saved tab URLs out of the browser; "none" would be untrue');
+  assert.ok(dc.required.includes('bookmarksInfo'), 'bookmarks are synced');
+  assert.ok(dc.required.includes('browsingActivity'), 'a saved tab is the URL of a page the user had open');
+  assert.ok(!JSON.stringify(dc).includes('technicalAndInteraction'),
+    'there is no telemetry, so nothing should claim there is');
+
+  // Only these eleven strings, plus "none", are valid in "required"; anything
+  // else is rejected at upload.
+  const VALID = ['authenticationInfo', 'bookmarksInfo', 'browsingActivity', 'financialAndPaymentInfo',
+    'healthInfo', 'locationInfo', 'personalCommunications', 'personallyIdentifyingInfo',
+    'searchTerms', 'websiteActivity', 'websiteContent', 'none'];
+  for (const t of dc.required) assert.ok(VALID.includes(t), `${t} is not a data collection permission`);
+
+  assert.equal(chrome.browser_specific_settings, undefined, 'Chrome has no use for any of this');
+});
+
+test('the Firefox floor is high enough for the consent screen to exist', () => {
+  // Built-in data consent arrived in Firefox 140. An add-on that declares data
+  // collection and runs on anything older has to show a consent experience of
+  // its own; raising the floor is the documented alternative, and 140 is an
+  // ESR so it does not strand the people who stay on those.
+  assert.ok(parseInt(GECKO_MIN_VERSION, 10) >= 140,
+    `strict_min_version is ${GECKO_MIN_VERSION}, below the 140 that has built-in data consent`);
+  // Android got the same screen two releases later, and AMO considers the
+  // add-on for Android whether or not it is aimed there.
+  assert.equal(firefox.browser_specific_settings.gecko_android.strict_min_version,
+    GECKO_ANDROID_MIN_VERSION);
+  assert.ok(parseInt(GECKO_ANDROID_MIN_VERSION, 10) >= 142,
+    'below 142 the data declaration would never be shown on Android');
 });
 
 test('everything the two stores agree on comes from one manifest', () => {

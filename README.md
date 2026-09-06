@@ -254,11 +254,20 @@ Release Firefox will not permanently install an unsigned add-on. Developer
 Edition, Nightly or ESR can, with `xpinstall.signatures.required` set to
 `false` in `about:config`.
 
-Mozilla's own tool is worth having for this: `npx web-ext run --source-dir
+Mozilla's own tools are worth having for this: `npx web-ext run --source-dir
 dist/firefox` launches a clean Firefox with it loaded and reloads on change,
-and `npx web-ext lint --source-dir dist/firefox` runs the same validation AMO
-runs at review — including on the manifest assumptions this port had to make
-without access to the documentation.
+and `npm run lint:firefox` builds the zip and runs `addons-linter` over it —
+the same validation AMO runs at upload, which is cheaper to fail here than
+there. The release workflow runs it too.
+
+**On AMO, an add-on must declare what data leaves the browser.** TabbySync
+declares `bookmarksInfo` and `browsingActivity` as required
+(`DATA_COLLECTION` in `scripts/make-manifest.mjs`) — Mozilla defines data
+transmission as anything handled outside the local browser, which is what
+syncing is, so `"none"` would be false. Firefox renders that as "share … with
+extension developer", which is Mozilla's wording and wrong here; `privacy.html`
+explains it. Declaring it also raises `strict_min_version` to 140, the first
+Firefox with the built-in consent screen.
 
 **Run on Firefox as of 1.3.14.** The port loads, the pages render and both
 engines sync. Two things only showed up there and are fixed in 1.3.14: Firefox
@@ -282,7 +291,7 @@ manifest is the right shape for its store, and attaches them to a draft GitHub
 Release.
 
 ```
-git tag v1.3.14 && git push origin v1.3.14
+git tag v1.3.15 && git push origin v1.3.15
 ```
 
 The tag has to match `manifest.json` or the job stops — a release named after a

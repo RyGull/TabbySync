@@ -132,3 +132,29 @@ test('a refused request reports why', () => {
     'the reason the browser gave is being swallowed');
   assert.match(src, /function accessProblem\(res\)/);
 });
+
+// ---------------------------------------------------------------------------
+// What AMO's linter objects to
+// ---------------------------------------------------------------------------
+
+test('no extension code builds markup out of variables', () => {
+  // addons-linter warns on every innerHTML assignment whose value is not a
+  // constant, and on two of them it was right: the server URL the user types
+  // was interpolated into a template string and assigned to innerHTML, so a
+  // script tag typed into that box ran in the options page. Build nodes.
+  const files = ['options.js', 'shared/theme.js', 'tabs/tablist.js', 'popup.js', 'background.js'];
+  for (const file of files) {
+    const src = read(file);
+    const re = /\.innerHTML\s*=/g;
+    let m;
+    while ((m = re.exec(src))) {
+      // The statement, up to the semicolon that ends it.
+      const stmt = src.slice(m.index, src.indexOf(';', m.index));
+      const line = src.slice(0, m.index).split('\n').length;
+      assert.ok(!stmt.includes('${'),
+        `${file}:${line} interpolates a value into innerHTML`);
+      assert.ok(!/\+\s*[A-Za-z_$]/.test(stmt.slice(stmt.indexOf('='))),
+        `${file}:${line} concatenates a value into innerHTML`);
+    }
+  }
+});

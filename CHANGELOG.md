@@ -6,6 +6,37 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.3.15 — 2026-09-06
+
+**What AMO rejected, and what it warned about.** 1.3.14 was refused at upload
+for a missing manifest key; the warnings alongside it were worth acting on too.
+
+- **`data_collection_permissions` is now declared.** Since November 2025 every
+  new Firefox add-on must state what data leaves the browser, and Mozilla
+  defines that as "any data collected, used, transferred, shared, or handled
+  outside the add-on or the local browser" — which is what syncing *is*. So
+  TabbySync declares `bookmarksInfo` and `browsingActivity` as required.
+  Nothing is optional and `technicalAndInteraction` is absent, because there is
+  no telemetry. Firefox shows this as "Share bookmarks information with
+  extension developer": Mozilla's wording, identical for every add-on, and
+  wrong about this one — the developer receives nothing and the destination is
+  the one you chose. The privacy policy now has a section saying exactly that,
+  because the install screen is where people will meet it. Declaring `"none"`
+  would have been the comfortable answer and a false one.
+- **Firefox 140 is the new floor**, up from 128. The built-in consent screen
+  arrived in 140, and an add-on that declares data collection has to carry its
+  own consent UI on anything older. 140 is an ESR, so nobody on a supported
+  Firefox is left behind.
+- **No markup is built out of variables any more.** AMO flagged four
+  `innerHTML` assignments. Two of them interpolated the Server URL straight
+  from the input box, so markup typed into that field ran in the settings page
+  — a real injection, if only into your own browser. Those previews are built
+  as DOM nodes now, and a test fails on any `innerHTML` that isn't a constant.
+
+The `tabs.group` warnings are expected and left alone: that API is Chrome-only,
+the code already checks for it, and reopening as a tab group degrades to plain
+tabs on Firefox.
+
 ## 1.3.14 — 2026-09-06
 
 **The Firefox port, corrected by running it.** 1.3.13 shipped a Firefox build

@@ -22,9 +22,36 @@ const base = JSON.parse(readFileSync(new URL('manifest.json', ROOT), 'utf8'));
 export const GECKO_ID = 'tabbysync@tabbysync.com';
 
 /** Firefox needed until 121 for MV3 at all, and this uses an ES-module
- *  background script, which is newer still. 128 is the first Extended Support
- *  Release that covers both, so it is the honest floor to advertise. */
-export const GECKO_MIN_VERSION = '128.0';
+ *  background script, which is newer still. 128 (an ESR) covered both — but
+ *  the built-in data-collection consent below only exists from 140, and an
+ *  add-on that declares data collection has to show its own consent screen on
+ *  anything older. 140 is also an ESR, so this raises the floor without
+ *  stranding the people who stay on ESR. */
+export const GECKO_MIN_VERSION = '140.0';
+
+/** What leaves the browser, in Mozilla's taxonomy.
+ *
+ *  AMO rejects a new add-on without this key. Its own definition of data
+ *  transmission is "any data collected, used, transferred, shared, or handled
+ *  outside the add-on or the local browser" — which is exactly what a sync
+ *  tool does, so "none" would be false however little of it TabbySync itself
+ *  can see. Bookmarks are `bookmarksInfo`; a saved tab is a URL of a page the
+ *  user had open, which is `browsingActivity`.
+ *
+ *  Both are `required`: sync is the entire product, so there is nothing to opt
+ *  out of. Nothing is listed as optional, and `technicalAndInteraction` is
+ *  absent, because there is no telemetry of any kind.
+ *
+ *  Firefox's install prompt renders these as "Share bookmarks information with
+ *  extension developer". That wording is Mozilla's and cannot be changed, and
+ *  it is wrong about TabbySync specifically: the developer receives nothing,
+ *  and the destination is one the user names. privacy.html says so, and so
+ *  does the store listing. Declaring less than this would be worse. */
+/** Firefox for Android got the consent screen two releases later than the
+ *  desktop did. Below this the declaration above would never be shown. */
+export const GECKO_ANDROID_MIN_VERSION = '142.0';
+
+export const DATA_COLLECTION = { required: ['bookmarksInfo', 'browsingActivity'] };
 
 export function firefoxManifest(chromeManifest = base) {
   const m = structuredClone(chromeManifest);
@@ -41,11 +68,23 @@ export function firefoxManifest(chromeManifest = base) {
   //    permission Firefox would warn about, not any behaviour.
   m.permissions = m.permissions.filter((p) => p !== 'tabGroups');
 
-  // 3. The add-on's identity, and the oldest Firefox this is claimed to work
-  //    on. AMO can assign an id itself, but then the store and a local build
-  //    disagree about what this add-on is.
+  // 3. The add-on's identity, the oldest Firefox this is claimed to work on,
+  //    and what data leaves the browser. AMO can assign an id itself, but then
+  //    the store and a local build disagree about what this add-on is; the
+  //    data declaration it will not assign, and refuses the upload without.
+  //
+  //    gecko_android carries a floor, not a promise: this has never been run
+  //    on Firefox for Android and the tab list is a desktop layout. But AMO
+  //    considers the add-on for Android either way, and Android only gained
+  //    the data-collection consent screen in 142 — without this the linter
+  //    warns that the declaration above would go unshown there.
   m.browser_specific_settings = {
-    gecko: { id: GECKO_ID, strict_min_version: GECKO_MIN_VERSION },
+    gecko: {
+      id: GECKO_ID,
+      strict_min_version: GECKO_MIN_VERSION,
+      data_collection_permissions: structuredClone(DATA_COLLECTION),
+    },
+    gecko_android: { strict_min_version: GECKO_ANDROID_MIN_VERSION },
   };
 
   return m;

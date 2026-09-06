@@ -78,6 +78,12 @@ jobs:
             if (!process.exitCode) console.log('both manifests are the right shape for their store');
           "
 
+      # AMO runs this at upload; running it here means a rejection costs a CI
+      # minute instead of a submission. 1.3.14 was refused for a missing
+      # manifest key that this reports in seconds.
+      - name: Lint the Firefox build the way AMO will
+        run: npx --yes addons-linter dist/tabbysync-${{ steps.version.outputs.version }}-firefox.zip
+
       - uses: softprops/action-gh-release@v2
         with:
           name: TabbySync ${{ steps.version.outputs.version }}

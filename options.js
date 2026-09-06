@@ -290,7 +290,7 @@ function fieldsForProvider(cfg, provider) {
 // Populate the provider <select> once from the shared metadata.
 function populateProviderSelect() {
   const sel = $('sync-provider');
-  sel.innerHTML = '';
+  sel.replaceChildren();
   Object.keys(SP.PROVIDERS).forEach((id) => {
     const opt = document.createElement('option');
     opt.value = id; opt.textContent = SP.PROVIDERS[id].label;
@@ -361,7 +361,11 @@ function updateProviderUI() {
              'first time it saves — there is nothing to upload.',
   };
   const summary = SUMMARY[currentProvider()];
-  $('provider-hint').innerHTML = summary || meta.setupHint || '';
+  // textContent, not innerHTML: every string that reaches this line is plain
+  // prose (the summaries above, or a provider's setupHint). A provider whose
+  // hint contains markup would show the tags rather than render them — which
+  // is the right failure for a value that flows into the page unescaped.
+  $('provider-hint').textContent = summary || meta.setupHint || '';
   $('guide-row').hidden = !summary;
   const disc = $('provider-disclaimer');
   if (meta.disclaimer) { disc.textContent = meta.disclaimer; disc.hidden = false; }
@@ -409,27 +413,57 @@ document.querySelectorAll('#providerChoices .choice').forEach((btn) => {
   });
 });
 
+// Build one "<b>Label →</b> value" line without innerHTML.
+//
+// The value is whatever the user typed in the Server URL box, and it used to
+// be interpolated into a template string and assigned to innerHTML — a script
+// tag in that field ran in the options page. Nothing here parses markup, so
+// there is nothing to inject into. (AMO's linter flags every innerHTML
+// assignment with a variable in it, and on these two it was right.)
+function previewLine(label, ...parts) {
+  const line = document.createElement('div');
+  const b = document.createElement('b');
+  b.textContent = label + ' →';
+  line.append(b, ' ');
+  for (const part of parts) {
+    if (typeof part === 'string') { line.append(part); continue; }
+    const el = document.createElement(part.tag);
+    el.textContent = part.text;
+    if (part.cls) el.className = part.cls;
+    line.append(el);
+  }
+  return line;
+}
+
 function preview() {
   const provider = currentProvider();
+  const out = $('srv-preview');
   // Preview the name as it'll actually be used (sanitized), without
   // rewriting the input itself while the user is still typing.
   const name = SL.sanitizeSyncName($('srv-name').value);
   if (provider === 'custom') {
     const base = $('srv-url').value.trim();
-    if (!base || !name) { $('srv-preview').textContent = 'Fill in the boxes above to see where your files will go.'; return; }
-    $('srv-preview').innerHTML =
-      `<b>Bookmarks →</b> ${fileUrl(base, 'bookmarks-' + name + '.json')}<br>` +
-      `<b>Tabs →</b> ${fileUrl(base, 'tabs-' + name + '.json')}`;
+    if (!base || !name) { out.textContent = 'Fill in the boxes above to see where your files will go.'; return; }
+    out.replaceChildren(
+      previewLine('Bookmarks', fileUrl(base, 'bookmarks-' + name + '.json')),
+      previewLine('Tabs', fileUrl(base, 'tabs-' + name + '.json')),
+    );
   } else if (provider === 'gist') {
     const suffix = name ? `-${name}` : '';
-    $('srv-preview').innerHTML =
-      `<b>Bookmarks →</b> a file named <code>bookmarks${suffix}.json</code> in your private gist<br>` +
-      `<b>Tabs →</b> a file named <code>tabs${suffix}.json</code> in the same gist ` +
-      `<span class="hint">(created automatically on first save)</span>`;
+    out.replaceChildren(
+      previewLine('Bookmarks', 'a file named ', { tag: 'code', text: `bookmarks${suffix}.json` }, ' in your private gist'),
+      previewLine('Tabs', 'a file named ', { tag: 'code', text: `tabs${suffix}.json` }, ' in the same gist ',
+        { tag: 'span', cls: 'hint', text: '(created automatically on first save)' }),
+    );
   } else if (provider === 'jsonbin') {
-    $('srv-preview').innerHTML =
-      `<b>Bookmarks</b> and <b>Tabs</b> each get their own JSONBin bin ` +
-      `<span class="hint">(created automatically on first save — one profile per API key)</span>`;
+    const line = document.createElement('div');
+    const bm = document.createElement('b'); bm.textContent = 'Bookmarks';
+    const tb = document.createElement('b'); tb.textContent = 'Tabs';
+    const hint = document.createElement('span');
+    hint.className = 'hint';
+    hint.textContent = '(created automatically on first save — one profile per API key)';
+    line.append(bm, ' and ', tb, ' each get their own JSONBin bin ', hint);
+    out.replaceChildren(line);
   }
 }
 

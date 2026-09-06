@@ -114,7 +114,18 @@
       it.className = "sl-theme-item";
       it.dataset.mode = m.id;
       it.setAttribute("role", "menuitemradio");
-      it.innerHTML = '<span class="ic">' + m.icon + '</span><span>' + m.label + '</span><span class="chk">✓</span>';
+      // Built as nodes rather than an innerHTML string: nothing here needs a
+      // parser, and AMO's linter warns about every innerHTML with a variable
+      // in it (this file is loaded by the extension as well as the website).
+      var ic = document.createElement("span");
+      ic.className = "ic";
+      ic.textContent = m.icon;
+      var lb = document.createElement("span");
+      lb.textContent = m.label;
+      var chk = document.createElement("span");
+      chk.className = "chk";
+      chk.textContent = "✓";
+      it.append(ic, lb, chk);
       it.addEventListener("click", function () { set(m.id); closeAll(); });
       menu.appendChild(it);
     });
