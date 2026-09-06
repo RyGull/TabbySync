@@ -518,7 +518,37 @@ async function runSmokeTest(win, core, profileStore, settingsStore) {
     await win.webContents.executeJavaScript(
       `document.getElementById('opt-update-frequency').value = 'weekly'; document.getElementById('opt-update-frequency').dispatchEvent(new Event('change'))`
     );
-    await new Promise((r) => setTimeout(r, 150));
+    await new Promise((r) => setTimeout(r, 250)); // let buildUpdateStatusUI's getUpdateStatus() call resolve
+
+    // Updates is now its own clearly separated section within Options
+    // (heading + divider), not just another field blended into the rest —
+    // and its own Check/Restart buttons and status text are sized like
+    // the rest of the app's real buttons, not the small muted text this
+    // used to be.
+    const optionsUpdateSection = await win.webContents.executeJavaScript(`(() => {
+      const section = document.querySelector('.options-section');
+      const title = section && section.querySelector('.options-section-title');
+      const checkBtn = section && Array.from(section.querySelectorAll('button')).find((b) => b.textContent === 'Check for updates');
+      const statusLine = section && section.querySelector('.update-status');
+      return {
+        sectionExists: !!section,
+        titleText: title && title.textContent,
+        checkBtnExists: !!checkBtn,
+        checkBtnIsSmall: checkBtn && checkBtn.classList.contains('btn-sm'),
+        statusFontSize: statusLine && getComputedStyle(statusLine).fontSize,
+      };
+    })()`);
+    console.log('[smoke-test] Options Updates section:', JSON.stringify(optionsUpdateSection));
+    if (!optionsUpdateSection.sectionExists || optionsUpdateSection.titleText !== 'Updates') {
+      throw new Error(`expected a distinct "Updates" section in Options, got: ${JSON.stringify(optionsUpdateSection)}`);
+    }
+    if (!optionsUpdateSection.checkBtnExists || optionsUpdateSection.checkBtnIsSmall) {
+      throw new Error(`expected a normal-sized (not btn-sm) Check for updates button in Options, got: ${JSON.stringify(optionsUpdateSection)}`);
+    }
+    if (parseFloat(optionsUpdateSection.statusFontSize) < 14) {
+      throw new Error(`expected the Options update status text at 14px or larger, got: ${JSON.stringify(optionsUpdateSection)}`);
+    }
+    await shot('07-options-updates-section.png');
 
     await win.webContents.executeJavaScript(`document.querySelector('.modal-header .close-x').click()`);
     await win.webContents.executeJavaScript(`document.getElementById('theme-select').value = 'dark'; document.getElementById('theme-select').dispatchEvent(new Event('change'))`);
@@ -770,14 +800,47 @@ async function runSmokeTest(win, core, profileStore, settingsStore) {
 
     // Drags the 2nd profile row onto the 1st's top half — i.e. "put me
     // first" — the same gesture wireListReorderDrag actually listens for.
+    // Split into separate steps (rather than firing dragstart/dragover/drop
+    // back to back in one synchronous block) specifically to check the
+    // MID-drag visual state — dragging-source's opacity applies via
+    // requestAnimationFrame, one frame after dragstart, so drop can't
+    // follow immediately or there'd be nothing to observe.
     await win.webContents.executeJavaScript(`(() => {
-      const items = document.querySelectorAll('#profile-list .profile-item');
-      const [first, second] = items;
-      const fireDrag = (el, type, clientY) => el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: new DataTransfer(), clientY }));
-      const rect = first.getBoundingClientRect();
-      fireDrag(second, 'dragstart', rect.top);
-      fireDrag(first, 'dragover', rect.top + 2); // top half -> insert before
-      fireDrag(first, 'drop', rect.top + 2);
+      window.__fireDrag = (el, type, clientY) => el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: new DataTransfer(), clientY }));
+      const [first, second] = document.querySelectorAll('#profile-list .profile-item');
+      window.__dragRect = first.getBoundingClientRect();
+      window.__fireDrag(second, 'dragstart', window.__dragRect.top);
+    })()`);
+    await new Promise((r) => setTimeout(r, 80)); // let requestAnimationFrame apply dragging-source
+    await win.webContents.executeJavaScript(`(() => {
+      const [first] = document.querySelectorAll('#profile-list .profile-item');
+      window.__fireDrag(first, 'dragover', window.__dragRect.top + 2); // top half -> insert before
+    })()`);
+    await new Promise((r) => setTimeout(r, 80));
+    const midDrag = await win.webContents.executeJavaScript(`(() => {
+      const [first, second] = document.querySelectorAll('#profile-list .profile-item');
+      return {
+        sourceDimmed: second.classList.contains('dragging-source'),
+        sourceOpacity: getComputedStyle(second).opacity,
+        targetHighlighted: first.classList.contains('drag-over-top'),
+        targetBg: getComputedStyle(first).backgroundColor,
+        lineColor: getComputedStyle(first, '::before').backgroundColor,
+      };
+    })()`);
+    console.log('[smoke-test] mid-drag visual state (profiles):', JSON.stringify(midDrag));
+    if (!midDrag.sourceDimmed || Number(midDrag.sourceOpacity) >= 0.9) {
+      throw new Error(`expected the dragged profile row to visibly dim, got: ${JSON.stringify(midDrag)}`);
+    }
+    if (!midDrag.targetHighlighted || midDrag.targetBg === 'rgba(0, 0, 0, 0)') {
+      throw new Error(`expected the drop-target profile row to show a highlighted background, got: ${JSON.stringify(midDrag)}`);
+    }
+    if (midDrag.lineColor === 'rgba(0, 0, 0, 0)') {
+      throw new Error(`expected a visible insertion line (::before) above the drop target, got: ${JSON.stringify(midDrag)}`);
+    }
+    await shot('15-drag-mid-drag.png');
+    await win.webContents.executeJavaScript(`(() => {
+      const [first] = document.querySelectorAll('#profile-list .profile-item');
+      window.__fireDrag(first, 'drop', window.__dragRect.top + 2);
     })()`);
     await new Promise((r) => setTimeout(r, 200));
     const afterProfileOrder = await win.webContents.executeJavaScript(`Array.from(document.querySelectorAll('#profile-list .p-label')).map((n) => n.textContent)`);
@@ -802,14 +865,47 @@ async function runSmokeTest(win, core, profileStore, settingsStore) {
     const beforeGroupOrder = await win.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.tab-group .g-name')).map((n) => n.textContent)`);
     console.log('[smoke-test] tab-group order before drag:', JSON.stringify(beforeGroupOrder));
     if (beforeGroupOrder.length !== 2) throw new Error(`expected 2 tab-group headers before the drag test, got ${beforeGroupOrder.length}`);
+    // Same two-step split as the profile drag above, and for the same
+    // reason: this is specifically the case that was silently broken
+    // before — the drag-over CSS targeted .tab-group (the whole card),
+    // but wireListReorderDrag puts the classes on .tab-group-header, so
+    // the indicator never matched anything and never painted, even though
+    // the reorder itself worked. A DOM-order assertion alone can't catch
+    // that; it takes actually checking what got a visible style.
     await win.webContents.executeJavaScript(`(() => {
-      const headers = document.querySelectorAll('.tab-group-header');
-      const [first, second] = headers;
-      const fireDrag = (el, type, clientY) => el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: new DataTransfer(), clientY }));
-      const rect = first.getBoundingClientRect();
-      fireDrag(second, 'dragstart', rect.top);
-      fireDrag(first, 'dragover', rect.top + 2);
-      fireDrag(first, 'drop', rect.top + 2);
+      const [first, second] = document.querySelectorAll('.tab-group-header');
+      window.__dragRect = first.getBoundingClientRect();
+      window.__fireDrag(second, 'dragstart', window.__dragRect.top);
+    })()`);
+    await new Promise((r) => setTimeout(r, 80));
+    await win.webContents.executeJavaScript(`(() => {
+      const [first] = document.querySelectorAll('.tab-group-header');
+      window.__fireDrag(first, 'dragover', window.__dragRect.top + 2);
+    })()`);
+    await new Promise((r) => setTimeout(r, 80));
+    const midDragGroup = await win.webContents.executeJavaScript(`(() => {
+      const [first, second] = document.querySelectorAll('.tab-group-header');
+      return {
+        sourceDimmed: second.classList.contains('dragging-source'),
+        sourceOpacity: getComputedStyle(second).opacity,
+        targetHighlighted: first.classList.contains('drag-over-top'),
+        targetBg: getComputedStyle(first).backgroundColor,
+        lineColor: getComputedStyle(first, '::before').backgroundColor,
+      };
+    })()`);
+    console.log('[smoke-test] mid-drag visual state (tab lists):', JSON.stringify(midDragGroup));
+    if (!midDragGroup.sourceDimmed || Number(midDragGroup.sourceOpacity) >= 0.9) {
+      throw new Error(`expected the dragged tab-list header to visibly dim, got: ${JSON.stringify(midDragGroup)}`);
+    }
+    if (!midDragGroup.targetHighlighted || midDragGroup.targetBg === 'rgba(0, 0, 0, 0)') {
+      throw new Error(`expected the drop-target tab-list header to show a highlighted background, got: ${JSON.stringify(midDragGroup)}`);
+    }
+    if (midDragGroup.lineColor === 'rgba(0, 0, 0, 0)') {
+      throw new Error(`expected a visible insertion line (::before) above the drop-target tab-list header, got: ${JSON.stringify(midDragGroup)}`);
+    }
+    await win.webContents.executeJavaScript(`(() => {
+      const [first] = document.querySelectorAll('.tab-group-header');
+      window.__fireDrag(first, 'drop', window.__dragRect.top + 2);
     })()`);
     await new Promise((r) => setTimeout(r, 200));
     const afterGroupOrder = await win.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.tab-group .g-name')).map((n) => n.textContent)`);

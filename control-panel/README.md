@@ -33,7 +33,11 @@ to one destination at a time).
   the same picker and field labels as the extension's own Options page.
   Reorder by dragging a profile onto another (drop on its top or bottom
   half to land above or below it) — its ⋯ menu's "Move up"/"Move down"
-  still work too, for anyone who hasn't noticed dragging works. **Test
+  still work too, for anyone who hasn't noticed dragging works. Three
+  things make the drag itself hard to miss: the row you're dragging
+  visibly dims, whichever row you're over gets a light accent wash for as
+  long as you're over it, and a bold line marks exactly which side (above
+  or below) it'll land on. **Test
   connection** lives in Edit (a footer button, with the result shown right
   there) and tests exactly what's currently typed — including an edit
   that hasn't been saved yet — not just whatever was last saved.
@@ -96,7 +100,10 @@ to one destination at a time).
   running (a taskbar-pinned icon is the common way to hit this, especially
   while the window is minimized or hidden in the tray) brings the existing
   window forward instead of starting a second, independent process with no
-  coordination between them (`app.requestSingleInstanceLock()`).
+  coordination between them (`app.requestSingleInstanceLock()`). Verified
+  by actually launching two real instances against the same profile
+  directory: the second exits immediately without ever reaching startup,
+  the first keeps running untouched.
 - **Options** (File → Options…, or the sidebar button) — start with Windows
   (a real login-item registration, not a hand-rolled registry edit), start
   minimized to the tray, reopen the last profile you had open on startup,
@@ -131,6 +138,10 @@ to one destination at a time).
   install. Only the installer build can update itself this way — the
   portable `.exe` has nothing installed to update in place, so it always
   reports "not available" there; download a new copy by hand instead.
+  Options has its own dedicated, clearly separated **Updates** section
+  (heading, divider, full-size button and status text) with the same live
+  check/progress/restart — not just a frequency dropdown, and not the
+  small muted text this all started as.
 
 ## How it stays compatible with the extension
 

@@ -128,12 +128,35 @@ button, input, select { font: inherit; color: inherit; }
 }
 .profile-item:hover .p-menu-btn, .profile-item.active .p-menu-btn { opacity: 1; }
 .profile-item .p-menu-btn:hover { background: var(--bg-hover); color: var(--text); }
-/* Drag-to-reorder (profiles and tab-group cards, see wireListReorderDrag in
-   app.js). box-shadow rather than a border/outline so the indicator can't
-   nudge layout by even a pixel when it toggles on and off mid-drag. */
+/* Drag-to-reorder (profiles and tab-list headers, see wireListReorderDrag
+   in app.js). Three signals together, not just one subtle line, so it's
+   never ambiguous what's being dragged or where it would land:
+     1. the row being dragged visibly dims (.dragging-source) — it's
+        unmistakably "picked up", not just sitting there unchanged.
+     2. whichever row you're over gets a light accent wash the whole time
+        you're over it, not just a thin edge.
+     3. a bold line — thicker than a border, and drawn via a pseudo-element
+        so it can't nudge layout even a pixel — marks exactly which side
+        (above/below) it will land on. */
 .profile-item[draggable="true"], .tab-group-header[draggable="true"] { cursor: grab; }
-.profile-item.drag-over-top, .tab-group.drag-over-top { box-shadow: inset 0 2px 0 var(--accent); }
-.profile-item.drag-over-bottom, .tab-group.drag-over-bottom { box-shadow: inset 0 -2px 0 var(--accent); }
+.profile-item.dragging-source, .tab-group-header.dragging-source { opacity: 0.35; }
+.profile-item, .tab-group-header { position: relative; }
+.profile-item.drag-over-top, .profile-item.drag-over-bottom,
+.tab-group-header.drag-over-top, .tab-group-header.drag-over-bottom {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.profile-item.drag-over-top::before, .profile-item.drag-over-bottom::after,
+.tab-group-header.drag-over-top::before, .tab-group-header.drag-over-bottom::after {
+  content: '';
+  position: absolute;
+  left: 4px; right: 4px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.profile-item.drag-over-top::before, .tab-group-header.drag-over-top::before { top: -3px; }
+.profile-item.drag-over-bottom::after, .tab-group-header.drag-over-bottom::after { bottom: -3px; }
 
 .profile-list-empty {
   color: var(--text-faint);
@@ -508,10 +531,27 @@ button, input, select { font: inherit; color: inherit; }
 .test-status.warning { color: var(--warning); }
 
 /* About modal's update section. */
-.update-status { font-size: 12.5px; color: var(--text-dim); margin: 0 0 6px; line-height: 1.5; }
-.update-progress { height: 6px; border-radius: 3px; background: var(--bg-raised); overflow: hidden; margin-bottom: 10px; }
+/* Sized and coloured to actually stand out — this used to be small muted
+   text easy to lose among everything else in the modal, which was part of
+   why a stuck "downloading" message went unnoticed. */
+.update-status { font-size: 14px; font-weight: 500; color: var(--text); margin: 0 0 8px; line-height: 1.5; }
+.update-status.active { color: var(--accent); }
+.update-status.success { color: var(--success); font-weight: 600; }
+.update-status.warning { color: var(--warning); font-weight: 600; }
+.update-progress { height: 8px; border-radius: 4px; background: var(--bg-raised); overflow: hidden; margin-bottom: 12px; border: 1px solid var(--border); }
 .update-progress-fill { height: 100%; width: 0; background: var(--accent); transition: width 0.2s ease; }
-.update-actions { display: flex; gap: 8px; }
+.update-actions { display: flex; gap: 10px; }
+.update-actions .btn { padding: 9px 16px; font-size: 13.5px; font-weight: 600; }
+
+/* A clearly separate block within Options — a heading plus a divider from
+   the plain checkbox/dropdown settings above it, not just another .field
+   blending into the same flat list. */
+.options-section {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.options-section-title { margin: 0 0 12px; font-size: 14px; font-weight: 700; color: var(--text); }
 .field-row { display: flex; gap: 10px; }
 .field-row .field { flex: 1; }
 .checkbox-field { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
