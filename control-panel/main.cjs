@@ -241,11 +241,32 @@ function registerIpc(core, profileStore, sessions, appMeta) {
   handle('profiles:testConnection', async (id) => {
     const profile = await profileStore.get(id);
     if (!profile) throw new Error(`No such profile: ${id}`);
+    const providers = core.getVendored().TabbySyncProviders;
     const results = {};
-    try { await core.remoteBookmarks.load(profile); results.bookmarks = { ok: true }; }
-    catch (e) { results.bookmarks = { ok: false, message: e.message }; }
-    try { await core.remoteTabs.load(profile); results.tabs = { ok: true }; }
-    catch (e) { results.tabs = { ok: false, message: e.message }; }
+
+    // bookmarks-lib/sync.js's getRemote always attempts the request — an
+    // incomplete profile just fails there for a real reason (bad URL, bad
+    // token). vendor/tabs/storage.js's pullRemote is different: it checks
+    // isConfigured() FIRST and, if that's false, resolves with no request
+    // and no error at all — which remote-tabs.js's load() then reports as
+    // an empty, "reachable" result. Checked here explicitly so an
+    // unconfigured profile is reported as exactly that, not as a silent,
+    // untested "ok" that happens to look identical to a real success.
+    const bmCfg = core.bookmarksCfg(profile);
+    if (!providers.isConfigured(bmCfg)) {
+      results.bookmarks = { ok: false, message: 'Not fully configured yet — check the server address, token and sync name in Edit.' };
+    } else {
+      try { await core.remoteBookmarks.load(profile); results.bookmarks = { ok: true }; }
+      catch (e) { results.bookmarks = { ok: false, message: e.message }; }
+    }
+
+    const tbCfg = core.tabsCfg(profile);
+    if (!providers.isConfigured(tbCfg)) {
+      results.tabs = { ok: false, message: 'Not fully configured yet — check the server address, token and sync name in Edit.' };
+    } else {
+      try { await core.remoteTabs.load(profile); results.tabs = { ok: true }; }
+      catch (e) { results.tabs = { ok: false, message: e.message }; }
+    }
     return results;
   });
 
