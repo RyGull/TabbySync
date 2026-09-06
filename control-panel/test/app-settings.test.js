@@ -71,3 +71,23 @@ test('lastActiveProfileId can be cleared back to null', async () => {
   const s = await store.update({ lastActiveProfileId: null });
   assert.equal(s.lastActiveProfileId, null);
 });
+
+test('updateCheckFrequency accepts the known values and rejects anything else', async () => {
+  const store = createSettingsStore(await freshDir());
+  for (const freq of ['startup', 'daily', 'weekly', 'monthly', 'never']) {
+    const s = await store.update({ updateCheckFrequency: freq });
+    assert.equal(s.updateCheckFrequency, freq);
+  }
+  const rejected = await store.update({ updateCheckFrequency: 'hourly' });
+  assert.equal(rejected.updateCheckFrequency, 'never'); // unchanged from the last valid update above ('never' was last in the loop)
+});
+
+test('lastUpdateCheckAt only accepts a positive number, else null', async () => {
+  const store = createSettingsStore(await freshDir());
+  const s1 = await store.update({ lastUpdateCheckAt: 1234567890 });
+  assert.equal(s1.lastUpdateCheckAt, 1234567890);
+  const s2 = await store.update({ lastUpdateCheckAt: -1 });
+  assert.equal(s2.lastUpdateCheckAt, null);
+  const s3 = await store.update({ lastUpdateCheckAt: 'yesterday' });
+  assert.equal(s3.lastUpdateCheckAt, null);
+});

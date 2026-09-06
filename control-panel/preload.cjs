@@ -25,6 +25,19 @@ contextBridge.exposeInMainWorld('tabbysync', {
     onOpenOptions: (cb) => ipcRenderer.on('menu:open-options', () => cb()),
     onOpenPrivacy: (cb) => ipcRenderer.on('menu:open-privacy', () => cb()),
     checkForUpdates: () => call('app:checkForUpdates'),
+    getUpdateStatus: () => call('app:getUpdateStatus'),
+    installUpdate: () => call('app:installUpdate'),
+    // Unlike onOpenOptions/onOpenPrivacy (one fixed listener for the app's
+    // whole lifetime), the About modal opens and closes repeatedly — each
+    // open registering another ipcRenderer listener with no matching
+    // teardown would mean an old modal's callback still firing (harmlessly,
+    // but wastefully and multiply) after it's long gone. Returns an
+    // unsubscribe function; the modal calls it when it closes.
+    onUpdateStatus: (cb) => {
+      const listener = (_event, status) => cb(status);
+      ipcRenderer.on('updater:status', listener);
+      return () => ipcRenderer.removeListener('updater:status', listener);
+    },
   },
 
   settings: {

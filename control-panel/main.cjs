@@ -8,7 +8,7 @@
 
 const path = require('node:path');
 const fs = require('node:fs/promises');
-const { app, BrowserWindow, ipcMain, dialog, shell, safeStorage, Menu, Tray, nativeTheme } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, safeStorage, Menu, Tray, nativeTheme, Notification } = require('electron');
 const { autoUpdater } = require('electron-updater');
 
 const ICON_PATH = path.join(__dirname, 'build', 'icon.ico');
@@ -251,6 +251,56 @@ function buildMenu() {
 }
 
 /**
+ * Records the latest update state and pushes it to the renderer immediately
+ * (an open About modal listens for this — see api.app.onUpdateStatus) —
+ * NOT just returned from app:checkForUpdates. That was the original bug:
+ * autoUpdater.checkForUpdates()'s own promise resolves once it knows
+ * whether an update EXISTS, not once downloading it finishes, so awaiting
+ * it and returning updateStatus right after only ever reported "found it,
+ * downloading" and nothing else ever arrived — the download's actual
+ * progress and completion happened later, with nothing listening.
+ */
+function setUpdateStatus(next) {
+  updateStatus = next;
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('updater:status', updateStatus);
+}
+
+/** Brings the window to the front, then asks to restart — shared by the notification's click and by update-downloaded firing while the window's already visible. */
+async function promptInstallUpdate(version) {
+  if (!mainWindow) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+  const result = await dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    buttons: ['Restart and Install', 'Later'],
+    defaultId: 0,
+    cancelId: 1,
+    message: `TabbySync Control Panel ${version} is ready to install.`,
+    detail: 'Restarting installs it right away. Choosing Later installs it automatically the next time you fully quit the app.',
+  });
+  if (result.response === 0) { isQuitting = true; autoUpdater.quitAndInstall(); }
+}
+
+const UPDATE_FREQUENCY_MS = { daily: 24 * 60 * 60 * 1000, weekly: 7 * 24 * 60 * 60 * 1000, monthly: 30 * 24 * 60 * 60 * 1000 };
+/** Whether enough time has passed since lastCheckAt for this frequency setting to check again — exported-shaped as a plain function so it's easy to reason about/test by inspection. 'startup' (the default) and a never-yet-checked install always say yes; 'never' always says no. */
+function updateCheckDue(frequency, lastCheckAt) {
+  if (frequency === 'never') return false;
+  if (frequency === 'startup' || !lastCheckAt) return true;
+  const intervalMs = UPDATE_FREQUENCY_MS[frequency];
+  if (!intervalMs) return true; // unrecognized value — fail open to checking rather than silently never checking again
+  return (Date.now() - lastCheckAt) >= intervalMs;
+}
+
+/** Actually calls electron-updater. Shared by the startup check and the manual button — both just need "run a check, record when", the rest happens via the event listeners wired in setupAutoUpdate(). */
+function runUpdateCheck(settingsStore) {
+  settingsStore.update({ lastUpdateCheckAt: Date.now() }).catch((e) => console.error(e));
+  autoUpdater.checkForUpdates().catch((err) => {
+    setUpdateStatus({ state: 'error', message: err && err.message });
+  });
+}
+
+/**
  * Update checking: electron-updater, fed by the GitHub Releases this repo
  * already publishes (package.json's build.publish tells electron-builder
  * what to bake into dist/latest.yml at build time — .github/workflows/
@@ -269,41 +319,72 @@ function buildMenu() {
  * autoInstallOnAppQuit (electron-updater's default, left untouched here)
  * installs it on the next real quit anyway, prompt or not.
  *
- * Only meaningful for the installed (NSIS) build: app.isPackaged is false
- * for `npm start`/the smoke test (there's no dist/resources/app-update.yml
- * in a dev checkout for electron-updater to read), and a portable .exe has
- * nothing installed for it to update in place.
+ * The event listeners below are wired unconditionally — harmless in a dev
+ * checkout or the smoke test, since nothing there ever calls
+ * checkForUpdates() on its own to trigger them. What IS gated on
+ * app.isPackaged/PORTABLE_EXECUTABLE_DIR, at the bottom, is automatically
+ * checking on startup: app.isPackaged is false for `npm start`/the smoke
+ * test (there's no dist/resources/app-update.yml in a dev checkout for
+ * electron-updater to read), and a portable .exe has nothing installed for
+ * it to update in place. app:checkForUpdates (main.cjs's IPC handler) has
+ * this same guard for the manual button, independently of this function.
  */
-function setupAutoUpdate() {
-  if (!app.isPackaged || process.env.PORTABLE_EXECUTABLE_DIR) return;
-
+async function setupAutoUpdate(settingsStore) {
   autoUpdater.autoDownload = true;
 
-  autoUpdater.on('checking-for-update', () => { updateStatus = { state: 'checking' }; });
-  autoUpdater.on('update-not-available', () => { updateStatus = { state: 'not-available' }; });
+  autoUpdater.on('checking-for-update', () => setUpdateStatus({ state: 'checking' }));
+  autoUpdater.on('update-not-available', () => setUpdateStatus({ state: 'not-available' }));
   autoUpdater.on('error', (err) => {
-    updateStatus = { state: 'error', message: err && err.message };
+    setUpdateStatus({ state: 'error', message: err && err.message });
     console.error('[TabbySync Control Panel] update check failed:', err && err.message);
   });
   autoUpdater.on('update-available', (info) => {
-    updateStatus = { state: 'downloading', version: info.version };
+    // No percent yet — the first download-progress tick fills that in.
+    // Kept as its own state (rather than waiting for the first tick) so
+    // the About modal has something to say immediately: "found it" is
+    // itself useful feedback, not silence until progress happens to load.
+    setUpdateStatus({ state: 'downloading', version: info.version });
+  });
+  autoUpdater.on('download-progress', (progress) => {
+    setUpdateStatus({ state: 'downloading', version: updateStatus.version, percent: progress.percent });
   });
   autoUpdater.on('update-downloaded', async (info) => {
-    updateStatus = { state: 'downloaded', version: info.version };
-    const result = await dialog.showMessageBox(mainWindow, {
-      type: 'info',
-      buttons: ['Restart and Install', 'Later'],
-      defaultId: 0,
-      cancelId: 1,
-      message: `TabbySync Control Panel ${info.version} is ready to install.`,
-      detail: 'Restarting installs it right away. Choosing Later installs it automatically the next time you fully quit the app.',
-    });
-    if (result.response === 0) { isQuitting = true; autoUpdater.quitAndInstall(); }
+    setUpdateStatus({ state: 'downloaded', version: info.version });
+
+    // Exactly one of these, not both: if the window's already up and
+    // visible, ask directly — a toast on top of a dialog you're already
+    // looking at is just noise. Otherwise (minimized, hidden in the tray,
+    // or no window at all) a dialog parented to that window won't surface
+    // on its own, so a toast notification is the one thing that reaches
+    // someone in that state; clicking it prompts the same way.
+    if (mainWindow && mainWindow.isVisible() && !mainWindow.isMinimized()) {
+      await promptInstallUpdate(info.version);
+    } else {
+      // Best-effort, same spirit as createTray()'s own try/catch: a
+      // platform where notifications don't actually work despite
+      // isSupported() saying so (this sandbox's Xvfb has no D-Bus session
+      // for Linux's notification API to talk to, for instance) must not
+      // take the rest of this handler down with it.
+      try {
+        if (Notification.isSupported()) {
+          const n = new Notification({
+            title: 'TabbySync Control Panel update ready',
+            body: `Version ${info.version} has finished downloading. Click to restart and install.`,
+          });
+          n.on('click', () => promptInstallUpdate(info.version));
+          n.show();
+        }
+      } catch (e) {
+        console.error('[TabbySync Control Panel] could not show the update-ready notification:', e.message);
+      }
+    }
   });
 
-  autoUpdater.checkForUpdates().catch((err) => {
-    updateStatus = { state: 'error', message: err && err.message };
-  });
+  if (!app.isPackaged || process.env.PORTABLE_EXECUTABLE_DIR) return;
+  const settings = await settingsStore.get();
+  if (updateCheckDue(settings.updateCheckFrequency, settings.lastUpdateCheckAt)) {
+    runUpdateCheck(settingsStore);
+  }
 }
 
 async function main() {
@@ -351,7 +432,7 @@ async function main() {
 
   createTray(settingsStore);
   await createWindow(settingsStore);
-  setupAutoUpdate();
+  setupAutoUpdate(settingsStore).catch((e) => console.error('[TabbySync Control Panel] setupAutoUpdate failed:', e));
 
   app.on('activate', () => {
     if (mainWindow) { mainWindow.show(); return; }
@@ -425,6 +506,20 @@ async function runSmokeTest(win, core, profileStore, settingsStore) {
     await shot('06-options-modal.png');
     await win.webContents.executeJavaScript(`document.getElementById('opt-start-minimized').click()`);
     await new Promise((r) => setTimeout(r, 150));
+
+    // Update-check frequency, added to Options alongside the rest.
+    const updateFreqOptions = await win.webContents.executeJavaScript(
+      `Array.from(document.getElementById('opt-update-frequency').options).map((o) => o.value)`
+    );
+    console.log('[smoke-test] update frequency options:', JSON.stringify(updateFreqOptions));
+    if (JSON.stringify(updateFreqOptions) !== JSON.stringify(['startup', 'daily', 'weekly', 'monthly', 'never'])) {
+      throw new Error(`unexpected update-frequency options: ${JSON.stringify(updateFreqOptions)}`);
+    }
+    await win.webContents.executeJavaScript(
+      `document.getElementById('opt-update-frequency').value = 'weekly'; document.getElementById('opt-update-frequency').dispatchEvent(new Event('change'))`
+    );
+    await new Promise((r) => setTimeout(r, 150));
+
     await win.webContents.executeJavaScript(`document.querySelector('.modal-header .close-x').click()`);
     await win.webContents.executeJavaScript(`document.getElementById('theme-select').value = 'dark'; document.getElementById('theme-select').dispatchEvent(new Event('change'))`);
     await new Promise((r) => setTimeout(r, 150));
@@ -433,6 +528,7 @@ async function runSmokeTest(win, core, profileStore, settingsStore) {
     if (afterSettings.startMinimized !== true) throw new Error('Options toggle did not persist to settings.json');
     if (afterSettings.theme !== 'dark') throw new Error('theme dropdown did not persist to settings.json');
     if (nativeTheme.themeSource !== 'dark') throw new Error('theme dropdown did not update nativeTheme.themeSource');
+    if (afterSettings.updateCheckFrequency !== 'weekly') throw new Error('update-frequency dropdown did not persist to settings.json');
 
     // Light theme is brand-new code (the app was dark-only before this),
     // so it gets its own screenshot rather than trusting the CSS by
@@ -556,6 +652,80 @@ async function runSmokeTest(win, core, profileStore, settingsStore) {
       throw new Error(`expected the update-check button to report a dev build, got: "${updateStatusText}"`);
     }
     await shot('12-about-update-check.png');
+
+    // --- fix: a progress bar + percent, live while the modal stays open —
+    // setUpdateStatus() is called directly (same function
+    // download-progress's own listener calls) rather than driving a real
+    // download, since this sandbox has no route to actually reach GitHub
+    // Releases. That's the one thing this can't cover end to end; what it
+    // does cover is exactly the gap that was reported: does the modal
+    // update itself as progress arrives, instead of freezing on whatever
+    // the initial check call happened to return. ---
+    setUpdateStatus({ state: 'downloading', version: '9.9.9', percent: 42.3 });
+    await new Promise((r) => setTimeout(r, 150));
+    const midDownload = await win.webContents.executeJavaScript(`({
+      text: document.querySelector('.update-status').textContent,
+      barHidden: document.querySelector('.update-progress').hidden,
+      barWidth: document.querySelector('.update-progress-fill').style.width,
+      restartHidden: document.querySelector('.update-actions .btn-primary').hidden,
+    })`);
+    console.log('[smoke-test] mid-download UI:', JSON.stringify(midDownload));
+    if (!midDownload.text.includes('42%')) throw new Error(`expected the progress percent in the status text, got: "${midDownload.text}"`);
+    if (midDownload.barHidden || midDownload.barWidth !== '42%') throw new Error(`expected a visible progress bar at 42%, got: ${JSON.stringify(midDownload)}`);
+    if (!midDownload.restartHidden) throw new Error('restart button should not show until the download is actually finished');
+    await shot('13-update-progress.png');
+
+    // Fires the REAL update-downloaded listener (autoUpdater is a plain
+    // EventEmitter) rather than just calling setUpdateStatus by hand, so
+    // this also exercises the notification + auto-prompt-if-visible logic,
+    // not just the status push. dialog.showMessageBox is swapped out for
+    // the duration — it's a real blocking native dialog, and nothing in a
+    // headless Xvfb run is going to click its button.
+    const originalShowMessageBox = dialog.showMessageBox;
+    let dialogArgs = null;
+    dialog.showMessageBox = async (_win, opts) => { dialogArgs = opts; return { response: 1 }; }; // 1 = "Later" — never actually quitAndInstall in a test
+    try {
+      autoUpdater.emit('update-downloaded', { version: '9.9.9' });
+      await new Promise((r) => setTimeout(r, 200));
+    } finally {
+      dialog.showMessageBox = originalShowMessageBox;
+    }
+    console.log('[smoke-test] update-downloaded fired: dialog shown =', !!dialogArgs, dialogArgs && dialogArgs.message);
+    if (!dialogArgs || !dialogArgs.message.includes('9.9.9')) {
+      throw new Error('update-downloaded should have prompted to install (the window is visible) — got no dialog or the wrong version');
+    }
+    const downloaded = await win.webContents.executeJavaScript(`({
+      text: document.querySelector('.update-status').textContent,
+      barHidden: document.querySelector('.update-progress').hidden,
+      restartHidden: document.querySelector('.update-actions .btn-primary').hidden,
+    })`);
+    console.log('[smoke-test] downloaded UI:', JSON.stringify(downloaded));
+    if (!downloaded.text.includes('9.9.9')) throw new Error(`expected the downloaded version in the status text, got: "${downloaded.text}"`);
+    if (!downloaded.barHidden) throw new Error('progress bar should hide again once the download is done');
+    if (downloaded.restartHidden) throw new Error('expected the Restart and install button to appear once the download finished');
+    await shot('14-update-downloaded.png');
+    await win.webContents.executeJavaScript(`document.querySelector('.modal-header .close-x').click()`);
+
+    // Reopening About (no auto-check) should show that "downloaded" state
+    // immediately, from app:getUpdateStatus — not a blank slate that needs
+    // its own click to reveal a download that's already sitting there.
+    await win.webContents.executeJavaScript(`openAboutModal()`);
+    await new Promise((r) => setTimeout(r, 200));
+    const reopenedText = await win.webContents.executeJavaScript(`document.querySelector('.update-status').textContent`);
+    console.log('[smoke-test] About reopened, status shown immediately:', reopenedText);
+    if (!reopenedText.includes('9.9.9')) throw new Error(`reopening About should show the still-downloaded state immediately, got: "${reopenedText}"`);
+    await win.webContents.executeJavaScript(`document.querySelector('.modal-header .close-x').click()`);
+
+    // The sidebar's own "Updates" button (next to About) opens the same
+    // modal AND fires a check immediately, rather than requiring About to
+    // be opened first and its own button clicked.
+    await win.webContents.executeJavaScript(`document.getElementById('btn-check-updates').click()`);
+    await new Promise((r) => setTimeout(r, 400));
+    const sidebarButtonText = await win.webContents.executeJavaScript(`document.querySelector('.update-status').textContent`);
+    console.log('[smoke-test] sidebar Updates button auto-checked:', sidebarButtonText);
+    if (!/dev build/i.test(sidebarButtonText)) {
+      throw new Error(`sidebar Updates button should have auto-triggered a check, got: "${sidebarButtonText}"`);
+    }
     await win.webContents.executeJavaScript(`document.querySelector('.modal-header .close-x').click()`);
 
     // --- newest batch, item 1/6: theme options carry an icon, and the
@@ -735,17 +905,34 @@ function registerIpc(core, profileStore, sessions, settingsStore, appMeta) {
     platform: process.platform,
   }));
 
-  // Manual "Check for updates" (About modal). Reuses setupAutoUpdate()'s own
-  // autoUpdater instance/listeners — this just triggers a check and reports
-  // back whatever updateStatus those listeners leave behind, same as the
-  // automatic startup check does.
-  handle('app:checkForUpdates', async () => {
-    if (!app.isPackaged) return { state: 'not-available', reason: 'This is a dev build — update checking only runs in an installed copy.' };
-    if (process.env.PORTABLE_EXECUTABLE_DIR) return { state: 'not-available', reason: 'The portable build has nothing installed to update in place — download a new copy from the website or GitHub instead.' };
-    await autoUpdater.checkForUpdates().catch((err) => {
-      updateStatus = { state: 'error', message: err && err.message };
-    });
-    return updateStatus;
+  // Whatever's true right now, with no side effect — so opening the About
+  // modal shows a download already under way (started from the sidebar
+  // button, or the automatic startup check) instead of a blank slate that
+  // needs its own click to reveal what's already happening.
+  handle('app:getUpdateStatus', () => updateStatus);
+
+  // Manual "Check for updates" (About modal, and the sidebar button next to
+  // it). Reuses setupAutoUpdate()'s own autoUpdater instance/listeners —
+  // this just triggers a check; live progress arrives over the
+  // updater:status push (api.app.onUpdateStatus), not this call's return
+  // value. Awaiting the checkForUpdates() promise itself and returning
+  // updateStatus right after used to be the whole handler — that only ever
+  // reports "found it, downloading", because that promise resolves once
+  // electron-updater knows whether an update EXISTS, not once downloading
+  // it finishes. Nothing was wrong with the download; nothing was left
+  // listening for how it turned out.
+  handle('app:checkForUpdates', () => {
+    if (!app.isPackaged) { setUpdateStatus({ state: 'not-available', reason: 'This is a dev build — update checking only runs in an installed copy.' }); return updateStatus; }
+    if (process.env.PORTABLE_EXECUTABLE_DIR) { setUpdateStatus({ state: 'not-available', reason: 'The portable build has nothing installed to update in place — download a new copy from the website or GitHub instead.' }); return updateStatus; }
+    runUpdateCheck(settingsStore);
+    return updateStatus; // whatever it is right this instant (often 'checking') — the push channel carries the rest
+  });
+
+  // "Restart and install" button in the About modal, once a download has
+  // finished — the same action the native prompt's own button takes.
+  handle('app:installUpdate', () => {
+    isQuitting = true;
+    autoUpdater.quitAndInstall();
   });
 
   handle('profiles:list', () => profileStore.list());

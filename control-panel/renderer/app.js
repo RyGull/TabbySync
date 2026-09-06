@@ -72,7 +72,8 @@ function showError(err, fallback) {
 
 let modalStack = [];
 
-function openModal({ title, body, footer, wide }) {
+/** onClose (optional): called exactly once, however the modal ends up closing — the ✕, the backdrop, Escape, or m.close() itself — not just one of those paths. Currently only the About modal uses it, to unsubscribe its onUpdateStatus listener. */
+function openModal({ title, body, footer, wide, onClose }) {
   const overlay = h('div', { class: 'modal-root' });
   const modal = h('div', { class: 'modal' }, [
     h('div', { class: 'modal-header' }, [
@@ -90,6 +91,7 @@ function openModal({ title, body, footer, wide }) {
   function close() {
     overlay.remove();
     modalStack = modalStack.filter((m) => m !== entry);
+    if (onClose) onClose();
   }
   modalStack.push(entry);
   return entry;
@@ -638,27 +640,52 @@ function formatTestConnectionResult(r) {
 $('#btn-edit-profile').addEventListener('click', () => { const p = activeProfile(); if (p) openProfileModal(p); });
 $('#btn-profile-menu').addEventListener('click', (e) => { const p = activeProfile(); if (p) openProfileMenu(p, e.currentTarget); });
 $('#btn-new-profile').addEventListener('click', () => openProfileModal(null));
-$('#btn-about').addEventListener('click', openAboutModal);
+$('#btn-about').addEventListener('click', () => openAboutModal());
+// Same modal, just also fires off a check immediately — a quick "is there
+// something new" without digging into About first.
+$('#btn-check-updates').addEventListener('click', () => openAboutModal(true));
 
-async function openAboutModal() {
+/** @param {boolean} [autoCheck] - true from the sidebar's "Check updates" button; runs a check as soon as the modal opens instead of waiting for its own button. */
+async function openAboutModal(autoCheck) {
   const info = await api.app.info();
-  const updateLine = h('p', { class: 'update-status' }, 'Updates download automatically in the background and ask before installing.');
+  const updateLine = h('p', { class: 'update-status' }, '');
+  const progressBar = h('div', { class: 'update-progress', hidden: true }, [h('div', { class: 'update-progress-fill' })]);
   const checkBtn = h('button', { class: 'btn btn-sm', type: 'button' }, 'Check for updates');
-  checkBtn.addEventListener('click', async () => {
+  const restartBtn = h('button', { class: 'btn btn-sm btn-primary', type: 'button', hidden: true }, 'Restart and install');
+
+  function renderStatus(status) {
+    updateLine.textContent = describeUpdateStatus(status, info.version);
+    const showBar = !!(status && status.state === 'downloading' && typeof status.percent === 'number');
+    progressBar.hidden = !showBar;
+    if (showBar) progressBar.querySelector('.update-progress-fill').style.width = `${Math.min(100, Math.round(status.percent))}%`;
+    restartBtn.hidden = !(status && status.state === 'downloaded');
+  }
+
+  async function runCheck() {
     checkBtn.disabled = true;
+    progressBar.hidden = true;
     updateLine.textContent = 'Checking…';
     try {
-      const status = await api.app.checkForUpdates();
-      updateLine.textContent = describeUpdateStatus(status, info.version);
+      renderStatus(await api.app.checkForUpdates());
     } catch (e) {
       updateLine.textContent = 'Could not check for updates.';
       console.error(e);
     } finally {
       checkBtn.disabled = false;
     }
-  });
+  }
+  checkBtn.addEventListener('click', runCheck);
+  restartBtn.addEventListener('click', () => api.app.installUpdate().catch((e) => showError(e, 'Could not start the install.')));
 
-  openModal({
+  // Live updates for as long as this modal stays open — a download's
+  // progress ticking up, or it finishing after the initial check already
+  // returned. That gap is the whole reason this exists: checkForUpdates()
+  // only ever resolves once electron-updater knows an update EXISTS, well
+  // before a download started from it actually finishes — nothing used to
+  // be listening for how it turned out.
+  const offStatus = api.app.onUpdateStatus(renderStatus);
+
+  const m = openModal({
     title: 'About TabbySync Control Panel',
     body: h('div', {}, [
       h('p', {}, `Version ${info.version}`),
@@ -667,21 +694,31 @@ async function openAboutModal() {
         ? 'Tokens and passphrases are encrypted at rest using your operating system’s secure storage.'
         : '⚠️ Your OS secure storage is not available — tokens and passphrases are stored in plain text in the file above.'),
       h('p', {}, 'A companion desktop app for TabbySync: manages the same self-hosted / GitHub Gist / JSONBin sync destinations your browser extension uses, so you can add, remove, move and copy bookmarks and saved tabs across every profile from one place.'),
-      h('div', { class: 'field' }, [updateLine, checkBtn]),
+      h('div', { class: 'field' }, [updateLine, progressBar, h('div', { class: 'update-actions' }, [checkBtn, restartBtn])]),
     ]),
-    footer: [h('button', { class: 'btn btn-primary', type: 'button', onclick: (e) => e.target.closest('.modal-root').remove() }, 'Close')],
+    footer: [h('button', { class: 'btn btn-primary', type: 'button', onclick: () => m.close() }, 'Close')],
+    onClose: offStatus,
   });
+
+  // Show whatever's already true right now before deciding whether to also
+  // kick off a fresh check — reopening mid-download should show the
+  // download in progress immediately, not a blank slate.
+  try { renderStatus(await api.app.getUpdateStatus()); } catch (e) { console.error(e); }
+  if (autoCheck) runCheck();
 }
 
-/** Turns main.cjs's app:checkForUpdates result into one line of human text. */
+/** Turns main.cjs's update-status shape (app:checkForUpdates / app:getUpdateStatus / the updater:status push) into one line of human text. */
 function describeUpdateStatus(status, currentVersion) {
   switch (status && status.state) {
     case 'checking': return 'Checking…';
     case 'not-available': return status.reason || `You're up to date (${currentVersion}).`;
-    case 'downloading': return `A new version (${status.version}) was found and is downloading in the background.`;
-    case 'downloaded': return `Version ${status.version} is downloaded and ready — restart to install it (you'll be asked).`;
+    case 'downloading':
+      return typeof status.percent === 'number'
+        ? `Downloading version ${status.version}… ${Math.round(status.percent)}%`
+        : `Found version ${status.version} — starting the download…`;
+    case 'downloaded': return `Version ${status.version} is downloaded and ready.`;
     case 'error': return `Couldn't check for updates: ${status.message || 'unknown error'}`;
-    default: return `You're up to date (${currentVersion}).`;
+    default: return 'Updates download automatically in the background and ask before installing.';
   }
 }
 
@@ -1564,6 +1601,17 @@ async function openOptionsModal() {
   ]);
   closeBehavior.value = settings.closeBehavior;
 
+  const updateFrequency = h('select', { id: 'opt-update-frequency' }, [
+    h('option', { value: 'startup' }, 'Every time the app starts'),
+    h('option', { value: 'daily' }, 'Once a day'),
+    h('option', { value: 'weekly' }, 'Once a week'),
+    h('option', { value: 'monthly' }, 'Once a month'),
+    h('option', { value: 'never' }, 'Never (I\'ll check manually)'),
+  ]);
+  updateFrequency.value = settings.updateCheckFrequency;
+  const lastCheckedHint = h('div', { class: 'hint' },
+    settings.lastUpdateCheckAt ? `Last checked ${fmtWhen(settings.lastUpdateCheckAt)}.` : 'Never checked yet.');
+
   function bindCheckbox(input, key) {
     input.addEventListener('change', () => {
       api.settings.update({ [key]: input.checked }).catch((e) => showError(e, 'Could not save that option.'));
@@ -1575,6 +1623,9 @@ async function openOptionsModal() {
   closeBehavior.addEventListener('change', () => {
     api.settings.update({ closeBehavior: closeBehavior.value }).catch((e) => showError(e, 'Could not save that option.'));
   });
+  updateFrequency.addEventListener('change', () => {
+    api.settings.update({ updateCheckFrequency: updateFrequency.value }).catch((e) => showError(e, 'Could not save that option.'));
+  });
 
   const m = openModal({
     title: 'Options',
@@ -1584,6 +1635,12 @@ async function openOptionsModal() {
       h('div', { class: 'checkbox-field' }, [reopenLastProfile, h('label', { for: 'opt-reopen-last-profile' }, 'Reopen the last profile you had open on startup')]),
       h('div', { class: 'field' }, [h('label', { for: 'opt-close-behavior' }, 'When closing the window (✕)'), closeBehavior]),
       h('p', {}, "This app doesn't sync in the background — minimizing to the tray just keeps the window a click away, nothing more."),
+      h('div', { class: 'field' }, [
+        h('label', { for: 'opt-update-frequency' }, 'Check for updates'),
+        updateFrequency,
+        lastCheckedHint,
+      ]),
+      h('p', {}, 'A found update always downloads in the background and asks before installing, regardless of how often it checks — this only controls how often it looks. "About" (or the sidebar\'s "Updates" button) can also check any time by hand.'),
     ]),
     footer: [h('button', { class: 'btn btn-primary', type: 'button', onclick: () => m.close() }, 'Close')],
   });

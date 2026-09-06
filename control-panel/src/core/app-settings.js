@@ -15,6 +15,7 @@ const FILE_NAME = 'settings.json';
 
 const THEMES = new Set(['system', 'light', 'dark']);
 const CLOSE_BEHAVIORS = new Set(['ask', 'minimize', 'quit']);
+const UPDATE_CHECK_FREQUENCIES = new Set(['startup', 'daily', 'weekly', 'monthly', 'never']);
 
 export const DEFAULTS = Object.freeze({
   theme: 'system',
@@ -28,6 +29,14 @@ export const DEFAULTS = Object.freeze({
   // of reopenLastProfile, so turning that setting on later has something to
   // act on immediately instead of waiting for the next selection.
   lastActiveProfileId: null,
+  // How often setupAutoUpdate() checks GitHub Releases on startup —
+  // 'startup' means every launch (the original, still-default behavior);
+  // 'never' means only the manual "Check for updates" button does anything.
+  updateCheckFrequency: 'startup',
+  // When a check last actually ran (startup or manual) — main.cjs compares
+  // this against updateCheckFrequency to decide whether today's launch
+  // should check again. Not meant to be hand-edited; null means "never".
+  lastUpdateCheckAt: null,
 });
 
 function sanitize(patch) {
@@ -38,6 +47,8 @@ function sanitize(patch) {
   if ('closeBehavior' in patch && CLOSE_BEHAVIORS.has(patch.closeBehavior)) out.closeBehavior = patch.closeBehavior;
   if ('reopenLastProfile' in patch) out.reopenLastProfile = !!patch.reopenLastProfile;
   if ('lastActiveProfileId' in patch) out.lastActiveProfileId = patch.lastActiveProfileId || null;
+  if ('updateCheckFrequency' in patch && UPDATE_CHECK_FREQUENCIES.has(patch.updateCheckFrequency)) out.updateCheckFrequency = patch.updateCheckFrequency;
+  if ('lastUpdateCheckAt' in patch) out.lastUpdateCheckAt = (typeof patch.lastUpdateCheckAt === 'number' && patch.lastUpdateCheckAt > 0) ? patch.lastUpdateCheckAt : null;
   return out;
 }
 

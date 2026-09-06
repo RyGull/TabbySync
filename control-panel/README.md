@@ -111,15 +111,26 @@ to one destination at a time).
   the extension's — this app stores multiple profiles and has no
   equivalent of a single active provider, so the two policies read
   similarly but aren't the same document).
-- **Updates** — the installed app checks this repo's Releases on startup
+- **Updates** — the installed app checks this repo's Releases
   (`electron-updater`), downloads a new version in the background if one
   exists, then asks before restarting to install it — declining still
   installs it automatically the next time you fully quit, so nobody has
-  to remember to come back. "About" (sidebar) has a **Check for updates**
-  button for an on-demand check any time. Only the installer build can
-  update itself this way — the portable `.exe` has nothing installed to
-  update in place, so it always reports "not available" there; download a
-  new copy by hand instead.
+  to remember to come back. How often it checks on its own is Options →
+  **Check for updates**: every launch (the default), daily, weekly,
+  monthly, or never (manual only). The sidebar's **Updates** button (next
+  to About, a 2-column row) opens About and checks right away regardless
+  of that setting. While a download is running, About shows a live
+  percentage and progress bar — not a one-time "downloading…" that never
+  changes again, which is what shipped in 1.3.0: the bug was that the
+  check call's own promise resolves once it knows an update *exists*, not
+  once downloading it *finishes*, so nothing was ever listening for what
+  happened after. Status now pushes to About the whole time it's open
+  (`updater:status`), and once a download finishes, a system notification
+  fires so it isn't missed if the window's minimized or in the tray —
+  clicking it (or the in-app "Restart and install" button) prompts to
+  install. Only the installer build can update itself this way — the
+  portable `.exe` has nothing installed to update in place, so it always
+  reports "not available" there; download a new copy by hand instead.
 
 ## How it stays compatible with the extension
 
