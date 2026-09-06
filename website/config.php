@@ -40,6 +40,16 @@ const PAYPAL_URL     = 'https://www.paypal.com/ncp/payment/B25W7V9VRGQG4';
 const CHROME_STORE_LIVE = true;
 const CHROME_STORE_URL  = 'https://chromewebstore.google.com/detail/tabbysync/lfbdjnceepjfamkjclkeahnjhebedfdk';
 
+// The Firefox build is with Mozilla for review. Until it is public, a visitor
+// on Firefox is told that rather than being pointed at a Chrome Web Store link
+// their browser cannot use, or at an addons.mozilla.org URL that 404s.
+//
+// When it is approved: paste the listing URL here and flip the switch. The
+// button on the site changes by itself — assets/js/main.js reads both values
+// off the markup, so there is nothing else to edit.
+const FIREFOX_STORE_LIVE = false;
+const FIREFOX_STORE_URL  = '';
+
 /**
  * The "What's this about?" options on /contact. The first entry is an empty
  * value on purpose: the <select> is marked required, and a required select

@@ -103,4 +103,111 @@
     setTimeout(sweep, 500);
     setTimeout(sweep, 1500);
   }
+
+  // ---- install button: name the browser the visitor is actually using -----
+  //
+  // Every Chromium browser puts "Chrome" in its user agent, so the order of
+  // these checks is the whole trick: the specific ones have to run before the
+  // generic one, or Edge, Opera, Vivaldi and Samsung Internet all answer
+  // "Chrome". Brave is the exception — it deliberately looks exactly like
+  // Chrome, and the only reliable tell is navigator.brave.isBrave(), which is
+  // a promise, so it runs as a second pass below.
+  //
+  // This only ever changes the label, the link and one line of small print.
+  // The markup already carries the right default for a visitor with no
+  // JavaScript or an unrecognised browser, and nothing here hides an option:
+  // the Chrome Web Store link in the Install section stays visible whatever
+  // this decides. Detection can be wrong — user agents are freely spoofed —
+  // so being wrong has to cost nothing more than a mis-named button.
+  var EDGE_NOTE = "Edge installs this from the Chrome Web Store — it asks you to “Allow extensions " +
+                  "from other stores” the first time.";
+  var OPERA_NOTE = "Opera needs its “Install Chrome Extensions” add-on before it can install from " +
+                   "the Chrome Web Store.";
+
+  function hasBrand(name) {
+    var brands = (navigator.userAgentData && navigator.userAgentData.brands) || [];
+    for (var i = 0; i < brands.length; i++) {
+      if (brands[i].brand && brands[i].brand.indexOf(name) !== -1) return true;
+    }
+    return false;
+  }
+
+  function detectBrowser() {
+    var ua = navigator.userAgent || "";
+    var mobile = /Android|iPhone|iPad|iPod/.test(ua);
+
+    // Gecko first: it is the one engine that cannot use the Chrome Web Store.
+    if (/Firefox\/|FxiOS/.test(ua)) return { name: "Firefox", store: "firefox", mobile: mobile };
+
+    if (/Edg(A|iOS)?\//.test(ua) || hasBrand("Microsoft Edge")) {
+      return { name: "Edge", store: "chrome", note: EDGE_NOTE, mobile: mobile };
+    }
+    if (/OPR\/|OPiOS/.test(ua) || hasBrand("Opera")) {
+      return { name: "Opera", store: "chrome", note: OPERA_NOTE, mobile: mobile };
+    }
+    if (/Vivaldi/.test(ua)) return { name: "Vivaldi", store: "chrome", mobile: mobile };
+    if (/SamsungBrowser/.test(ua)) return { name: "Samsung Internet", store: "chrome", mobile: mobile };
+    if (hasBrand("Brave")) return { name: "Brave", store: "chrome", mobile: mobile };
+    if (/Chrome\/|CriOS/.test(ua)) return { name: "Chrome", store: "chrome", mobile: mobile };
+
+    // Safari is last because every browser above also says "Safari".
+    if (/Safari\//.test(ua)) {
+      return {
+        name: "Safari", store: null, mobile: mobile,
+        note: "There is no Safari version — Safari uses a different extension system entirely. " +
+              "Open this page in Chrome, Edge, Brave, Vivaldi, Opera or Firefox."
+      };
+    }
+    return null; // unrecognised: leave the page exactly as it was rendered
+  }
+
+  function applyBrowser(browser) {
+    var buttons = document.querySelectorAll("[data-install-cta]");
+    var noteEl = document.querySelector("[data-install-note]");
+    if (!browser || !buttons.length) return;
+
+    // "Add to Safari" would be a button that cannot do what it says.
+    var label = browser.store ? "Add to " + browser.name : "Not available for " + browser.name;
+    var href = null;
+    var note = browser.note || "";
+
+    if (browser.store === "chrome") {
+      href = buttons[0].getAttribute("data-store-chrome") || null;
+    } else if (browser.store === "firefox") {
+      href = buttons[0].getAttribute("data-store-firefox") || null;
+      if (!href) {
+        // Reviewed, not published. Saying so beats a dead link or a Chrome
+        // Web Store button that Firefox cannot do anything with.
+        label = "Firefox version in review";
+        note = "The Firefox add-on is with Mozilla for review. Until it is approved you can build " +
+               "it from source — see Install, below.";
+      }
+    }
+
+    if (browser.mobile && browser.store) {
+      note = browser.name + " on a phone or tablet cannot install extensions. Open this page on a " +
+             "computer.";
+    }
+
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].textContent = label;
+      if (href) buttons[i].setAttribute("href", href);
+      else buttons[i].setAttribute("href", "#install");
+      if (!href) buttons[i].removeAttribute("target");
+    }
+    if (noteEl && note) {
+      noteEl.textContent = note;
+      noteEl.hidden = false;
+    }
+  }
+
+  var detected = detectBrowser();
+  applyBrowser(detected);
+
+  // Second pass for Brave, which answers "Chrome" to everything above.
+  if (detected && detected.name === "Chrome" && navigator.brave && navigator.brave.isBrave) {
+    navigator.brave.isBrave().then(function (isBrave) {
+      if (isBrave) applyBrowser({ name: "Brave", store: "chrome", mobile: detected.mobile });
+    }).catch(function () { /* not Brave, or it declined to say — Chrome it is */ });
+  }
 })();

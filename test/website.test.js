@@ -346,3 +346,84 @@ test('the social card the metadata points at actually exists', () => {
   assert.ok(existsSync(join(root, 'website/assets/img/og-image.png')),
     'og:image points at /assets/img/og-image.png — run `npm run screenshots` to generate it');
 });
+
+// ---------------------------------------------------------------------------
+// The install button names the browser in front of it
+// ---------------------------------------------------------------------------
+//
+// Every Chromium browser says "Chrome" in its user agent, so the order of the
+// checks in detectBrowser() is the entire mechanism. This runs the real
+// function out of main.js against real user agent strings rather than reading
+// the source and hoping.
+
+const cta = read('website/assets/js/main.js');
+
+function detectWith(ua, brands) {
+  const from = cta.indexOf('var EDGE_NOTE');
+  const to = cta.indexOf('function applyBrowser(');
+  assert.ok(from > 0 && to > from, 'the browser detection is no longer where the test expects it');
+  // Everything from the per-browser notes through detectBrowser(), lifted out
+  // and run as-is — the notes are declared above hasBrand and the function
+  // closes over them.
+  const body = cta.slice(from, to) + '; return detectBrowser();';
+  const nav = { userAgent: ua };
+  if (brands) nav.userAgentData = { brands: brands.map((brand) => ({ brand })) };
+  return new Function('navigator', body)(nav);
+}
+
+const CHROMIUM = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
+
+test('each Chromium browser is named, not called Chrome', () => {
+  const cases = [
+    [CHROMIUM, 'Chrome'],
+    [CHROMIUM + ' Edg/140.0.0.0', 'Edge'],
+    [CHROMIUM + ' OPR/125.0.0.0', 'Opera'],
+    [CHROMIUM + ' Vivaldi/7.5', 'Vivaldi'],
+    ['Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/27.0 Chrome/140.0.0.0 Mobile Safari/537.36', 'Samsung Internet'],
+  ];
+  for (const [ua, expected] of cases) {
+    const got = detectWith(ua);
+    assert.equal(got.name, expected, `${expected} was detected as ${got && got.name}`);
+    // They all install from the same place: there is no Edge or Opera store
+    // listing to send anyone to, and inventing one would be a dead link.
+    assert.equal(got.store, 'chrome', `${expected} must still be sent to the Chrome Web Store`);
+  }
+});
+
+test('Brave is found by its own API, since its user agent is Chrome’s', () => {
+  assert.equal(detectWith(CHROMIUM).name, 'Chrome', 'a plain Chromium UA is Chrome until proven otherwise');
+  assert.equal(detectWith(CHROMIUM, ['Chromium', 'Brave']).name, 'Brave');
+  assert.match(cta, /navigator\.brave\.isBrave\(\)/,
+    'nothing calls the one API that identifies Brave, whose user agent is identical to Chrome’s');
+});
+
+test('Firefox is never sent to the Chrome Web Store', () => {
+  const ff = detectWith('Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:142.0) Gecko/20100101 Firefox/142.0');
+  assert.equal(ff.name, 'Firefox');
+  assert.equal(ff.store, 'firefox', 'Gecko cannot install from the Chrome Web Store');
+});
+
+test('Safari and unknown browsers are handled without a wrong promise', () => {
+  const safari = detectWith('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15');
+  assert.equal(safari.name, 'Safari');
+  assert.equal(safari.store, null, 'there is no Safari build, so no store to point at');
+  assert.match(cta, /"Not available for " \+ browser\.name/, 'an unsupported browser still gets an "Add to" button');
+
+  assert.equal(detectWith('Mozilla/5.0 (X11; Linux x86_64) KHTML/6.0 Konqueror/24.08'), null,
+    'an unrecognised browser must leave the page as rendered rather than guess');
+});
+
+test('the page works with the script disabled, and the script invents no URLs', () => {
+  const index = read('website/index.php');
+  // What a visitor with no JavaScript sees has to be the answer that is right
+  // most often, and it has to be a real link.
+  assert.match(index, /data-install-cta[\s\S]{0,300}>Add to Chrome</,
+    'the rendered button is not the Chrome Web Store one');
+  assert.match(index, /data-store-chrome="<\?= e\(CHROME_STORE_URL\) \?>"/,
+    'the store URL is not read from config.php');
+  assert.match(index, /data-store-firefox="<\?= e\(FIREFOX_STORE_LIVE \? FIREFOX_STORE_URL : ''\) \?>"/,
+    'the Firefox link must stay empty until the listing is live, or it is a 404');
+  // config.php is the only place a store URL may live.
+  assert.ok(!/chromewebstore|addons\.mozilla/.test(cta),
+    'main.js hardcodes a store URL instead of reading it from the markup');
+});

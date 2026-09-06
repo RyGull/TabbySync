@@ -27,7 +27,16 @@ require __DIR__ . '/includes/header.php';
     </p>
     <div class="hero-actions">
       <?php if (CHROME_STORE_LIVE): ?>
-        <a class="btn btn-primary" href="<?= e(CHROME_STORE_URL) ?>" target="_blank" rel="noopener">Add to Chrome</a>
+        <?php /* The label and link are rewritten client-side to name the browser
+                actually in use — see the install-button section of
+                assets/js/main.js. What is rendered here is what a visitor with
+                no JavaScript gets, so it has to be the answer that is right
+                most often: the Chrome Web Store, which every Chromium browser
+                can install from. */ ?>
+        <a class="btn btn-primary" data-install-cta
+           data-store-chrome="<?= e(CHROME_STORE_URL) ?>"
+           data-store-firefox="<?= e(FIREFOX_STORE_LIVE ? FIREFOX_STORE_URL : '') ?>"
+           href="<?= e(CHROME_STORE_URL) ?>" target="_blank" rel="noopener">Add to Chrome</a>
       <?php else: ?>
         <a class="btn btn-primary" href="#install">Install it now</a>
       <?php endif; ?>
@@ -36,6 +45,7 @@ require __DIR__ . '/includes/header.php';
         View source
       </a>
     </div>
+    <p class="hero-note" data-install-note hidden></p>
     <p class="hero-note">Free. No account. No ads. No analytics — <a href="#privacy">verified below</a>.</p>
   </div>
 </section>
@@ -256,7 +266,8 @@ require __DIR__ . '/includes/header.php';
     <h2 class="section-title">Install it today</h2>
     <p class="section-lede">
       <?= e(SITE_NAME) ?> is on the Chrome Web Store — one click in any Chromium
-      browser (Chrome, Edge, Brave, Vivaldi, Opera):
+      browser (Chrome, Edge, Brave, Vivaldi, Opera). A Firefox build exists and is
+      with Mozilla for review:
     </p>
     <ol class="install-steps">
       <li>Add it from the <a href="<?= e(CHROME_STORE_URL) ?>" target="_blank" rel="noopener">Chrome Web Store</a>.</li>
@@ -264,7 +275,10 @@ require __DIR__ . '/includes/header.php';
       <li>Point it at a destination — your own server, a private GitHub Gist, or JSONBin.io.</li>
     </ol>
     <div class="hero-actions">
-      <a class="btn btn-primary" href="<?= e(CHROME_STORE_URL) ?>" target="_blank" rel="noopener">Add to Chrome</a>
+      <a class="btn btn-primary" data-install-cta
+         data-store-chrome="<?= e(CHROME_STORE_URL) ?>"
+         data-store-firefox="<?= e(FIREFOX_STORE_LIVE ? FIREFOX_STORE_URL : '') ?>"
+         href="<?= e(CHROME_STORE_URL) ?>" target="_blank" rel="noopener">Add to Chrome</a>
       <a class="btn btn-ghost" href="<?= e(GITHUB_URL) ?>" target="_blank" rel="noopener">Get the source on GitHub</a>
     </div>
     <details class="install-alt">
