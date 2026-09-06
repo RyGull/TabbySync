@@ -112,7 +112,16 @@ jobs:
         with:
           name: TabbySync Control Panel ${{ steps.version.outputs.version }}
           tag_name: ${{ github.ref_name }}
-          draft: true
+          # Not draft:true. GitHub's own "Draft a new release" web UI (the
+          # only way to create this tag without a terminal) doesn't create
+          # the tag until you click Publish — there's no "save the tag as a
+          # draft" step to hook into. So by the time this job runs, the
+          # release for this tag is usually already published; forcing
+          # draft:true here would silently un-publish it right after
+          # attaching the files, undoing what was just clicked. This action
+          # updates whatever release already exists for the tag (or creates
+          # a published one if none does) rather than fighting either path.
+          draft: false
           generate_release_notes: true
           files: |
             control-panel/dist/*.exe
