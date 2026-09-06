@@ -292,12 +292,33 @@ function updateCheckDue(frequency, lastCheckAt) {
   return (Date.now() - lastCheckAt) >= intervalMs;
 }
 
-/** Actually calls electron-updater. Shared by the startup check and the manual button — both just need "run a check, record when", the rest happens via the event listeners wired in setupAutoUpdate(). */
-function runUpdateCheck(settingsStore) {
+/**
+ * Actually calls electron-updater. Shared by the startup check and the
+ * manual button — both just need "run a check, record when", the rest
+ * happens via the event listeners wired in setupAutoUpdate().
+ *
+ * One retry, after a short pause, before reporting failure: a real user
+ * hit "Cannot find latest.yml" checking within the first ~20 seconds of a
+ * tag being pushed — the GitHub Release exists (and is already "latest")
+ * the instant the tag lands, but build-windows takes a few minutes to
+ * actually build and upload latest.yml/the installer to it. Nobody should
+ * have to know to just try again for a race that's entirely this app's
+ * release process, not anything they did — not indefinite retrying, so a
+ * genuine, lasting problem (network down, no such release) still surfaces.
+ */
+async function runUpdateCheck(settingsStore) {
   settingsStore.update({ lastUpdateCheckAt: Date.now() }).catch((e) => console.error(e));
-  autoUpdater.checkForUpdates().catch((err) => {
-    setUpdateStatus({ state: 'error', message: err && err.message });
-  });
+  try {
+    await autoUpdater.checkForUpdates();
+  } catch (err) {
+    console.error('[TabbySync Control Panel] update check failed, retrying once in 15s:', err && err.message);
+    await new Promise((r) => setTimeout(r, 15000));
+    try {
+      await autoUpdater.checkForUpdates();
+    } catch (err2) {
+      setUpdateStatus({ state: 'error', message: err2 && err2.message });
+    }
+  }
 }
 
 /**
@@ -757,6 +778,39 @@ async function runSmokeTest(win, core, profileStore, settingsStore) {
       throw new Error(`sidebar Updates button should have auto-triggered a check, got: "${sidebarButtonText}"`);
     }
     await win.webContents.executeJavaScript(`document.querySelector('.modal-header .close-x').click()`);
+
+    // --- fix: retry once before surfacing an update-check failure. A real
+    // user hit "Cannot find latest.yml" checking in the ~20s window right
+    // after a release tag landed but before build-windows had finished
+    // uploading its assets to it — runUpdateCheck() shouldn't require
+    // knowing to just try again for a race that's this app's own release
+    // process, not anything the user did. Mocks checkForUpdates() itself
+    // (not the network) so this doesn't depend on GitHub being reachable
+    // either way: fails once, then succeeds — the exact shape of that race
+    // once the upload catches up. ---
+    const originalCheckForUpdates = autoUpdater.checkForUpdates.bind(autoUpdater);
+    let checkAttempts = 0;
+    autoUpdater.checkForUpdates = () => {
+      checkAttempts++;
+      return checkAttempts === 1
+        ? Promise.reject(new Error('Cannot find latest.yml in the latest release artifacts (simulated)'))
+        : Promise.resolve();
+    };
+    const statusBeforeRetryTest = JSON.stringify(updateStatus);
+    try {
+      runUpdateCheck(settingsStore); // not awaited — same as both its real callers; the retry runs in the background
+      await new Promise((r) => setTimeout(r, 500));
+      if (checkAttempts !== 1) throw new Error(`expected exactly 1 attempt before the retry delay, got ${checkAttempts}`);
+      console.log('[smoke-test] update-check retry: 1st attempt failed as expected, waiting for the retry...');
+      await new Promise((r) => setTimeout(r, 15000)); // the real retry delay — this one's worth the wait
+      if (checkAttempts !== 2) throw new Error(`expected a 2nd attempt after the retry delay, got ${checkAttempts} attempts total`);
+      if (updateStatus.state === 'error') {
+        throw new Error(`expected the retry to succeed silently (no error surfaced), got: ${JSON.stringify(updateStatus)}`);
+      }
+      console.log('[smoke-test] update-check retry: 2nd attempt succeeded, no error surfaced. status unchanged:', statusBeforeRetryTest === JSON.stringify(updateStatus));
+    } finally {
+      autoUpdater.checkForUpdates = originalCheckForUpdates;
+    }
 
     // --- newest batch, item 1/6: theme options carry an icon, and the
     // theme row now shows the app version alongside it ---

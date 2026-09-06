@@ -141,7 +141,12 @@ to one destination at a time).
   Options has its own dedicated, clearly separated **Updates** section
   (heading, divider, full-size button and status text) with the same live
   check/progress/restart — not just a frequency dropdown, and not the
-  small muted text this all started as.
+  small muted text this all started as. A check retries once (after 15s)
+  before reporting failure — real-world race hit in testing: a release's
+  GitHub page (and its "latest" status) goes live the instant its tag is
+  pushed, but `build-windows` takes a few minutes to actually build and
+  upload `latest.yml`/the installer to it, so a check landing in that
+  window 404s on a file that's seconds away from existing.
 
 ## How it stays compatible with the extension
 
