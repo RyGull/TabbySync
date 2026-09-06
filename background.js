@@ -9,7 +9,10 @@
 //   3. tabs engine        — storage.js (globals) + its worker logic
 //   4. bookmarks engine   — its worker logic (ES modules under ./bookmarks)
 //
-// Order matters: the shared globals must be installed before the engines run.
+// Order matters: the shared globals must be installed before the engines run,
+// and browser-compat must come before all of them — it decides what `chrome`
+// means on Firefox.
+import './shared/browser-compat.js';
 import './shared/config.js';       // sets self.TabbySyncConfig
 import './shared/status.js';       // sets self.TabbySyncStatus
 import './shared/providers.js';    // sets self.TabbySyncProviders

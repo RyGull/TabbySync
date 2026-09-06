@@ -1,0 +1,98 @@
+name: release
+
+# Builds both store uploads and attaches them to a GitHub Release, so getting a
+# build is downloading a file rather than running a script — and so the zip a
+# store reviewer looks at is permanently tied to the commit it came from.
+#
+#   git tag v1.3.12 && git push origin v1.3.12
+#
+# The tag must match the version in manifest.json; the job below refuses to
+# build if it doesn't, because a release named after a version it doesn't
+# contain is worse than no release.
+#
+# You can also run it by hand from the Actions tab (workflow_dispatch) to get
+# the zips for the current manifest version without tagging anything.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed to create the release and upload the zips
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # A broken build must not be able to reach a store. The suite has no
+      # dependencies, so this costs seconds.
+      - name: Run tests
+        run: npm test
+
+      - name: Read the version from the manifest
+        id: version
+        run: |
+          version=$(node -p "require('./manifest.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Manifest version: $version"
+
+      - name: Check the tag matches the manifest
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          manifest="${{ steps.version.outputs.version }}"
+          if [ "$tag" != "$manifest" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match manifest.json version $manifest"
+            exit 1
+          fi
+
+      - name: Build both store uploads
+        run: |
+          bash scripts/package.sh
+          bash scripts/package.sh firefox
+          ls -la dist/
+
+      # Proof the two zips really do differ in the ways they are meant to, and
+      # only in those ways. Cheap, and it fails loudly rather than shipping a
+      # Firefox zip with a service worker in it.
+      - name: Verify each manifest is the right shape for its store
+        run: |
+          unzip -p dist/tabbysync-${{ steps.version.outputs.version }}.zip manifest.json > /tmp/chrome.json
+          unzip -p dist/tabbysync-${{ steps.version.outputs.version }}-firefox.zip manifest.json > /tmp/firefox.json
+          node -e "
+            const c = require('/tmp/chrome.json'), f = require('/tmp/firefox.json');
+            const fail = (m) => { console.error('::error::' + m); process.exitCode = 1; };
+            if (!c.background.service_worker) fail('the Chrome build has no service worker');
+            if (f.background.service_worker) fail('the Firefox build still declares a service worker');
+            if (!f.background.scripts) fail('the Firefox build has no background scripts');
+            if (f.permissions.includes('tabGroups')) fail('the Firefox build asks for tabGroups, which Firefox does not have');
+            if (!f.browser_specific_settings?.gecko?.id) fail('the Firefox build has no add-on id');
+            if (c.version !== f.version) fail('the two builds disagree about the version');
+            if (!process.exitCode) console.log('both manifests are the right shape for their store');
+          "
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: TabbySync ${{ steps.version.outputs.version }}
+          tag_name: ${{ github.ref_name }}
+          draft: true          # so the notes can be written before anyone sees it
+          generate_release_notes: true
+          files: |
+            dist/tabbysync-${{ steps.version.outputs.version }}.zip
+            dist/tabbysync-${{ steps.version.outputs.version }}-firefox.zip
+          body: |
+            Two uploads, same source:
+
+            | File | Goes to |
+            |---|---|
+            | `tabbysync-${{ steps.version.outputs.version }}.zip` | Chrome Web Store |
+            | `tabbysync-${{ steps.version.outputs.version }}-firefox.zip` | addons.mozilla.org |
+
+            Listing text for both is in `store/paste/` in this repository.

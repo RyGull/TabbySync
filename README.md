@@ -213,12 +213,56 @@ doesn't answer — the script waits for that first doomed sync and then stamps a
 settled "synced" status, so the pictures show an ordinary healthy profile rather
 than the artifact of there being no server on the machine that took them.
 
-## Publishing to the Chrome Web Store
+## Firefox
+
+The same source builds both browsers. There is no second copy of the code and
+no `firefox/` folder — only the manifest differs, and it is derived from
+`manifest.json` at package time by `scripts/make-manifest.mjs`:
+
+| | Chrome | Firefox |
+|---|---|---|
+| Background | `service_worker` | `scripts` (event page) — Firefox has no MV3 service worker |
+| `tabGroups` | requested | dropped; Firefox has no such API |
+| Add-on id | n/a | `browser_specific_settings.gecko` |
+
+`shared/browser-compat.js` loads before anything else on every page and in the
+worker. On Chrome it does nothing. On Firefox it points `chrome` at the
+promise-based `browser`, so the promise-style calls the codebase is written in
+work in both. **Everything in the extension must therefore stay promise-style**
+— a completion callback silently does nothing on Firefox, and
+`test/firefox-build.test.js` fails if one appears.
+
+"Reopen as a browser tab group" is the one feature Firefox does not get. The
+code already checks for the API and falls back to ordinary tabs, so nothing
+breaks; the option simply has no effect there.
+
+**Untested on Firefox as of 1.3.13** — the port is written and reasoned about
+but has never been run in Firefox. Load it with `about:debugging` →
+*This Firefox* → *Load Temporary Add-on* → pick `manifest.json` from a
+directory built by `sh scripts/package.sh firefox`, and expect to find things
+this could not.
+
+## Releasing
 
 ```
-sh scripts/package.sh          # dist/tabbysync-<version>.zip — the upload itself
+sh scripts/package.sh          # dist/tabbysync-<version>.zip          — Chrome
+sh scripts/package.sh firefox  # dist/tabbysync-<version>-firefox.zip  — Firefox
 npm run screenshots            # store images + promo tiles, from the real UI
 ```
+
+Or let CI do it: push a tag matching the manifest version and
+`.github/workflows/release.yml` runs the tests, builds both zips, checks each
+manifest is the right shape for its store, and attaches them to a draft GitHub
+Release.
+
+```
+git tag v1.3.13 && git push origin v1.3.13
+```
+
+The tag has to match `manifest.json` or the job stops — a release named after a
+version it does not contain is worse than no release. `dist/` is deliberately
+git-ignored: build output committed to a repository is stale by the next commit.
+
 
 `store/listing.md` holds every text field the dashboard asks for, ready to
 paste: the description, the single-purpose statement, a justification for each

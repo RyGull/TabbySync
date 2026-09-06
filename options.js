@@ -17,10 +17,14 @@ const SF = self.TabbySyncServerFiles;
 const SP = self.TabbySyncProviders;
 const $ = (id) => document.getElementById(id);
 
+// See the note in popup.js: promise-style works on Chrome and, via
+// shared/browser-compat.js, on Firefox. A callback works on neither reliably.
 function send(msg) {
-  return new Promise((resolve) => {
-    try { chrome.runtime.sendMessage(msg, resolve); } catch { resolve(null); }
-  });
+  try {
+    return Promise.resolve(chrome.runtime.sendMessage(msg)).catch(() => null);
+  } catch {
+    return Promise.resolve(null);
+  }
 }
 function status(id, msg, cls) {
   const el = $(id); el.textContent = msg || ''; el.className = 'status' + (cls ? ' ' + cls : '');
@@ -83,7 +87,7 @@ function serverUrlProblem(url) {
 function requestOrigin(url) {
   const o = safeOrigin(url);
   if (!o) return Promise.resolve(true);
-  return new Promise((resolve) => chrome.permissions.request({ origins: [o] }, (g) => resolve(g)));
+  return Promise.resolve(chrome.permissions.request({ origins: [o] })).catch(() => false);
 }
 function fileUrl(base, name) {
   base = (base || '').replace(/\/+$/, '');
@@ -442,10 +446,10 @@ async function load() {
 // URL the user typed, Gist/JSONBin are fixed third-party API hosts.
 function grantAccess(provider, serverUrl) {
   if (provider === 'gist') {
-    return new Promise((resolve) => chrome.permissions.request({ origins: ['https://api.github.com/*'] }, resolve));
+    return Promise.resolve(chrome.permissions.request({ origins: ['https://api.github.com/*'] })).catch(() => false);
   }
   if (provider === 'jsonbin') {
-    return new Promise((resolve) => chrome.permissions.request({ origins: ['https://api.jsonbin.io/*'] }, resolve));
+    return Promise.resolve(chrome.permissions.request({ origins: ['https://api.jsonbin.io/*'] })).catch(() => false);
   }
   return requestOrigin(serverUrl);
 }

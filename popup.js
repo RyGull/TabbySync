@@ -8,10 +8,17 @@
 
 var $ = function (id) { return document.getElementById(id); };
 
+// Promise-style on purpose: Chrome answers a promise when the callback is
+// omitted, and on Firefox shared/browser-compat.js has pointed `chrome` at the
+// promise-based `browser`. A callback here would work in one browser only.
+// A rejection means nothing was listening (the worker is asleep, or the
+// message went nowhere) — the callers all treat that as "no status yet".
 function send(msg) {
-  return new Promise(function (resolve) {
-    try { chrome.runtime.sendMessage(msg, resolve); } catch (e) { resolve(null); }
-  });
+  try {
+    return Promise.resolve(chrome.runtime.sendMessage(msg)).catch(function () { return null; });
+  } catch (e) {
+    return Promise.resolve(null);
+  }
 }
 
 // Absolute date + time, e.g. "Aug 30, 5:59 PM".

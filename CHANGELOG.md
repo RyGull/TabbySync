@@ -6,6 +6,37 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.3.13 — 2026-09-06
+
+**A Firefox build, from the same source.** No second copy of the code and no
+`firefox/` folder — one source tree, two manifests, two zips.
+
+- **What differs, and only what differs.** Firefox has no MV3 service worker,
+  so its background is an event page; it has no `tabGroups` API, so that
+  permission is dropped; and it needs an add-on id. `scripts/make-manifest.mjs`
+  derives all three from `manifest.json`, so the version, name, icons, pages and
+  commands can only ever come from one place. `test/firefox-build.test.js`
+  fails if they diverge.
+- **`shared/browser-compat.js`** loads before anything else on every page and
+  in the worker. On Chrome it does nothing at all. On Firefox it points
+  `chrome` at the promise-based `browser`, which is what makes the existing
+  promise-style code work unchanged. The five places that still passed a
+  completion callback now use promises, which both browsers answer — a callback
+  is silently ignored by `browser.*`, so it would have worked in exactly one
+  browser. A test fails if one comes back.
+- **Reopening as a browser tab group is the one thing Firefox does not get.**
+  The code already checked for the API and fell back to ordinary tabs, so
+  nothing breaks; the option simply has no effect there.
+- **Two commands, or a tag.** `sh scripts/package.sh` and
+  `sh scripts/package.sh firefox` build the two uploads; the Firefox one stages
+  a copy so a build never edits the working tree. Pushing a tag that matches the
+  manifest version runs `.github/workflows/release.yml`, which tests, builds
+  both, checks each manifest is the right shape for its store, and attaches them
+  to a draft GitHub Release.
+- **Not yet run in Firefox.** The port is written and reasoned about; it has
+  never been loaded in the browser it targets, because there isn't one in the
+  environment it was written in. Expect a round of corrections once it is.
+
 ## 1.3.12 — 2026-09-05
 
 **Reopening saved tabs can no longer take your machine down.** Reported by a
