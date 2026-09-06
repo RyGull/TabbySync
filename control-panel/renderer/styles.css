@@ -1,21 +1,51 @@
+/*
+ * Theme: light values live on bare :root (the default); dark values are an
+ * override under prefers-color-scheme. main.cjs sets nativeTheme.themeSource
+ * from the saved setting ('system'/'light'/'dark') before the window is
+ * created — Electron reflects that into prefers-color-scheme for every
+ * renderer in the app, so 'system' needs no special-casing here at all: it
+ * just means nativeTheme leaves the media query to follow the real OS
+ * preference, same as if nothing had touched it. The light palette mirrors
+ * the marketing site's own (website/assets/css/style.css) so the app and
+ * the site read as the same product, not two different-looking things.
+ */
 :root {
-  color-scheme: dark;
-  --bg: #1b1d23;
-  --bg-sidebar: #16171c;
-  --bg-panel: #22252c;
-  --bg-raised: #2a2d36;
-  --bg-hover: #2f333d;
-  --border: #34373f;
-  --text: #e8e9ec;
-  --text-dim: #9a9ea8;
-  --text-faint: #6b6f79;
-  --accent: #5b8def;
-  --accent-hover: #77a1f3;
-  --success: #3ec28f;
-  --danger: #eb5757;
-  --warning: #f2994a;
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --bg-sidebar: #f7f8fa;
+  --bg-panel: #f7f8fa;
+  --bg-raised: #eef1f5;
+  --bg-hover: #e5e8ec;
+  --border: #e3e6ea;
+  --text: #1c2330;
+  --text-dim: #5b6472;
+  --text-faint: #8b93a1;
+  --accent: #2563eb;
+  --accent-hover: #3b74ef;
+  --success: #16a34a;
+  --danger: #dc2626;
+  --warning: #c96a12;
   --radius: 8px;
   font-size: 14px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1d23;
+    --bg-sidebar: #16171c;
+    --bg-panel: #22252c;
+    --bg-raised: #2a2d36;
+    --bg-hover: #2f333d;
+    --border: #34373f;
+    --text: #e8e9ec;
+    --text-dim: #9a9ea8;
+    --text-faint: #6b6f79;
+    --accent: #5b8def;
+    --accent-hover: #77a1f3;
+    --success: #3ec28f;
+    --danger: #eb5757;
+    --warning: #f2994a;
+  }
 }
 
 * { box-sizing: border-box; }
@@ -117,7 +147,19 @@ button, input, select { font: inherit; color: inherit; }
   line-height: 1.4;
 }
 
-.sidebar-footer { padding: 10px; border-top: 1px solid var(--border); }
+.sidebar-footer { padding: 10px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+
+.theme-row { display: flex; align-items: center; gap: 8px; padding: 0 2px; }
+.theme-row label { font-size: 12px; color: var(--text-dim); flex-shrink: 0; }
+.theme-row select {
+  flex: 1;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 12.5px;
+}
 
 /* ---------- buttons ---------- */
 

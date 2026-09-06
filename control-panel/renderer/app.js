@@ -70,7 +70,6 @@ function showError(err, fallback) {
 // modal system
 // ---------------------------------------------------------------------------
 
-const modalRoot = $('#modal-root');
 let modalStack = [];
 
 function openModal({ title, body, footer, wide }) {
@@ -437,6 +436,10 @@ async function selectProfile(id) {
   state.selectedNodeId = null;
   renderProfileList();
   showProfileView();
+  // Recorded regardless of whether "reopen last profile" is turned on, so
+  // turning it on later has something to act on right away instead of
+  // waiting for the next selection.
+  api.settings.update({ lastActiveProfileId: id }).catch((e) => console.error(e));
   await Promise.all([loadBookmarks(false), loadTabs(false)]);
 }
 
@@ -553,7 +556,11 @@ function renderTreeNode(node, depth) {
     draggable: 'true',
     dataset: { id: node.id, type: node.type },
     onclick: () => { state.selectedNodeId = node.id; renderBookmarkTree(); },
-    ondblclick: () => (isFolder ? toggleFolder(node.id) : openEditBookmarkModal(node)),
+    // Double-clicking a bookmark opens it, matching what double-clicking a
+    // bookmark does everywhere else (a browser's own bookmarks bar
+    // included) — editing is still one right-click away, in the context
+    // menu, for anyone who reaches for the double-click out of habit.
+    ondblclick: () => (isFolder ? toggleFolder(node.id) : api.app.openExternal(node.url)),
     oncontextmenu: (e) => { e.preventDefault(); state.selectedNodeId = node.id; renderBookmarkTree(); openBookmarkContextMenu(node, e.clientX, e.clientY); },
   }, [
     isFolder ? h('span', { class: 'twisty', onclick: (e) => { e.stopPropagation(); toggleFolder(node.id); } }, expanded ? '▾' : '▸') : h('span', { class: 'twisty' }, ''),
@@ -1188,8 +1195,66 @@ async function init() {
     const info = await api.app.info();
     $('#secrets-warning').hidden = info.secretsAvailable;
   } catch (e) { console.error(e); }
+
+  let settings = null;
+  try {
+    settings = await api.settings.get();
+    $('#theme-select').value = settings.theme;
+  } catch (e) { console.error(e); }
+
   await refreshProfiles();
-  showEmptyState();
+
+  const last = settings && settings.reopenLastProfile && settings.lastActiveProfileId
+    && state.profiles.find((p) => p.id === settings.lastActiveProfileId);
+  if (last) await selectProfile(last.id);
+  else showEmptyState();
+
+  api.app.onOpenOptions(() => openOptionsModal());
+}
+
+$('#theme-select').addEventListener('change', (e) => {
+  api.settings.update({ theme: e.target.value }).catch((err) => showError(err, 'Could not save the theme.'));
+});
+$('#btn-options').addEventListener('click', () => openOptionsModal());
+
+async function openOptionsModal() {
+  let settings;
+  try { settings = await api.settings.get(); }
+  catch (e) { return showError(e, 'Could not load options.'); }
+
+  const startWithWindows = h('input', { type: 'checkbox', id: 'opt-start-with-windows', checked: settings.startWithWindows });
+  const startMinimized = h('input', { type: 'checkbox', id: 'opt-start-minimized', checked: settings.startMinimized });
+  const reopenLastProfile = h('input', { type: 'checkbox', id: 'opt-reopen-last-profile', checked: settings.reopenLastProfile });
+  const closeBehavior = h('select', { id: 'opt-close-behavior' }, [
+    h('option', { value: 'ask' }, 'Ask me each time'),
+    h('option', { value: 'minimize' }, 'Minimize to the tray'),
+    h('option', { value: 'quit' }, 'Quit the app'),
+  ]);
+  closeBehavior.value = settings.closeBehavior;
+
+  function bindCheckbox(input, key) {
+    input.addEventListener('change', () => {
+      api.settings.update({ [key]: input.checked }).catch((e) => showError(e, 'Could not save that option.'));
+    });
+  }
+  bindCheckbox(startWithWindows, 'startWithWindows');
+  bindCheckbox(startMinimized, 'startMinimized');
+  bindCheckbox(reopenLastProfile, 'reopenLastProfile');
+  closeBehavior.addEventListener('change', () => {
+    api.settings.update({ closeBehavior: closeBehavior.value }).catch((e) => showError(e, 'Could not save that option.'));
+  });
+
+  const m = openModal({
+    title: 'Options',
+    body: h('div', {}, [
+      h('div', { class: 'checkbox-field' }, [startWithWindows, h('label', { for: 'opt-start-with-windows' }, 'Start TabbySync Control Panel when Windows starts')]),
+      h('div', { class: 'checkbox-field' }, [startMinimized, h('label', { for: 'opt-start-minimized' }, 'Start minimized to the tray')]),
+      h('div', { class: 'checkbox-field' }, [reopenLastProfile, h('label', { for: 'opt-reopen-last-profile' }, 'Reopen the last profile you had open on startup')]),
+      h('div', { class: 'field' }, [h('label', { for: 'opt-close-behavior' }, 'When closing the window (✕)'), closeBehavior]),
+      h('p', {}, "This app doesn't sync in the background — minimizing to the tray just keeps the window a click away, nothing more."),
+    ]),
+    footer: [h('button', { class: 'btn btn-primary', type: 'button', onclick: () => m.close() }, 'Close')],
+  });
 }
 
 init();

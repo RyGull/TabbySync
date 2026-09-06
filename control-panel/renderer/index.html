@@ -23,6 +23,15 @@
       ⚠️ Tokens/passphrases are stored in plain text on this system — your OS's secure storage isn't available here.
     </div>
     <div class="sidebar-footer">
+      <div class="theme-row">
+        <label for="theme-select">Theme</label>
+        <select id="theme-select">
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+      <button id="btn-options" class="btn btn-ghost btn-block" type="button">Options…</button>
       <button id="btn-about" class="btn btn-ghost btn-block" type="button">About</button>
     </div>
   </aside>
@@ -83,7 +92,12 @@
   </main>
 </div>
 
-<div id="modal-root" class="modal-root" hidden></div>
+<!-- No static modal container here on purpose: app.js's openModal() creates
+     and appends its own ".modal-root" overlay per modal, directly on
+     <body>, and removes it on close — an always-present placeholder here
+     would just be a permanent (if hidden) DOM node that any ".modal-root"
+     query would have to account for. -->
+
 <div id="toasts" class="toasts" aria-live="polite"></div>
 
 <script src="app.js"></script>

@@ -50,6 +50,18 @@ to one destination at a time).
   passphrases go through Electron's `safeStorage` (DPAPI on Windows) before
   touching disk. If that's unavailable, the app says so plainly (sidebar
   banner) rather than silently storing them in plain text.
+- **Theme** — Light / Dark / System, the dropdown at the bottom of the
+  sidebar (defaults to System). Drives `nativeTheme.themeSource`, so it
+  applies to the whole app, not just a CSS class toggle.
+- **Options** (File → Options…, or the sidebar button) — start with Windows
+  (a real login-item registration, not a hand-rolled registry edit), start
+  minimized to the tray, reopen the last profile you had open on startup,
+  and what the window's close button (✕) does: ask each time (default),
+  always minimize to the tray, or always quit. A tray icon is always
+  present regardless of these settings — it's what makes "start minimized"
+  and "minimize to tray" recoverable rather than a dead end with no way
+  back in. None of this makes the app sync in the background; minimizing
+  just keeps the window a click away.
 
 ## How it stays compatible with the extension
 
@@ -157,6 +169,13 @@ local check. The `.ico` app icon is generated from the extension's own
   second background syncer. Saves are explicit (button or Ctrl+S) so a
   self-hosted server or a free provider's rate limit is never hit by
   accident.
+- The tray icon is a Windows-only guarantee. Electron's Linux tray
+  implementation generally can't load a `.ico` (it wants PNG, and needs a
+  desktop environment's tray/StatusNotifierItem support besides — a bare
+  Xvfb session, which is what this app is developed and smoke-tested
+  against, has neither), so `createTray()` fails there — caught, logged,
+  and otherwise harmless, but "start minimized"/"minimize to tray" have
+  only ever been exercised for real on Windows.
 
 ## Testing
 

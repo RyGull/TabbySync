@@ -8,7 +8,18 @@
 
 const path = require('node:path');
 const fs = require('node:fs/promises');
-const { app, BrowserWindow, ipcMain, dialog, shell, safeStorage, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, safeStorage, Menu, Tray, nativeTheme } = require('electron');
+
+const ICON_PATH = path.join(__dirname, 'build', 'icon.ico');
+// Kept beside the same URLs in website/config.php (SITE_URL, PAYPAL_URL) —
+// there is no way to share the constant across a PHP file and this one, so
+// if either changes on the website, update it here too.
+const WEBSITE_URL = 'https://tabbysync.com';
+const DONATE_URL = 'https://www.paypal.com/ncp/payment/B25W7V9VRGQG4';
+const GITHUB_URL = 'https://github.com/RyGull/TabbySync';
+
+let isQuitting = false;
+let tray = null;
 
 /** Wraps an IPC handler so thrown errors (with .code/.had/.keeps etc.) survive the trip to the renderer as data, not as Electron's own re-serialized Error (which drops custom properties). See preload.cjs's call() for the matching unwrap. */
 function handle(channel, fn) {
@@ -32,14 +43,21 @@ function handle(channel, fn) {
 
 let mainWindow = null;
 
-async function createWindow() {
+async function createWindow(settingsStore) {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 860,
     minWidth: 860,
     minHeight: 560,
     title: 'TabbySync Control Panel',
-    backgroundColor: '#1b1d23',
+    // nativeTheme.themeSource is set from the saved theme before this runs
+    // (see main()), so shouldUseDarkColors already reflects it — including
+    // the 'system' case, which nativeTheme resolves against the real OS
+    // preference. Avoids a flash of the wrong-theme background before the
+    // page's own CSS loads.
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#1b1d23' : '#ffffff',
+    show: false, // shown explicitly below, once — respects "start minimized"
+    icon: ICON_PATH, // mostly a dev-mode nicety; the packaged .exe carries its own icon resource
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -47,6 +65,14 @@ async function createWindow() {
       sandbox: true,
       spellcheck: false,
     },
+  });
+
+  // The X button (and Alt+F4) hits this, not a real close — see
+  // handleWindowClose's own comment for what "ask" actually asks.
+  mainWindow.on('close', (event) => {
+    if (isQuitting) return;
+    event.preventDefault();
+    handleWindowClose(settingsStore);
   });
 
   // This app never needs to navigate anywhere or open new windows — any
@@ -74,13 +100,99 @@ async function createWindow() {
   });
 
   await mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+
+  const settings = await settingsStore.get();
+  if (!settings.startMinimized) mainWindow.show();
+  // If it IS starting minimized, the window stays hidden — the tray icon
+  // (always created, regardless of this setting — see createTray) is the
+  // only way back to it, same as clicking the tray icon at any other time.
+}
+
+/** One tray icon for the app's whole lifetime, independent of any setting — it's the safety net that makes "start minimized" and "minimize to tray" both recoverable rather than a trap with no way back in. */
+function createTray(settingsStore) {
+  try {
+    tray = new Tray(ICON_PATH);
+  } catch (e) {
+    // Missing/unreadable icon shouldn't take the whole app down with it —
+    // minimize-to-tray degrades to "just hide the window" without a tray
+    // affordance to bring it back, which is why every close/minimize path
+    // also leaves the Show item reachable from the taskbar (Windows still
+    // lists a hidden-but-not-destroyed window's app in some contexts) —
+    // but this really shouldn't happen for a properly built app; log it.
+    console.error('[TabbySync Control Panel] could not create tray icon:', e.message);
+    return;
+  }
+  tray.setToolTip('TabbySync Control Panel');
+  const menu = Menu.buildFromTemplate([
+    { label: 'Show TabbySync Control Panel', click: () => { mainWindow.show(); mainWindow.focus(); } },
+    { type: 'separator' },
+    { label: 'Quit', click: () => { isQuitting = true; app.quit(); } },
+  ]);
+  tray.setContextMenu(menu);
+  tray.on('click', () => {
+    if (mainWindow.isVisible()) mainWindow.focus();
+    else mainWindow.show();
+  });
+}
+
+/**
+ * What the X button / Alt+F4 actually does, per the saved closeBehavior:
+ *   'minimize' — just hide the window; the app keeps running in the tray.
+ *   'quit'     — really quit.
+ *   'ask'      — a native Yes/No-style dialog decides, once, for this click;
+ *                checking its box saves the choice as closeBehavior so this
+ *                dialog stops appearing (change it back from Options any
+ *                time).
+ *
+ * This app does no background syncing (see the README's "Known
+ * limitations") — minimizing keeps the window a click away in the tray,
+ * nothing more, and the dialog's own wording is careful not to imply
+ * otherwise.
+ */
+async function handleWindowClose(settingsStore) {
+  const settings = await settingsStore.get();
+  if (settings.closeBehavior === 'minimize') { mainWindow.hide(); return; }
+  if (settings.closeBehavior === 'quit') { isQuitting = true; app.quit(); return; }
+
+  const result = await dialog.showMessageBox(mainWindow, {
+    type: 'question',
+    buttons: ['Minimize to Tray', 'Quit'],
+    defaultId: 0,
+    cancelId: 0,
+    checkboxLabel: "Don't ask me again",
+    checkboxChecked: false,
+    message: 'Keep TabbySync Control Panel running in the background?',
+    detail: 'Minimizing keeps it a click away from the system tray. This doesn’t sync anything in the background — it just keeps the window ready. Change this anytime from File → Options.',
+  });
+  const choice = result.response === 0 ? 'minimize' : 'quit';
+  if (result.checkboxChecked) await settingsStore.update({ closeBehavior: choice });
+  if (choice === 'minimize') mainWindow.hide();
+  else { isQuitting = true; app.quit(); }
 }
 
 function buildMenu() {
   const isMac = process.platform === 'darwin';
   const template = [
     ...(isMac ? [{ role: 'appMenu' }] : []),
-    { role: 'fileMenu' },
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Options…',
+          accelerator: 'Ctrl+,',
+          click: () => mainWindow && mainWindow.webContents.send('menu:open-options'),
+        },
+        { type: 'separator' },
+        // A deliberate menu click is an unambiguous "quit" — unlike the
+        // window's own close button, this skips the ask-to-minimize dialog
+        // entirely rather than asking someone who just asked to exit.
+        {
+          label: 'Exit',
+          accelerator: isMac ? undefined : 'Ctrl+Q',
+          click: () => { isQuitting = true; app.quit(); },
+        },
+      ],
+    },
     { role: 'editMenu' },
     {
       label: 'View',
@@ -94,10 +206,10 @@ function buildMenu() {
     {
       label: 'Help',
       submenu: [
-        {
-          label: 'TabbySync on GitHub',
-          click: () => shell.openExternal('https://github.com/RyGull/TabbySync'),
-        },
+        { label: 'TabbySync website', click: () => shell.openExternal(WEBSITE_URL) },
+        { label: 'TabbySync on GitHub', click: () => shell.openExternal(GITHUB_URL) },
+        { type: 'separator' },
+        { label: 'Donate…', click: () => shell.openExternal(DONATE_URL) },
       ],
     },
   ];
@@ -106,6 +218,11 @@ function buildMenu() {
 
 async function main() {
   app.setName('TabbySync Control Panel');
+  // Set before any window exists: a real quit (menu Exit, tray Quit,
+  // app.quit() from anywhere) always fires this before the window's own
+  // 'close' event, which is how that handler tells "actually quitting"
+  // apart from "the X button was clicked" without asking twice.
+  app.on('before-quit', () => { isQuitting = true; });
   await app.whenReady();
   buildMenu();
 
@@ -122,27 +239,43 @@ async function main() {
       ? async (stored) => safeStorage.decryptString(Buffer.from(stored.b64, 'base64'))
       : undefined,
   });
+  const settingsStore = core.createSettingsStore(userDataDir);
 
   await core.loadVendored(); // fail fast at startup rather than on the first click
   const sessions = core.createSessionManager(profileStore);
 
-  registerIpc(core, profileStore, sessions, { secretsAvailable, userDataDir });
+  const settings = await settingsStore.get();
+  // Drives prefers-color-scheme for every renderer in the app AND the
+  // window's own native chrome — 'system' resolves against the real OS
+  // preference, exactly like leaving it unset would, so this is a no-op for
+  // the default and only actually forces anything for 'light'/'dark'.
+  nativeTheme.themeSource = settings.theme;
+  // Electron's own login-item mechanism (registry Run key on Windows) —
+  // nothing hand-rolled here. Re-applied on every launch rather than only
+  // when the setting changes, so it can't drift from what's actually
+  // registered if something external (a Windows "clean up startup apps"
+  // tool, say) touched it.
+  app.setLoginItemSettings({ openAtLogin: settings.startWithWindows });
 
-  await createWindow();
+  registerIpc(core, profileStore, sessions, settingsStore, { secretsAvailable, userDataDir });
+
+  createTray(settingsStore);
+  await createWindow(settingsStore);
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (mainWindow) { mainWindow.show(); return; }
+    if (BrowserWindow.getAllWindows().length === 0) createWindow(settingsStore);
   });
 
   // Dev-only smoke test hook (see control-panel/scripts/smoke-test.mjs) —
   // renders the real startup path, drives a few basic interactions, saves a
   // screenshot, then exits. Inert unless this exact env var is set.
   if (process.env.TABBYSYNC_SMOKE_TEST) {
-    await runSmokeTest(mainWindow, core, profileStore);
+    await runSmokeTest(mainWindow, core, profileStore, settingsStore);
   }
 }
 
-async function runSmokeTest(win, core, profileStore) {
+async function runSmokeTest(win, core, profileStore, settingsStore) {
   const outDir = process.env.TABBYSYNC_SMOKE_TEST;
   async function shot(name) {
     await new Promise((r) => setTimeout(r, 250));
@@ -177,6 +310,46 @@ async function runSmokeTest(win, core, profileStore) {
     const headerLabel = await win.webContents.executeJavaScript(`document.getElementById('pv-label').textContent`);
     console.log('[smoke-test] header after edit:', headerLabel);
 
+    // Double-clicking a bookmark must open it externally, not the edit
+    // modal (that's in the right-click menu now, on purpose).
+    const originalOpenExternal = shell.openExternal;
+    let openedUrl = null;
+    shell.openExternal = async (url) => { openedUrl = url; };
+    try {
+      await win.webContents.executeJavaScript(`document.querySelector('#bm-tree .tree-row[data-type="bookmark"]').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))`);
+      await new Promise((r) => setTimeout(r, 150));
+      const modalCountAfterDblClick = await win.webContents.executeJavaScript(`document.querySelectorAll('.modal').length`);
+      console.log('[smoke-test] double-click bookmark: opened =', openedUrl, ' modals open =', modalCountAfterDblClick);
+      if (openedUrl !== 'https://example.com' || modalCountAfterDblClick !== 0) {
+        throw new Error(`double-click regression: expected an external open and no modal, got openedUrl=${openedUrl} modals=${modalCountAfterDblClick}`);
+      }
+    } finally {
+      shell.openExternal = originalOpenExternal;
+    }
+
+    // Options dialog, opened the same way the File menu does it, and the
+    // theme dropdown next to it — both write through to settings.json.
+    win.webContents.send('menu:open-options');
+    await new Promise((r) => setTimeout(r, 200));
+    await shot('06-options-modal.png');
+    await win.webContents.executeJavaScript(`document.getElementById('opt-start-minimized').click()`);
+    await new Promise((r) => setTimeout(r, 150));
+    await win.webContents.executeJavaScript(`document.querySelector('.modal-header .close-x').click()`);
+    await win.webContents.executeJavaScript(`document.getElementById('theme-select').value = 'dark'; document.getElementById('theme-select').dispatchEvent(new Event('change'))`);
+    await new Promise((r) => setTimeout(r, 150));
+    const afterSettings = await settingsStore.get();
+    console.log('[smoke-test] settings after Options + theme change:', JSON.stringify(afterSettings));
+    if (afterSettings.startMinimized !== true) throw new Error('Options toggle did not persist to settings.json');
+    if (afterSettings.theme !== 'dark') throw new Error('theme dropdown did not persist to settings.json');
+    if (nativeTheme.themeSource !== 'dark') throw new Error('theme dropdown did not update nativeTheme.themeSource');
+
+    // Light theme is brand-new code (the app was dark-only before this),
+    // so it gets its own screenshot rather than trusting the CSS by
+    // inspection alone.
+    await win.webContents.executeJavaScript(`document.getElementById('theme-select').value = 'light'; document.getElementById('theme-select').dispatchEvent(new Event('change'))`);
+    await new Promise((r) => setTimeout(r, 200));
+    await shot('07-light-theme.png');
+
     console.log('[smoke-test] done, screenshots in', outDir);
   } catch (e) {
     console.error('[smoke-test] FAILED:', e);
@@ -189,7 +362,7 @@ async function runSmokeTest(win, core, profileStore) {
 async function loadCore() {
   const [
     profileStoreMod, sessionsMod, providerShimMod, bmOpsMod, tabOpsMod,
-    remoteBookmarksMod, remoteTabsMod, cfgMapMod,
+    remoteBookmarksMod, remoteTabsMod, cfgMapMod, appSettingsMod,
   ] = await Promise.all([
     import('./src/core/profile-store.js'),
     import('./src/core/sessions.js'),
@@ -199,11 +372,13 @@ async function loadCore() {
     import('./src/core/remote-bookmarks.js'),
     import('./src/core/remote-tabs.js'),
     import('./src/core/cfg-map.js'),
+    import('./src/core/app-settings.js'),
   ]);
   const bookmarksIoMod = await import('./vendor/bookmarks-lib/bookmarks-io.js');
   const treeMod = await import('./vendor/bookmarks-lib/tree.js');
   return {
     createProfileStore: profileStoreMod.createProfileStore,
+    createSettingsStore: appSettingsMod.createSettingsStore,
     createSessionManager: sessionsMod.createSessionManager,
     loadVendored: providerShimMod.loadVendored,
     getVendored: providerShimMod.getVendored,
@@ -223,8 +398,20 @@ async function loadCore() {
   };
 }
 
-function registerIpc(core, profileStore, sessions, appMeta) {
+function registerIpc(core, profileStore, sessions, settingsStore, appMeta) {
   const { bmOps, tabOps } = core;
+
+  // ---- settings ---------------------------------------------------------
+  handle('settings:get', () => settingsStore.get());
+  handle('settings:update', async (patch) => {
+    const next = await settingsStore.update(patch);
+    // Side effects live here, not in the renderer, so every caller — the
+    // Options dialog, and a future one — gets them applied consistently
+    // rather than each having to remember to ask for them separately.
+    if ('theme' in patch) nativeTheme.themeSource = next.theme;
+    if ('startWithWindows' in patch) app.setLoginItemSettings({ openAtLogin: next.startWithWindows });
+    return next;
+  });
 
   // ---- app / profiles -----------------------------------------------------
   handle('app:info', async () => ({

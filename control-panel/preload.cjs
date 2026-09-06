@@ -19,6 +19,15 @@ contextBridge.exposeInMainWorld('tabbysync', {
   app: {
     info: () => call('app:info'),
     openExternal: (url) => call('shell:openExternal', url),
+    // One fixed channel, not a general event bridge — the File menu's
+    // Options… item lives in the main process and has no other way to
+    // reach into the renderer to open its modal.
+    onOpenOptions: (cb) => ipcRenderer.on('menu:open-options', () => cb()),
+  },
+
+  settings: {
+    get: () => call('settings:get'),
+    update: (patch) => call('settings:update', patch),
   },
 
   profiles: {

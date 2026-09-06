@@ -1,7 +1,7 @@
 {
   "name": "tabbysync-control-panel",
   "productName": "TabbySync Control Panel",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Windows desktop app for managing every TabbySync sync profile, bookmark and saved tab list in one place.",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
   "scripts": {
     "vendor": "node scripts/vendor.mjs",
     "icon": "node scripts/make-icon.mjs",
-    "prestart": "npm run vendor",
+    "prestart": "npm run vendor && npm run icon",
     "start": "electron .",
     "pretest": "npm run vendor",
     "test": "node --test test/*.test.js",
@@ -39,6 +39,7 @@
       "src/**/*",
       "renderer/**/*",
       "vendor/**/*",
+      "build/icon.ico",
       "!**/*.test.js"
     ],
     "win": {
