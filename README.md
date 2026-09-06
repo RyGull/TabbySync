@@ -148,6 +148,17 @@ and TabbySync's own local settings.
 - **Bookmarks** — just use your browser's bookmarks; changes sync automatically
   (debounced), on a timer, and on window focus.
 
+## Desktop Control Panel (Windows)
+
+Have more than one sync profile (work, personal, a home server) and want to
+add/remove/move/copy bookmarks and saved tabs between them without a
+browser? **[TabbySync Control Panel](control-panel/)** is a companion
+Windows desktop app for exactly that — same self-hosted/Gist/JSONBin
+destinations, same merge and encryption, but built to hold several profiles
+side by side instead of the extension's one-at-a-time. See
+[`control-panel/README.md`](control-panel/README.md) for what it does, how
+it stays wire-compatible with the extension, and how to build or install it.
+
 ## How it's built
 
 The extension lives at the repo root:

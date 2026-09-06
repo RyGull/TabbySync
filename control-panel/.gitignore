@@ -1,0 +1,11 @@
+# node_modules/ and dist/ are already covered by the repo root .gitignore
+# (its patterns match at any depth). Listed here only for what's specific
+# to this subproject:
+
+# Copied fresh from ../bookmarks, ../shared, ../tabs on every
+# start/test/dist:win by scripts/vendor.mjs — committing a copy would drift
+# from the source it's supposed to track. See vendor.mjs's own comment.
+/vendor/
+
+# Regenerated from ../icons/icon-*.png by scripts/make-icon.mjs.
+/build/icon.ico
