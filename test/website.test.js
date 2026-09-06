@@ -427,3 +427,53 @@ test('the page works with the script disabled, and the script invents no URLs', 
   assert.ok(!/chromewebstore|addons\.mozilla/.test(cta),
     'main.js hardcodes a store URL instead of reading it from the markup');
 });
+
+// ---------------------------------------------------------------------------
+// One URL per page — the rewrite rules, in the order they have to be in
+// ---------------------------------------------------------------------------
+//
+// These were verified against a real Apache serving this .htaccess, which CI
+// has no way to run, so what is pinned here is the ordering that made those
+// results come out right. Every one of these rules is order-dependent: the
+// generic ".php -> clean URL" rule matches everything, so anything with a
+// different destination has to be written above it or it never fires.
+
+const at = (needle) => {
+  const i = htaccess.indexOf(needle);
+  assert.ok(i >= 0, `.htaccess no longer contains ${needle}`);
+  return i;
+};
+
+test('the sitemap has exactly one URL, and it is the one robots.txt advertises', () => {
+  // Submitting /sitemap.php to Search Console got "couldn't read it": the
+  // generic rule sent it to /sitemap, so a crawler asking for a sitemap was
+  // answered with a redirect somewhere else.
+  const canonical = at('RewriteRule ^ /sitemap.xml [R=301,L]');
+  assert.ok(canonical < at('RewriteRule ^ /%1 [R=301,L]'),
+    'the generic .php rule runs first, so /sitemap.php goes to /sitemap again');
+  assert.ok(at('RewriteRule ^sitemap\\.xml$ sitemap.php [L]') < canonical,
+    '/sitemap.xml must be served before the redirect rule can see it');
+  // The redirect matches the original request line, not the rewritten path.
+  // Matching the path would send the internal rewrite of /sitemap.xml back to
+  // /sitemap.xml, forever.
+  const sitemapCond = htaccess.slice(0, canonical).split(/\n\s*\n/).pop();
+  assert.match(sitemapCond, /THE_REQUEST/,
+    'the sitemap redirect matches the rewritten path rather than the original request, which loops');
+  assert.match(sitemapCond, /sitemap/, 'the condition above the sitemap redirect does not mention the sitemap');
+});
+
+test('the home page is only at /', () => {
+  // index.php used to reach the generic rule first and redirect to /index,
+  // which answered 200: the home page with a second address.
+  assert.ok(at('RewriteCond %{THE_REQUEST} "\\s/+index(\\.php)?[\\s?]" [NC]') < at('RewriteRule ^ /%1 [R=301,L]'),
+    'index.php redirects to /index instead of / because the generic rule wins');
+});
+
+test('no redirect can swallow a form submission', () => {
+  // Every rule that redirects a page URL is preceded by a POST exclusion, or
+  // the contact form posts into a 301 and the message is lost.
+  for (const rule of ['RewriteRule ^ / [R=301,L]', 'RewriteRule ^ /%1 [R=301,L]']) {
+    const preceding = htaccess.slice(0, at(rule)).split(/\n\s*\n/).pop();
+    assert.match(preceding, /REQUEST_METHOD\} !=POST/, `${rule} does not exclude POST`);
+  }
+});

@@ -82,6 +82,26 @@ ErrorDocument 404 /404.php
   # stale; robots.txt advertises the .xml name, which is what crawlers expect.
   RewriteRule ^sitemap\.xml$ sitemap.php [L]
 
+  # ...and that is its only address. Without this, the generic .php rule below
+  # sends /sitemap.php to /sitemap, which then serves the same sitemap from a
+  # second URL — and answers a crawler that asked for a sitemap with a
+  # redirect to somewhere else, which Search Console reports as a sitemap it
+  # could not read.
+  #
+  # Matched on THE_REQUEST, the original request line, rather than on the
+  # rewritten path: the rule above rewrites /sitemap.xml to sitemap.php
+  # internally, and .htaccess rules run again on the result, so a rule that
+  # matched the path would redirect that back to /sitemap.xml forever.
+  RewriteCond %{THE_REQUEST} "\s/+sitemap(\.php)?[\s?]" [NC]
+  RewriteRule ^ /sitemap.xml [R=301,L]
+
+  # The home page lives at /, not at /index or /index.php. This has to come
+  # before the generic rule below, which would otherwise turn index.php into
+  # /index and give the home page a second URL that also answers 200.
+  RewriteCond %{REQUEST_METHOD} !=POST
+  RewriteCond %{THE_REQUEST} "\s/+index(\.php)?[\s?]" [NC]
+  RewriteRule ^ / [R=301,L]
+
   # /contact.php -> /contact, and the same for every other page, so only the
   # extensionless form is ever linked to or indexed. The form itself posts
   # back to whatever URL served it, which is why this redirect cannot swallow
@@ -89,11 +109,6 @@ ErrorDocument 404 /404.php
   RewriteCond %{REQUEST_METHOD} !=POST
   RewriteCond %{THE_REQUEST} "\s/+(.+?)\.php[\s?]" [NC]
   RewriteRule ^ /%1 [R=301,L]
-
-  # index.php -> /
-  RewriteCond %{REQUEST_METHOD} !=POST
-  RewriteCond %{THE_REQUEST} "\s/+index\.php[\s?]" [NC]
-  RewriteRule ^ / [R=301,L]
 
   # Serve /contact from contact.php, /privacy from privacy.php, and so on.
   RewriteCond %{REQUEST_FILENAME} !-f
