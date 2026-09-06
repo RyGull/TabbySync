@@ -535,6 +535,22 @@ $('#btn-about').addEventListener('click', openAboutModal);
 
 async function openAboutModal() {
   const info = await api.app.info();
+  const updateLine = h('p', { class: 'update-status' }, 'Updates download automatically in the background and ask before installing.');
+  const checkBtn = h('button', { class: 'btn btn-sm', type: 'button' }, 'Check for updates');
+  checkBtn.addEventListener('click', async () => {
+    checkBtn.disabled = true;
+    updateLine.textContent = 'Checking…';
+    try {
+      const status = await api.app.checkForUpdates();
+      updateLine.textContent = describeUpdateStatus(status, info.version);
+    } catch (e) {
+      updateLine.textContent = 'Could not check for updates.';
+      console.error(e);
+    } finally {
+      checkBtn.disabled = false;
+    }
+  });
+
   openModal({
     title: 'About TabbySync Control Panel',
     body: h('div', {}, [
@@ -544,9 +560,22 @@ async function openAboutModal() {
         ? 'Tokens and passphrases are encrypted at rest using your operating system’s secure storage.'
         : '⚠️ Your OS secure storage is not available — tokens and passphrases are stored in plain text in the file above.'),
       h('p', {}, 'A companion desktop app for TabbySync: manages the same self-hosted / GitHub Gist / JSONBin sync destinations your browser extension uses, so you can add, remove, move and copy bookmarks and saved tabs across every profile from one place.'),
+      h('div', { class: 'field' }, [updateLine, checkBtn]),
     ]),
     footer: [h('button', { class: 'btn btn-primary', type: 'button', onclick: (e) => e.target.closest('.modal-root').remove() }, 'Close')],
   });
+}
+
+/** Turns main.cjs's app:checkForUpdates result into one line of human text. */
+function describeUpdateStatus(status, currentVersion) {
+  switch (status && status.state) {
+    case 'checking': return 'Checking…';
+    case 'not-available': return status.reason || `You're up to date (${currentVersion}).`;
+    case 'downloading': return `A new version (${status.version}) was found and is downloading in the background.`;
+    case 'downloaded': return `Version ${status.version} is downloaded and ready — restart to install it (you'll be asked).`;
+    case 'error': return `Couldn't check for updates: ${status.message || 'unknown error'}`;
+    default: return `You're up to date (${currentVersion}).`;
+  }
 }
 
 // ---------------------------------------------------------------------------

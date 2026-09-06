@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('tabbysync', {
     // reach into the renderer to open its modal.
     onOpenOptions: (cb) => ipcRenderer.on('menu:open-options', () => cb()),
     onOpenPrivacy: (cb) => ipcRenderer.on('menu:open-privacy', () => cb()),
+    checkForUpdates: () => call('app:checkForUpdates'),
   },
 
   settings: {

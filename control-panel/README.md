@@ -93,6 +93,15 @@ to one destination at a time).
   the extension's — this app stores multiple profiles and has no
   equivalent of a single active provider, so the two policies read
   similarly but aren't the same document).
+- **Updates** — the installed app checks this repo's Releases on startup
+  (`electron-updater`), downloads a new version in the background if one
+  exists, then asks before restarting to install it — declining still
+  installs it automatically the next time you fully quit, so nobody has
+  to remember to come back. "About" (sidebar) has a **Check for updates**
+  button for an on-demand check any time. Only the installer build can
+  update itself this way — the portable `.exe` has nothing installed to
+  update in place, so it always reports "not available" there; download a
+  new copy by hand instead.
 
 ## How it stays compatible with the extension
 
@@ -161,6 +170,7 @@ local check. The `.ico` app icon is generated from the extension's own
 | `src/core/bookmarks-ops.js` / `tabs-ops.js` | Pure add/remove/move/copy/reorder operations, the thing a browser's own APIs would otherwise provide |
 | `src/core/remote-bookmarks.js` / `remote-tabs.js` | Load/save orchestration: fetch, merge, safety brake, push |
 | `src/core/sessions.js` | Per-profile in-memory working copies + the cross-profile copy/move orchestration |
+| `electron-updater` (`main.cjs`'s `setupAutoUpdate()`) | Checks this repo's GitHub Releases for a newer version, downloads it, prompts before installing |
 | `scripts/vendor.mjs` | Copies the extension modules this app depends on into `vendor/` |
 | `scripts/make-icon.mjs` | Builds `build/icon.ico` from the extension's own PNG icon set |
 
@@ -207,6 +217,14 @@ local check. The `.ico` app icon is generated from the extension's own
   against, has neither), so `createTray()` fails there — caught, logged,
   and otherwise harmless, but "start minimized"/"minimize to tray" have
   only ever been exercised for real on Windows.
+- Builds aren't code-signed (no certificate for a personal, non-commercial
+  project). Windows SmartScreen may still flag a freshly downloaded
+  installer the same way it already does today — auto-update doesn't
+  change that, since it's the same unsigned installer either way, just
+  fetched automatically instead of by hand. The update feed itself
+  (`dist/latest.yml`, generated and verified by electron-builder/
+  electron-updater) isn't affected by this — it's a separate mechanism
+  from OS code-signing trust.
 
 ## Testing
 

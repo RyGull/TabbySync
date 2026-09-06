@@ -20,6 +20,9 @@
     "predist:win:dir": "npm run vendor && npm run icon",
     "dist:win:dir": "electron-builder --win --dir --publish never"
   },
+  "dependencies": {
+    "electron-updater": "6.8.9"
+  },
   "devDependencies": {
     "electron": "^44.0.0",
     "electron-builder": "^25.0.0",
@@ -44,8 +47,18 @@
     ],
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "build/icon.ico"
     },
@@ -58,6 +71,13 @@
     },
     "portable": {
       "artifactName": "TabbySync-Control-Panel-${version}-portable.exe"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "RyGull",
+        "repo": "TabbySync"
+      }
+    ]
   }
 }

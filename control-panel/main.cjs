@@ -9,6 +9,7 @@
 const path = require('node:path');
 const fs = require('node:fs/promises');
 const { app, BrowserWindow, ipcMain, dialog, shell, safeStorage, Menu, Tray, nativeTheme } = require('electron');
+const { autoUpdater } = require('electron-updater');
 
 const ICON_PATH = path.join(__dirname, 'build', 'icon.ico');
 // Kept beside the same URLs in website/config.php (SITE_URL, PAYPAL_URL) —
@@ -20,6 +21,10 @@ const GITHUB_URL = 'https://github.com/RyGull/TabbySync';
 
 let isQuitting = false;
 let tray = null;
+// Last thing setupAutoUpdate()/the manual "Check for updates" button in the
+// About modal found out, for app:checkForUpdates to report back. Not
+// persisted — just today's in-memory answer to "what happened last time?".
+let updateStatus = { state: 'idle' };
 
 /** Wraps an IPC handler so thrown errors (with .code/.had/.keeps etc.) survive the trip to the renderer as data, not as Electron's own re-serialized Error (which drops custom properties). See preload.cjs's call() for the matching unwrap. */
 function handle(channel, fn) {
@@ -220,6 +225,62 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+/**
+ * Update checking: electron-updater, fed by the GitHub Releases this repo
+ * already publishes (package.json's build.publish tells electron-builder
+ * what to bake into dist/latest.yml at build time — .github/workflows/
+ * control-panel.yml's release step attaches it, and the installer's own
+ * .exe.blockmap, alongside the installer itself).
+ *
+ * Deliberately "auto-download, then ask before restarting" rather than
+ * either silent extreme:
+ *   - not check-only: most people never remember to come back and check,
+ *     so a purely manual check would mean most installs just go stale.
+ *   - not silent auto-install: this app's whole safety model is "never
+ *     touch what wasn't asked for" (the large-deletion brake, confirming
+ *     before switching away from unsaved edits) — a restart landing
+ *     mid-edit would cut against that.
+ * Declining the prompt doesn't mean staying on the old version forever:
+ * autoInstallOnAppQuit (electron-updater's default, left untouched here)
+ * installs it on the next real quit anyway, prompt or not.
+ *
+ * Only meaningful for the installed (NSIS) build: app.isPackaged is false
+ * for `npm start`/the smoke test (there's no dist/resources/app-update.yml
+ * in a dev checkout for electron-updater to read), and a portable .exe has
+ * nothing installed for it to update in place.
+ */
+function setupAutoUpdate() {
+  if (!app.isPackaged || process.env.PORTABLE_EXECUTABLE_DIR) return;
+
+  autoUpdater.autoDownload = true;
+
+  autoUpdater.on('checking-for-update', () => { updateStatus = { state: 'checking' }; });
+  autoUpdater.on('update-not-available', () => { updateStatus = { state: 'not-available' }; });
+  autoUpdater.on('error', (err) => {
+    updateStatus = { state: 'error', message: err && err.message };
+    console.error('[TabbySync Control Panel] update check failed:', err && err.message);
+  });
+  autoUpdater.on('update-available', (info) => {
+    updateStatus = { state: 'downloading', version: info.version };
+  });
+  autoUpdater.on('update-downloaded', async (info) => {
+    updateStatus = { state: 'downloaded', version: info.version };
+    const result = await dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      buttons: ['Restart and Install', 'Later'],
+      defaultId: 0,
+      cancelId: 1,
+      message: `TabbySync Control Panel ${info.version} is ready to install.`,
+      detail: 'Restarting installs it right away. Choosing Later installs it automatically the next time you fully quit the app.',
+    });
+    if (result.response === 0) { isQuitting = true; autoUpdater.quitAndInstall(); }
+  });
+
+  autoUpdater.checkForUpdates().catch((err) => {
+    updateStatus = { state: 'error', message: err && err.message };
+  });
+}
+
 async function main() {
   app.setName('TabbySync Control Panel');
   // Set before any window exists: a real quit (menu Exit, tray Quit,
@@ -265,6 +326,7 @@ async function main() {
 
   createTray(settingsStore);
   await createWindow(settingsStore);
+  setupAutoUpdate();
 
   app.on('activate', () => {
     if (mainWindow) { mainWindow.show(); return; }
@@ -457,6 +519,19 @@ async function runSmokeTest(win, core, profileStore, settingsStore) {
       shell.openExternal = originalOpenExternal;
     }
 
+    // --- item 6: update checking should identify itself as unavailable in
+    // this dev/unpackaged run, not crash or silently do nothing ---
+    await win.webContents.executeJavaScript(`openAboutModal()`);
+    await new Promise((r) => setTimeout(r, 200));
+    await win.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.modal-body button')).find((b) => b.textContent === 'Check for updates').click()`);
+    await new Promise((r) => setTimeout(r, 300));
+    const updateStatusText = await win.webContents.executeJavaScript(`document.querySelector('.update-status').textContent`);
+    console.log('[smoke-test] update-check status (dev build):', updateStatusText);
+    if (!/dev build/i.test(updateStatusText)) {
+      throw new Error(`expected the update-check button to report a dev build, got: "${updateStatusText}"`);
+    }
+    await shot('12-about-update-check.png');
+
     console.log('[smoke-test] done, screenshots in', outDir);
   } catch (e) {
     console.error('[smoke-test] FAILED:', e);
@@ -527,6 +602,19 @@ function registerIpc(core, profileStore, sessions, settingsStore, appMeta) {
     profilesFile: profileStore.filePath,
     platform: process.platform,
   }));
+
+  // Manual "Check for updates" (About modal). Reuses setupAutoUpdate()'s own
+  // autoUpdater instance/listeners — this just triggers a check and reports
+  // back whatever updateStatus those listeners leave behind, same as the
+  // automatic startup check does.
+  handle('app:checkForUpdates', async () => {
+    if (!app.isPackaged) return { state: 'not-available', reason: 'This is a dev build — update checking only runs in an installed copy.' };
+    if (process.env.PORTABLE_EXECUTABLE_DIR) return { state: 'not-available', reason: 'The portable build has nothing installed to update in place — download a new copy from the website or GitHub instead.' };
+    await autoUpdater.checkForUpdates().catch((err) => {
+      updateStatus = { state: 'error', message: err && err.message };
+    });
+    return updateStatus;
+  });
 
   handle('profiles:list', () => profileStore.list());
   handle('profiles:get', (id) => profileStore.get(id));

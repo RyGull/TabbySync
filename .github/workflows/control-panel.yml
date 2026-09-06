@@ -16,6 +16,16 @@ name: control-panel
 # (workflow_dispatch) or when cutting a release (the tag above), not on
 # every commit; run it by hand from the Actions tab to get an installable
 # build without tagging anything.
+#
+# The installed app checks this repo's Releases for updates on its own
+# (electron-updater — see main.cjs's setupAutoUpdate()), which is *why*
+# `dist/*.exe.blockmap` and `dist/latest.yml` get attached below alongside
+# the installer: those are electron-updater's update feed, not something a
+# person downloads. `npm run dist:win` builds with `--publish never` (it
+# still writes both files locally — package.json's build.publish tells it
+# what to put in them — it just doesn't upload anywhere itself); this job's
+# own release step does the actual attaching, same as it already did for
+# the installer.
 
 on:
   push:
@@ -125,6 +135,8 @@ jobs:
           generate_release_notes: true
           files: |
             control-panel/dist/*.exe
+            control-panel/dist/*.exe.blockmap
+            control-panel/dist/latest.yml
           body: |
             Windows build of the TabbySync Control Panel — manages every
             TabbySync sync profile, bookmark and saved-tabs list from one
@@ -135,3 +147,4 @@ jobs:
             |---|---|
             | `TabbySync Control Panel Setup ${{ steps.version.outputs.version }}.exe` | Installer (Start Menu + desktop shortcut) |
             | `TabbySync-Control-Panel-${{ steps.version.outputs.version }}-portable.exe` | No install — just run it |
+            | `*.exe.blockmap`, `latest.yml` | Not for you to download — the installed app's own auto-updater reads these to find and verify new versions. |
