@@ -91,10 +91,14 @@ test('a genuine "deleted everywhere" still propagates', () => {
 // ---------------------------------------------------------------------------
 
 test('the engine keys its cached base to a destination', () => {
-  assert.match(engine, /function destinationKey\(cfg\)/,
+  assert.match(engine, /function destinationKey\(cfg, roots\)/,
     'nothing identifies which destination the cached merge base belongs to');
   assert.match(engine, /cfg\.provider[\s\S]{0,80}cfg\.baseUrl[\s\S]{0,80}cfg\.syncName/,
     'the destination key must cover the sync method, the server URL and the sync name');
+  // And the local folders it was read from: changing which two roots are
+  // synced invalidates the base exactly as changing the server does.
+  assert.match(engine, /roots\.barLocalId[\s\S]{0,120}roots\.otherLocalId/,
+    'the destination key ignores which local folders the base came from');
   assert.match(bmConfig, /cacheKey: 'sl\.bm\.cacheKey'/, 'the key is not persisted with the cache');
   assert.match(engine, /cacheKey: key/, 'the key is not written back after a successful sync');
 });

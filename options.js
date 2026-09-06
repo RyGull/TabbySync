@@ -84,10 +84,49 @@ function serverUrlProblem(url) {
   }
   return `Server URL must use https:// (this one uses "${u.protocol}").`;
 }
-function requestOrigin(url) {
-  const o = safeOrigin(url);
-  if (!o) return Promise.resolve(true);
-  return Promise.resolve(chrome.permissions.request({ origins: [o] })).catch(() => false);
+// Host access: which origins a provider needs, and how to ask for them.
+//
+// Firefox only honours permissions.request() while the click that triggered it
+// is still on the stack. One `await` first and it rejects outright — no
+// prompt, no permission — with "may only be called from a user input handler".
+// Chrome is laxer, which is why this worked everywhere until the Firefox build
+// existed. So every caller starts the request as the first thing its click
+// handler does and awaits the answer afterwards; requestAccess() deliberately
+// is not an `async function`, so the call reaches the browser synchronously.
+function accessOrigins(provider, serverUrl) {
+  if (provider === 'gist') return ['https://api.github.com/*'];
+  if (provider === 'jsonbin') return ['https://api.jsonbin.io/*'];
+  const o = safeOrigin(serverUrl);
+  return o ? [o] : [];
+}
+
+function requestAccess(origins) {
+  if (!origins.length) return Promise.resolve({ granted: true });
+  let asked;
+  try { asked = Promise.resolve(chrome.permissions.request({ origins })); }
+  catch (e) { asked = Promise.reject(e); }
+  return asked.then(
+    (granted) => ({ granted: !!granted }),
+    (e) => ({ granted: false, error: (e && e.message) || String(e) }),
+  );
+}
+
+// What actually happened, once the rest of the save has run. A rejected
+// request still leaves an earlier grant in place, and reporting that as a
+// failure sends people hunting for a problem they don't have.
+async function settleAccess(asked, origins) {
+  const res = await asked;
+  if (res.granted || !origins.length) return res;
+  try {
+    if (await chrome.permissions.contains({ origins })) return { granted: true };
+  } catch { /* fall through and report the original failure */ }
+  return res;
+}
+
+// The reason, when the browser gave one. A bare "it didn't work" is what made
+// a refused permission request look like a broken server.
+function accessProblem(res) {
+  return res.error ? `access wasn't granted (${res.error})` : "access wasn't granted";
 }
 function fileUrl(base, name) {
   base = (base || '').replace(/\/+$/, '');
@@ -442,18 +481,6 @@ async function load() {
 // ---------------------------------------------------------------------------
 ['srv-url', 'srv-name'].forEach((id) => $(id).addEventListener('input', preview));
 
-// The host permission a provider actually needs — self-hosted is whatever
-// URL the user typed, Gist/JSONBin are fixed third-party API hosts.
-function grantAccess(provider, serverUrl) {
-  if (provider === 'gist') {
-    return Promise.resolve(chrome.permissions.request({ origins: ['https://api.github.com/*'] })).catch(() => false);
-  }
-  if (provider === 'jsonbin') {
-    return Promise.resolve(chrome.permissions.request({ origins: ['https://api.jsonbin.io/*'] })).catch(() => false);
-  }
-  return requestOrigin(serverUrl);
-}
-
 $('srv-save').addEventListener('click', async () => {
   const provider = currentProvider();
   const meta = SP.providerMeta(provider);
@@ -477,6 +504,12 @@ $('srv-save').addEventListener('click', async () => {
     status('srv-status', 'Sync name is required (letters, numbers, dots, dashes and underscores).', 'bad');
     return;
   }
+
+  // Ask for host access HERE, before this handler's first `await` — see
+  // requestAccess(). The answer is collected at the end, once everything else
+  // has been saved.
+  const origins = accessOrigins(provider, serverUrl);
+  const asked = requestAccess(origins);
 
   // Renaming an in-use profile doesn't move its data — it starts a new,
   // separate (empty) file/gist-entry under the new name and leaves the old
@@ -508,16 +541,16 @@ $('srv-save').addEventListener('click', async () => {
   // Refresh the cache so switching providers afterward (without reloading
   // the page) restores what was just saved, not stale pre-save values.
   lastConfig = await SL.getConfig();
-  const granted = await grantAccess(provider, serverUrl);
+  const access = await settleAccess(asked, origins);
   await send({ type: 'tabbysync-reschedule' });
   // Nudge both engines (they also auto-sync from the config change).
   send({ type: 'syncNow' });
   send({ type: 'tabbysync-sync' });
   preview();
-  status('srv-status', granted
+  status('srv-status', access.granted
     ? 'Saved — syncing the enabled tools now.'
-    : "Saved, but access wasn't granted — sync will fail until you allow it.",
-    granted ? 'ok' : 'bad');
+    : `Saved, but ${accessProblem(access)} — sync will fail until you allow it.`,
+    access.granted ? 'ok' : 'bad');
 });
 
 $('srv-test').addEventListener('click', async () => {
@@ -535,8 +568,16 @@ $('srv-test').addEventListener('click', async () => {
   }
   if (!token) { status('srv-status', `Fill in the ${meta.tokenLabel} first.`, 'bad'); return; }
 
+  // Same rule as Save: the request has to reach the browser before this
+  // handler awaits anything. See requestAccess().
+  const origins = accessOrigins(provider, serverUrl);
+  const access = await settleAccess(requestAccess(origins), origins);
+  if (!access.granted) {
+    status('srv-status',
+      `Can't test — ${accessProblem(access)}. Click “Check it works” again and choose Allow.`, 'bad');
+    return;
+  }
   status('srv-status', 'Testing…');
-  await grantAccess(provider, serverUrl);
 
   if (provider === 'custom') {
     try {

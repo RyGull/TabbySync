@@ -260,15 +260,19 @@ and `npx web-ext lint --source-dir dist/firefox` runs the same validation AMO
 runs at review — including on the manifest assumptions this port had to make
 without access to the documentation.
 
-**Untested on Firefox as of 1.3.13** — the port is written and reasoned about
-but has never been run in the browser it targets. Expect to find things this
-could not.
+**Run on Firefox as of 1.3.14.** The port loads, the pages render and both
+engines sync. Two things only showed up there and are fixed in 1.3.14: Firefox
+lists its bookmark roots in a different order (`pickRoots` in
+`bookmarks/lib/tree.js`), and it refuses a `permissions.request()` made after
+an `await` (`requestAccess` in `options.js`). Firefox's **Bookmarks Menu** is
+not synced — the model has two roots, and folding a third into "Other
+bookmarks" would move bookmarks nobody asked to move.
 
 ## Releasing
 
 ```
-sh scripts/package.sh          # dist/tabbysync-<version>.zip          — Chrome
-sh scripts/package.sh firefox  # dist/tabbysync-<version>-firefox.zip  — Firefox
+bash scripts/package.sh          # dist/tabbysync-<version>.zip          — Chrome
+bash scripts/package.sh firefox  # dist/tabbysync-<version>-firefox.zip  — Firefox
 npm run screenshots            # store images + promo tiles, from the real UI
 ```
 
@@ -278,7 +282,7 @@ manifest is the right shape for its store, and attaches them to a draft GitHub
 Release.
 
 ```
-git tag v1.3.13 && git push origin v1.3.13
+git tag v1.3.14 && git push origin v1.3.14
 ```
 
 The tag has to match `manifest.json` or the job stops — a release named after a

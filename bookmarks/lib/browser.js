@@ -8,7 +8,7 @@
 //   applyTree(): reconcile the live bookmarks to match a merged model tree.
 
 import {
-  ROOT_ID, BAR_ID, OTHER_ID, isFolder, flatten, now,
+  ROOT_ID, BAR_ID, OTHER_ID, isFolder, flatten, now, pickRoots,
 } from './tree.js';
 
 function newId() {
@@ -16,14 +16,11 @@ function newId() {
     ('x' + Date.now() + Math.random().toString(16).slice(2));
 }
 
-// Locate the two synced roots (bookmarks bar + other bookmarks).
-async function getRoots() {
+// Locate the two synced roots (bookmarks bar + other bookmarks). Which node
+// is which differs by browser — see pickRoots in tree.js.
+export async function getRoots() {
   const [root] = await chrome.bookmarks.getTree();
-  const kids = root.children || [];
-  // children[0] is the toolbar, children[1] is "other" on Chromium browsers.
-  const bar = kids[0];
-  const other = kids[1] || kids[0];
-  return { barLocalId: bar.id, otherLocalId: other.id };
+  return pickRoots(root.children);
 }
 
 function invert(map) {

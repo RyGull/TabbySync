@@ -6,12 +6,13 @@
 // the live bookmarks back into a plain model. Uses chrome.bookmarks; no DOM, so
 // it's Node-testable with a fake chrome.
 
-import { normUrl } from './tree.js';
+import { normUrl, pickRoots } from './tree.js';
 
+// Which live folders are the bookmarks bar and "other bookmarks" — the same
+// browser-dependent question browser.js asks. See pickRoots in tree.js.
 export async function getRoots() {
   const [root] = await chrome.bookmarks.getTree();
-  const kids = root.children || [];
-  return { barLocalId: kids[0].id, otherLocalId: (kids[1] || kids[0]).id };
+  return pickRoots(root.children);
 }
 
 // Live bookmarks -> { type:'folder', title:'', children:[barFolder, otherFolder] }.

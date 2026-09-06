@@ -6,6 +6,46 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.3.14 — 2026-09-06
+
+**The Firefox port, corrected by running it.** 1.3.13 shipped a Firefox build
+that had never been loaded in Firefox. It loads and syncs; two things it got
+wrong only exist there.
+
+- **Bookmarks arrived in the wrong folder.** Chromium's bookmark roots are
+  `[Bookmarks bar, Other bookmarks, …]`; Firefox's are `[Bookmarks Menu,
+  Bookmarks Toolbar, Other Bookmarks, Mobile Bookmarks]`. Reading the first
+  child as the toolbar put every synced bookmark into the Bookmarks Menu, which
+  Firefox hides by default — indistinguishable, from the outside, from nothing
+  having arrived. Both roots are now located by their fixed ids in each
+  browser. Firefox's Bookmarks Menu stays unsynced: the model has two roots,
+  and quietly merging a third into "Other bookmarks" would move real bookmarks
+  without being asked.
+- **"Save and connect" said access wasn't granted, without asking for it.**
+  Firefox only honours `permissions.request()` while the click that led to it
+  is still on the stack; the save handler asked after several `await`s, so the
+  request was refused with no prompt shown. It is now made first, and its
+  answer collected afterwards. If it is refused anyway the page says what the
+  browser said, instead of a bare "access wasn't granted" — and an existing
+  grant is checked before reporting failure at all.
+
+- **The merge base is now keyed to the folders it came from, too.** Fixing
+  which roots are synced moves the goalposts under the cached base: the
+  bookmarks it holds are missing from the *new* pair of folders, which the
+  merge would have read as "the user deleted all of them" and pushed to the
+  server as a deletion. The cache key already covered the destination (1.3.12);
+  it now covers the two local root folders as well, so a change there is
+  treated as a first sync — union, never delete. On the first sync after
+  updating, bookmarks that ended up in Firefox's Bookmarks Menu are *moved*
+  into the toolbar rather than duplicated, because the id map that says which
+  live bookmark is which survives the change.
+
+Neither of the first two changes anything on Chrome: the root ids it uses are the ones it always
+used, and it was never strict about when a permission may be requested. The
+third costs Chrome one union merge on the first sync after updating, because
+the cache key's shape changed: a bookmark deleted locally and not yet synced
+comes back instead of being deleted. That is the direction to err in.
+
 ## 1.3.13 — 2026-09-06
 
 **A Firefox build, from the same source.** No second copy of the code and no
@@ -36,6 +76,7 @@ Versions before 1.3.0 predate this changelog; their history is in the git log.
 - **Not yet run in Firefox.** The port is written and reasoned about; it has
   never been loaded in the browser it targets, because there isn't one in the
   environment it was written in. Expect a round of corrections once it is.
+  (It was: see 1.3.14.)
 
 ## 1.3.12 — 2026-09-05
 

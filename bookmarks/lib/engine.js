@@ -6,7 +6,7 @@
 //   -> push merged to server -> save cache + mappings.
 
 import { getConfig, isConfigured, getState, setState } from './config.js';
-import { readBrowserTree, applyTree } from './browser.js';
+import { readBrowserTree, applyTree, getRoots } from './browser.js';
 import { getRemote, putRemote } from './sync.js';
 import { threeWayMerge } from './merge.js';
 import { emptyTree, stats } from './tree.js';
@@ -27,9 +27,20 @@ let suppressUntil = 0; // ignore bookmark-change events until this time (our own
  * The token is deliberately not part of the key: it is a credential, not an
  * address, and the missing-remote guard in runSync covers the case where a
  * new credential points at an account with nothing in it.
+ *
+ * The two local root folders are part of it, though. A base is also only true
+ * of the folders it was read from: if the pair being synced changes — a
+ * different browser, or the 1.3.14 fix to which of Firefox's four roots are
+ * the bar and "other" — then every bookmark in the base is missing from the
+ * new roots, which reads as "the user deleted all of them" and empties the
+ * destination on the next sync. Same failure as switching sync method, one
+ * step to the left.
  */
-function destinationKey(cfg) {
-  return [cfg.provider || 'custom', cfg.baseUrl || '', cfg.syncName || ''].join('|');
+function destinationKey(cfg, roots) {
+  return [
+    cfg.provider || 'custom', cfg.baseUrl || '', cfg.syncName || '',
+    (roots && roots.barLocalId) || '', (roots && roots.otherLocalId) || '',
+  ].join('|');
 }
 
 export function isSuppressed() { return busy || Date.now() < suppressUntil; }
@@ -80,7 +91,7 @@ export async function runSync(trigger = 'manual', { allowLargeDeletion = false }
   busy = true;
   try {
     const state = await getState();
-    const key = destinationKey(cfg);
+    const key = destinationKey(cfg, await getRoots());
     const remoteRaw = await getRemote(cfg);
 
     // Two situations mean there is no honest merge base, and in both the
@@ -91,6 +102,9 @@ export async function runSync(trigger = 'manual', { allowLargeDeletion = false }
     //   2. There is no file at this destination at all. Nothing has been
     //      deleted remotely, because there is no remote state to have
     //      deleted it from; this is a first sync by any other name.
+    //
+    // The key covers the local root folders too, so "the folders being synced
+    // have changed" lands in case 1 rather than looking like a mass deletion.
     //
     // Both used to fall through to a full three-way merge against an empty
     // remote, which reads as "the other side deleted everything" and wipes

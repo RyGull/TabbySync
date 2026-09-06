@@ -119,6 +119,17 @@ test('no extension code calls the API with a completion callback', () => {
   }
 });
 
+test('the npm scripts run the packaging script with bash', () => {
+  // package.sh uses `set -o pipefail`, which dash does not have — and npm runs
+  // scripts with /bin/sh, which on Debian and Ubuntu is dash. `npm run
+  // dev:firefox` failed on its first real use for exactly this.
+  const scripts = JSON.parse(read('package.json')).scripts;
+  for (const [name, cmd] of Object.entries(scripts)) {
+    if (!cmd.includes('package.sh')) continue;
+    assert.match(cmd, /^bash /, `npm run ${name} calls package.sh with ${cmd.split(' ')[0]}`);
+  }
+});
+
 test('the packaging script can build both, and never edits the working tree', () => {
   const pkg = read('scripts/package.sh');
   assert.match(pkg, /chrome\|firefox/, 'the script takes no target argument');

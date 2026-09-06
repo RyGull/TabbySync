@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # package.sh — build a store upload zip.
 #
-#   sh scripts/package.sh              -> dist/tabbysync-<version>.zip          (Chrome Web Store)
-#   sh scripts/package.sh firefox      -> dist/tabbysync-<version>-firefox.zip  (addons.mozilla.org)
-#   sh scripts/package.sh firefox --dir-> dist/firefox/                         (unpacked, for about:debugging)
+#   bash scripts/package.sh              -> dist/tabbysync-<version>.zip          (Chrome Web Store)
+#   bash scripts/package.sh firefox      -> dist/tabbysync-<version>-firefox.zip  (addons.mozilla.org)
+#   bash scripts/package.sh firefox --dir-> dist/firefox/                         (unpacked, for about:debugging)
 #
 # The --dir form exists because Firefox's "Load Temporary Add-on" wants a
 # manifest.json on disk, and the one in this repository is Chrome's — it
@@ -24,10 +24,10 @@ target="${1:-chrome}"
 unpacked="${2:-}"
 case "$target" in
   chrome|firefox) ;;
-  *) echo "usage: sh scripts/package.sh [chrome|firefox] [--dir]" >&2; exit 1 ;;
+  *) echo "usage: bash scripts/package.sh [chrome|firefox] [--dir]" >&2; exit 1 ;;
 esac
 if [ -n "$unpacked" ] && [ "$unpacked" != "--dir" ]; then
-  echo "usage: sh scripts/package.sh [chrome|firefox] [--dir]" >&2; exit 1
+  echo "usage: bash scripts/package.sh [chrome|firefox] [--dir]" >&2; exit 1
 fi
 if [ "$unpacked" = "--dir" ] && [ "$target" != "firefox" ]; then
   echo "--dir is only for firefox; Chrome can load this repository directly." >&2; exit 1

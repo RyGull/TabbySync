@@ -15,6 +15,32 @@ export const ROOT_ID = 'root';
 export const BAR_ID = '__bar__';     // Bookmarks bar
 export const OTHER_ID = '__other__'; // Other bookmarks
 
+// The two live browser folders those stand for, located by id.
+//
+// Chromium's root children are [Bookmarks bar, Other bookmarks, Mobile…],
+// with ids "1" and "2". Firefox's are [Bookmarks Menu, Bookmarks Toolbar,
+// Other Bookmarks, Mobile Bookmarks] — a different order and a different
+// first entry, so reading children[0] as the toolbar (which is what this did
+// until the Firefox build existed) syncs everything into the Bookmarks Menu,
+// a folder Firefox hides by default. It looks exactly like nothing arrived.
+//
+// Both browsers give these folders fixed ids, so match on those and fall back
+// to position only for a browser that uses neither set.
+//
+// Firefox's Bookmarks Menu is deliberately not synced: the model has two
+// roots, and quietly folding a third one into "Other bookmarks" would move
+// real bookmarks on someone's machine without being asked.
+export const BAR_LOCAL_IDS = ['1', 'toolbar_____'];
+export const OTHER_LOCAL_IDS = ['2', 'unfiled_____'];
+
+export function pickRoots(children) {
+  const kids = children || [];
+  const find = (ids) => kids.find((k) => ids.includes(k.id));
+  const bar = find(BAR_LOCAL_IDS) || kids[0];
+  const other = find(OTHER_LOCAL_IDS) || kids[1] || kids[0];
+  return { barLocalId: bar && bar.id, otherLocalId: other && other.id };
+}
+
 export function now() { return Date.now(); }
 
 export function emptyTree() {

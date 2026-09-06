@@ -137,12 +137,16 @@ test('host access is requested one origin at a time, never as a wildcard', () =>
   // The policy: "it only ever requests the one host you just configured ...
   // never a wildcard covering other sites."
   const optionsJs = read('options.js');
-  const requests = optionsJs.match(/permissions\.request\(\{\s*origins:\s*\[[^\]]*\]/g) || [];
-  assert.ok(requests.length > 0, 'no permission requests found -- has the flow moved?');
+  assert.match(optionsJs, /permissions\.request\(\{ origins \}\)/,
+    'no permission request found -- has the flow moved?');
 
-  for (const r of requests) {
-    assert.doesNotMatch(r, /["']https?:\/\/\*\/\*["']/, `a wildcard origin is requested: ${r}`);
-    assert.doesNotMatch(r, /["']<all_urls>["']/, `<all_urls> is requested: ${r}`);
+  // Every origin that can reach that call comes out of accessOrigins(), so
+  // that function is the whole surface to check.
+  const fn = optionsJs.match(/function accessOrigins\([^)]*\) \{[\s\S]*?\n\}/);
+  assert.ok(fn, 'accessOrigins() is gone -- where do requested origins come from now?');
+  for (const [, origin] of fn[0].matchAll(/['"]([^'"]*\*[^'"]*)['"]/g)) {
+    assert.doesNotMatch(origin, /^https?:\/\/\*\/\*$/, `a wildcard origin is requested: ${origin}`);
+    assert.notEqual(origin, '<all_urls>', '<all_urls> is requested');
   }
   // The dynamic one derives a single origin from the URL the user typed.
   assert.match(optionsJs, /new URL\(u\)\.origin \+ ['"]\/\*['"]/);
