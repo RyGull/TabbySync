@@ -52,13 +52,11 @@ const FIREFOX_STORE_URL  = '';
 
 // TabbySync Control Panel — a companion Windows desktop app, developed and
 // released separately from the extension (control-panel/ in the repo, its
-// own version, its own control-panel-v* release tags). CONTROL_PANEL_LIVE
-// stays false until an actual (non-draft) GitHub Release exists for it — the
-// whole section on the home page is skipped while it's false, rather than
-// showing a button that would 404. Flip it once a release is published; the
-// section picks it up with no other edit needed. /releases/latest always
-// resolves to that newest release, so it never needs updating per version.
-const CONTROL_PANEL_LIVE = false;
+// own version, its own control-panel-v* release tags). Live as of
+// control-panel-v1.0.0 (2026-09-06) — /releases/latest resolves to whatever
+// the newest published (non-draft) release is, so a future control-panel-v*
+// release needs no edit here at all.
+const CONTROL_PANEL_LIVE = true;
 const CONTROL_PANEL_URL  = GITHUB_URL . '/releases/latest';
 
 /**
