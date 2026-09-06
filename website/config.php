@@ -50,6 +50,17 @@ const CHROME_STORE_URL  = 'https://chromewebstore.google.com/detail/tabbysync/lf
 const FIREFOX_STORE_LIVE = false;
 const FIREFOX_STORE_URL  = '';
 
+// TabbySync Control Panel — a companion Windows desktop app, developed and
+// released separately from the extension (control-panel/ in the repo, its
+// own version, its own control-panel-v* release tags). CONTROL_PANEL_LIVE
+// stays false until an actual (non-draft) GitHub Release exists for it — the
+// whole section on the home page is skipped while it's false, rather than
+// showing a button that would 404. Flip it once a release is published; the
+// section picks it up with no other edit needed. /releases/latest always
+// resolves to that newest release, so it never needs updating per version.
+const CONTROL_PANEL_LIVE = false;
+const CONTROL_PANEL_URL  = GITHUB_URL . '/releases/latest';
+
 /**
  * The "What's this about?" options on /contact. The first entry is an empty
  * value on purpose: the <select> is marked required, and a required select

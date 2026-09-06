@@ -294,4 +294,26 @@ require __DIR__ . '/includes/header.php';
   </div>
 </section>
 
+<!-- ======================= DESKTOP CONTROL PANEL ======================== -->
+<?php if (CONTROL_PANEL_LIVE): ?>
+<section class="install" id="control-panel">
+  <div class="wrap install-inner">
+    <h2 class="section-title">Managing more than one sync profile?</h2>
+    <p class="section-lede">
+      <strong>TabbySync Control Panel</strong> is a companion Windows desktop app —
+      add, remove, move and copy bookmarks and saved-tab lists across every sync
+      profile you have (work, personal, a home server…) from one place, without a
+      browser. Same self-hosted / GitHub Gist / JSONBin destinations, the same merge
+      and encryption as the extension above.
+    </p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="<?= e(CONTROL_PANEL_URL) ?>" target="_blank" rel="noopener">Download for Windows</a>
+      <a class="btn btn-ghost" href="<?= e(GITHUB_URL) ?>/tree/main/control-panel" target="_blank" rel="noopener">See what's inside</a>
+    </div>
+    <p class="shot-note">Free and source-available under the same license as the extension.
+      Entirely optional — the browser extension works fully on its own without it.</p>
+  </div>
+</section>
+<?php endif; ?>
+
 <?php require __DIR__ . '/includes/footer.php'; ?>
