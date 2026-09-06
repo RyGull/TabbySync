@@ -43,6 +43,7 @@ contextBridge.exposeInMainWorld('tabbysync', {
     sanitizeSyncName: (name) => call('profiles:sanitizeSyncName', name),
     meta: () => call('profiles:meta'),
     testConnection: (id) => call('profiles:testConnection', id),
+    testConnectionDraft: (draft) => call('profiles:testConnectionDraft', draft),
     deleteRemoteData: (id) => call('profiles:deleteRemoteData', id),
   },
 

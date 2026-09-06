@@ -128,6 +128,12 @@ button, input, select { font: inherit; color: inherit; }
 }
 .profile-item:hover .p-menu-btn, .profile-item.active .p-menu-btn { opacity: 1; }
 .profile-item .p-menu-btn:hover { background: var(--bg-hover); color: var(--text); }
+/* Drag-to-reorder (profiles and tab-group cards, see wireListReorderDrag in
+   app.js). box-shadow rather than a border/outline so the indicator can't
+   nudge layout by even a pixel when it toggles on and off mid-drag. */
+.profile-item[draggable="true"], .tab-group-header[draggable="true"] { cursor: grab; }
+.profile-item.drag-over-top, .tab-group.drag-over-top { box-shadow: inset 0 2px 0 var(--accent); }
+.profile-item.drag-over-bottom, .tab-group.drag-over-bottom { box-shadow: inset 0 -2px 0 var(--accent); }
 
 .profile-list-empty {
   color: var(--text-faint);
@@ -149,10 +155,14 @@ button, input, select { font: inherit; color: inherit; }
 
 .sidebar-footer { padding: 10px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
 
-.theme-row { display: flex; align-items: center; gap: 8px; padding: 0 2px; }
+/* 2 columns: theme picker on the left, version on the right — not just the
+   select stretching to fill, an actual left/right split. */
+.theme-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 2px; }
+.theme-row .theme-field { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
 .theme-row label { font-size: 12px; color: var(--text-dim); flex-shrink: 0; }
 .theme-row select {
   flex: 1;
+  min-width: 0;
   background: var(--bg-raised);
   border: 1px solid var(--border);
   color: var(--text);
@@ -160,6 +170,7 @@ button, input, select { font: inherit; color: inherit; }
   padding: 5px 8px;
   font-size: 12.5px;
 }
+.theme-row .version-col { flex-shrink: 0; font-size: 11px; color: var(--text-faint); white-space: nowrap; }
 
 /* ---------- buttons ---------- */
 
@@ -357,6 +368,15 @@ button, input, select { font: inherit; color: inherit; }
 .context-menu-item.disabled { color: var(--text-faint); cursor: default; }
 .context-menu-item.disabled:hover { background: none; }
 .context-menu-sep { height: 1px; background: var(--border); margin: 5px 2px; }
+/* Icon + label grouped together as one flex item, so space-between still
+   puts the (optional) submenu arrow on the far right instead of splitting
+   icon/label/arrow apart evenly. Colours match the row-action buttons
+   (btn-icon-open/btn-icon-edit) these mirror, so the same two actions read
+   the same way whether you right-click or hover a row. */
+.context-menu-main { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.context-menu-icon { width: 14px; flex-shrink: 0; text-align: center; }
+.context-menu-icon.icon-open { color: var(--danger); }
+.context-menu-icon.icon-edit { color: var(--accent); }
 .context-submenu {
   position: fixed;
   background: var(--bg-raised);
@@ -473,6 +493,13 @@ button, input, select { font: inherit; color: inherit; }
 .field input:focus, .field select:focus, .field textarea:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
 .field .hint { font-size: 11.5px; color: var(--text-faint); margin-top: 4px; line-height: 1.4; }
 .field .hint a { color: var(--accent); }
+
+/* Test connection's inline result, in the Edit Profile modal — not scoped
+   under .field like .hint above since it stands alone, not attached to one
+   input. */
+.test-status { font-size: 12px; color: var(--text-faint); margin-top: 2px; line-height: 1.5; min-height: 1.5em; }
+.test-status.success { color: var(--success); }
+.test-status.warning { color: var(--warning); }
 .field-row { display: flex; gap: 10px; }
 .field-row .field { flex: 1; }
 .checkbox-field { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }

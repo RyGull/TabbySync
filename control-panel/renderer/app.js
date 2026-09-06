@@ -146,7 +146,7 @@ document.addEventListener('mousedown', (e) => {
 });
 document.addEventListener('scroll', closeAllMenus, true);
 
-/** items: [{label, danger, disabled, onClick} | {label, items: () => items} | '-'] */
+/** items: [{label, danger, disabled, icon, iconClass, onClick} | {label, items: () => items} | '-']. icon is a glyph shown before the label (e.g. '↗'); iconClass colours it ('icon-open'/'icon-edit' match the row-action buttons of the same name). */
 function openContextMenu(x, y, items) {
   closeAllMenus();
   const menu = buildMenu(items, x, y, 'context-menu');
@@ -157,9 +157,13 @@ function buildMenu(items, x, y, cls) {
   const menu = h('div', { class: cls });
   for (const item of items) {
     if (item === '-') { menu.appendChild(h('div', { class: 'context-menu-sep' })); continue; }
+    const main = h('span', { class: 'context-menu-main' }, [
+      item.icon ? h('span', { class: `context-menu-icon${item.iconClass ? ` ${item.iconClass}` : ''}` }, item.icon) : null,
+      h('span', {}, item.label),
+    ]);
     const row = h('div', {
       class: `context-menu-item${item.danger ? ' danger' : ''}${item.disabled ? ' disabled' : ''}`,
-    }, h('span', {}, item.label), item.items ? h('span', {}, '▸') : null);
+    }, main, item.items ? h('span', {}, '▸') : null);
     if (!item.disabled) {
       if (item.items) {
         row.addEventListener('mouseenter', () => {
@@ -183,6 +187,53 @@ function buildMenu(items, x, y, cls) {
   menu.style.left = `${Math.max(4, left)}px`;
   menu.style.top = `${Math.max(4, top)}px`;
   return menu;
+}
+
+// ---------------------------------------------------------------------------
+// drag-to-reorder for a flat, vertically-stacked list (profiles, tab-group
+// cards) — drop above or below a sibling to move it there. A separate thing
+// from wireDragAndDrop (bookmarks, which drops INTO a folder) and dragTab
+// (which drops a tab INTO a different list): this is plain "put this row
+// where I dropped it" reordering, so it gets its own single shared drag
+// token rather than overloading either of those.
+// ---------------------------------------------------------------------------
+
+let dragListItem = null;
+
+/**
+ * @param {HTMLElement} el - the draggable row/card for this item
+ * @param {string} id - this item's id
+ * @param {() => string[]} getOrder - the current ordered list of every item's id
+ * @param {(idsInOrder: string[]) => void} onReorder - called with the proposed new order once a drop completes
+ */
+function wireListReorderDrag(el, id, getOrder, onReorder) {
+  el.addEventListener('dragstart', (e) => {
+    dragListItem = id;
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  el.addEventListener('dragover', (e) => {
+    if (!dragListItem || dragListItem === id) return;
+    e.preventDefault();
+    const rect = el.getBoundingClientRect();
+    const before = (e.clientY - rect.top) < rect.height / 2;
+    el.classList.toggle('drag-over-top', before);
+    el.classList.toggle('drag-over-bottom', !before);
+  });
+  el.addEventListener('dragleave', () => el.classList.remove('drag-over-top', 'drag-over-bottom'));
+  el.addEventListener('dragend', () => { dragListItem = null; el.classList.remove('drag-over-top', 'drag-over-bottom'); });
+  el.addEventListener('drop', (e) => {
+    const draggedId = dragListItem;
+    if (!draggedId || draggedId === id) return;
+    e.preventDefault();
+    e.stopPropagation(); // don't also let a same-card tab-drop handler (wireGroupDrop) react to this drop
+    const before = el.classList.contains('drag-over-top');
+    el.classList.remove('drag-over-top', 'drag-over-bottom');
+    dragListItem = null;
+    const order = getOrder().filter((x) => x !== draggedId);
+    const targetIdx = order.indexOf(id);
+    order.splice(before ? targetIdx : targetIdx + 1, 0, draggedId);
+    onReorder(order);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -249,6 +300,7 @@ function renderProfileList() {
     const item = h('div', {
       class: `profile-item${p.id === state.activeId ? ' active' : ''}`,
       role: 'option',
+      draggable: 'true',
       onclick: () => selectProfile(p.id),
     }, [
       h('span', { class: 'color-dot', title: statusTitle(status) }, ''),
@@ -263,8 +315,20 @@ function renderProfileList() {
       }, '⋯'),
     ]);
     item.querySelector('.color-dot').style.background = statusColorVar(status);
+    // Drag a profile onto another to reorder — "Move up"/"Move down" in its
+    // ⋯ menu still does the same thing, for anyone who hasn't noticed
+    // dragging works.
+    wireListReorderDrag(item, p.id, () => state.profiles.map((x) => x.id), reorderProfilesTo);
     root.appendChild(item);
   });
+}
+
+/** Drag-and-drop's landing spot: applies whatever order wireListReorderDrag worked out. */
+async function reorderProfilesTo(orderedIds) {
+  try {
+    state.profiles = await api.profiles.reorder(orderedIds);
+    renderProfileList();
+  } catch (e) { showError(e, 'Could not reorder profiles.'); }
 }
 
 function statusTitle(status) {
@@ -389,6 +453,8 @@ async function openProfileModal(existing) {
   }
   applyProviderUi();
 
+  const testStatus = h('div', { class: 'test-status' }, '');
+
   const body = h('div', {}, [
     h('div', { class: 'field' }, [h('label', {}, 'Profile name'), labelInput]),
     h('div', { class: 'field' }, [h('label', {}, 'Sync method'), providerPicker]),
@@ -399,12 +465,59 @@ async function openProfileModal(existing) {
     disclaimer,
     h('div', { class: 'field' }, [h('label', {}, 'Encryption passphrase (optional, recommended for Gist/JSONBin)'), passInput,
       h('div', { class: 'hint' }, "Never leaves this device. If you forget it, the data can't be recovered.")]),
+    testStatus,
   ]);
+
+  /**
+   * Whatever's in the form right now, shaped like a profile — never saved,
+   * just handed to profiles:testConnectionDraft. gistId/jsonbinTabsId/
+   * jsonbinBookmarksId aren't editable fields (they name a specific
+   * already-created remote gist/bin), so those come from the saved record
+   * when editing an existing profile, and stay blank for a brand-new one —
+   * same as duplicate() does in profile-store.js.
+   */
+  function buildDraftProfile() {
+    return {
+      provider,
+      serverUrl: urlInput.value.trim(),
+      token: tokenInput.value,
+      syncName: syncNameInput.value.trim(),
+      passphrase: passInput.value,
+      gistId: full ? full.gistId : '',
+      jsonbinTabsId: full ? full.jsonbinTabsId : '',
+      jsonbinBookmarksId: full ? full.jsonbinBookmarksId : '',
+    };
+  }
+
+  const testBtn = h('button', { class: 'btn btn-ghost', type: 'button' }, 'Test connection');
+  testBtn.addEventListener('click', async () => {
+    testBtn.disabled = true;
+    testStatus.className = 'test-status';
+    testStatus.textContent = 'Testing…';
+    try {
+      const r = await api.profiles.testConnectionDraft(buildDraftProfile());
+      const { message, ok } = formatTestConnectionResult(r);
+      testStatus.className = `test-status ${ok ? 'success' : 'warning'}`;
+      testStatus.textContent = message;
+      // Only an already-saved profile has a sidebar dot to update — a
+      // brand-new one isn't in state.profiles yet.
+      if (existing) {
+        setEngineStatus(existing.id, 'bookmarks', r.bookmarks.ok ? 'ok' : 'error');
+        setEngineStatus(existing.id, 'tabs', r.tabs.ok ? 'ok' : 'error');
+      }
+    } catch (e) {
+      testStatus.className = 'test-status warning';
+      testStatus.textContent = (e && e.message) || 'Could not test the connection.';
+    } finally {
+      testBtn.disabled = false;
+    }
+  });
 
   const m = openModal({
     title: existing ? 'Edit profile' : 'New sync profile',
     body,
     footer: [
+      testBtn,
       h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => m.close() }, 'Cancel'),
       h('button', { class: 'btn btn-primary', type: 'button', onclick: onSave }, existing ? 'Save' : 'Add profile'),
     ],
@@ -513,21 +626,15 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
   });
 });
 
-$('#btn-test-connection').addEventListener('click', async () => {
-  const p = activeProfile(); if (!p) return;
-  const btn = $('#btn-test-connection');
-  btn.disabled = true;
-  try {
-    const r = await api.profiles.testConnection(p.id);
-    setEngineStatus(p.id, 'bookmarks', r.bookmarks.ok ? 'ok' : 'error');
-    setEngineStatus(p.id, 'tabs', r.tabs.ok ? 'ok' : 'error');
-    const parts = [];
-    parts.push(r.bookmarks.ok ? '✅ Bookmarks reachable' : `❌ Bookmarks: ${r.bookmarks.message}`);
-    parts.push(r.tabs.ok ? '✅ Saved tabs reachable' : `❌ Saved tabs: ${r.tabs.message}`);
-    showToast(parts.join('  ·  '), (r.bookmarks.ok && r.tabs.ok) ? 'success' : 'warning', { sticky: true });
-  } catch (e) { showError(e, 'Could not test the connection.'); }
-  finally { btn.disabled = false; }
-});
+/** Shared by the profile modal's Test connection button — turns {bookmarks, tabs} into one readable line plus whether either engine actually failed. */
+function formatTestConnectionResult(r) {
+  const parts = [
+    r.bookmarks.ok ? '✅ Bookmarks reachable' : `❌ Bookmarks: ${r.bookmarks.message}`,
+    r.tabs.ok ? '✅ Saved tabs reachable' : `❌ Saved tabs: ${r.tabs.message}`,
+  ];
+  return { message: parts.join('  ·  '), ok: r.bookmarks.ok && r.tabs.ok };
+}
+
 $('#btn-edit-profile').addEventListener('click', () => { const p = activeProfile(); if (p) openProfileModal(p); });
 $('#btn-profile-menu').addEventListener('click', (e) => { const p = activeProfile(); if (p) openProfileMenu(p, e.currentTarget); });
 $('#btn-new-profile').addEventListener('click', () => openProfileModal(null));
@@ -968,6 +1075,7 @@ function renderGroup(g) {
   const card = h('div', { class: 'tab-group', dataset: { id: g.id } });
   const header = h('div', {
     class: 'tab-group-header',
+    draggable: 'true',
     onclick: () => { toggleGroup(g.id); },
     oncontextmenu: (e) => { e.preventDefault(); openGroupContextMenu(g, e.clientX, e.clientY); },
   }, [
@@ -978,6 +1086,12 @@ function renderGroup(g) {
     h('button', { class: 'btn btn-sm btn-icon btn-icon-open', type: 'button', title: 'Open all in browser…', onclick: (e) => { e.stopPropagation(); openTabsBulk(g); } }, '↗'),
     h('button', { class: 'btn btn-sm btn-icon', type: 'button', onclick: (e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); openGroupContextMenu(g, r.left, r.bottom + 4); } }, '⋯'),
   ]);
+  // Drag this list's header onto another list's header to reorder — the
+  // header specifically (not the whole card), so "which half am I over"
+  // stays based on one compact row instead of a tall expanded card.
+  // Move up/down in the context menu still does the same thing, for anyone
+  // who hasn't noticed dragging works.
+  wireListReorderDrag(header, g.id, () => state.tb.state.groups.map((x) => x.id), reorderGroupsTo);
   wireGroupDrop(card, g);
   card.appendChild(header);
   if (expanded) {
@@ -1157,12 +1271,15 @@ async function openTabsBulk(g) {
 
 function openGroupContextMenu(g, x, y) {
   openContextMenu(x, y, [
-    { label: 'Open all in browser…', disabled: !g.tabs.length, onClick: () => openTabsBulk(g) },
+    { label: 'Open all in browser…', icon: '↗', iconClass: 'icon-open', disabled: !g.tabs.length, onClick: () => openTabsBulk(g) },
     '-',
-    { label: 'Rename…', onClick: () => openRenameListModal(g) },
+    { label: 'Rename…', icon: '✎', iconClass: 'icon-edit', onClick: () => openRenameListModal(g) },
     { label: g.pinned ? 'Unpin' : 'Pin', onClick: () => doTabsOp(() => api.tabs.setPinned(activeProfile().id, { id: g.id, pinned: !g.pinned })) },
     { label: g.locked ? 'Unlock' : 'Lock', onClick: () => doTabsOp(() => api.tabs.setLocked(activeProfile().id, { id: g.id, locked: !g.locked })) },
     { label: 'Duplicate', onClick: () => doTabsOp(() => api.tabs.duplicateList(activeProfile().id, { id: g.id })) },
+    // Drag the list's header to reorder (see wireListReorderDrag) — these
+    // stay for anyone who hasn't noticed dragging works, same reasoning as
+    // keeping them on the profile list's own menu.
     { label: 'Move up', onClick: () => reorderGroup(g.id, -1) },
     { label: 'Move down', onClick: () => reorderGroup(g.id, 1) },
     '-',
@@ -1180,6 +1297,11 @@ async function reorderGroup(id, dir) {
   if (target < 0 || target >= ids.length) return;
   [ids[idx], ids[target]] = [ids[target], ids[idx]];
   await doTabsOp(() => api.tabs.reorderLists(activeProfile().id, { orderedIds: ids }));
+}
+
+/** Drag-and-drop's landing spot: applies whatever order wireListReorderDrag worked out. */
+async function reorderGroupsTo(orderedIds) {
+  await doTabsOp(() => api.tabs.reorderLists(activeProfile().id, { orderedIds }));
 }
 
 function openRenameListModal(g) {
@@ -1402,6 +1524,7 @@ async function init() {
   try {
     const info = await api.app.info();
     $('#secrets-warning').hidden = info.secretsAvailable;
+    $('#app-version').textContent = `v${info.version}`;
   } catch (e) { console.error(e); }
 
   let settings = null;

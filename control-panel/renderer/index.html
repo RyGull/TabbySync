@@ -24,12 +24,15 @@
     </div>
     <div class="sidebar-footer">
       <div class="theme-row">
-        <label for="theme-select">Theme</label>
-        <select id="theme-select">
-          <option value="system">System</option>
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-        </select>
+        <div class="theme-field">
+          <label for="theme-select">Theme</label>
+          <select id="theme-select">
+            <option value="system">🖥️ System</option>
+            <option value="light">☀️ Light</option>
+            <option value="dark">🌙 Dark</option>
+          </select>
+        </div>
+        <span id="app-version" class="version-col" title="TabbySync Control Panel version"></span>
       </div>
       <button id="btn-options" class="btn btn-ghost btn-block" type="button">Options…</button>
       <button id="btn-about" class="btn btn-ghost btn-block" type="button">About</button>
@@ -50,7 +53,6 @@
           <span id="pv-provider" class="badge"></span>
         </div>
         <div class="profile-actions">
-          <button id="btn-test-connection" class="btn btn-ghost" type="button">Test connection</button>
           <button id="btn-edit-profile" class="btn btn-ghost" type="button">Edit</button>
           <button id="btn-profile-menu" class="btn btn-ghost" type="button" aria-haspopup="true">⋯</button>
         </div>

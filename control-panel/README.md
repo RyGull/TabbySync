@@ -31,6 +31,12 @@ to one destination at a time).
   Each is a fully independent connection (self-hosted / GitHub Gist /
   JSONBin, its own token, sync name and optional encryption passphrase) —
   the same picker and field labels as the extension's own Options page.
+  Reorder by dragging a profile onto another (drop on its top or bottom
+  half to land above or below it) — its ⋯ menu's "Move up"/"Move down"
+  still work too, for anyone who hasn't noticed dragging works. **Test
+  connection** lives in Edit (a footer button, with the result shown right
+  there) and tests exactly what's currently typed — including an edit
+  that hasn't been saved yet — not just whatever was last saved.
 - **Bookmarks** — loads a profile's whole bookmark tree, lets you add,
   rename, edit, delete, reorder, move and copy bookmarks and folders
   (drag-and-drop or the right-click menu), **including copying or moving
@@ -53,7 +59,13 @@ to one destination at a time).
   **group the opened tabs into a browser tab group** —
   `chrome.tabs.group()`/`chrome.tabGroups` are extension-only APIs a
   desktop process has no access to, so tabs open ungrouped. Deleted lists
-  go to **Recently deleted** for 30 days, same as the extension.
+  go to **Recently deleted** for 30 days, same as the extension. Lists
+  reorder the same way profiles do — drag one list's header onto another's
+  (top/bottom half decides above or below), or use "Move up"/"Move down"
+  in its ⋯ menu, which stays right where it was. That menu's two most-used
+  actions (**Open all in browser…**, **Rename…**) carry the same red ↗ /
+  blue ✎ icons as their row buttons, so they don't blend into the plain
+  Pin/Lock/Duplicate/Delete entries around them.
 - **Live connection status** — each profile's sidebar dot and the header
   dot on its detail view reflect what actually happened on the last
   load/save/test for that profile: green once either bookmarks or saved
@@ -76,9 +88,15 @@ to one destination at a time).
   passphrases go through Electron's `safeStorage` (DPAPI on Windows) before
   touching disk. If that's unavailable, the app says so plainly (sidebar
   banner) rather than silently storing them in plain text.
-- **Theme** — Light / Dark / System, the dropdown at the bottom of the
-  sidebar (defaults to System). Drives `nativeTheme.themeSource`, so it
-  applies to the whole app, not just a CSS class toggle.
+- **Theme** — 🖥️ System / ☀️ Light / 🌙 Dark, the dropdown at the bottom of
+  the sidebar (defaults to System). Drives `nativeTheme.themeSource`, so it
+  applies to the whole app, not just a CSS class toggle. Shares its row
+  with the installed version number, on the right.
+- **One instance only** — launching the app again while it's already
+  running (a taskbar-pinned icon is the common way to hit this, especially
+  while the window is minimized or hidden in the tray) brings the existing
+  window forward instead of starting a second, independent process with no
+  coordination between them (`app.requestSingleInstanceLock()`).
 - **Options** (File → Options…, or the sidebar button) — start with Windows
   (a real login-item registration, not a hand-rolled registry edit), start
   minimized to the tray, reopen the last profile you had open on startup,

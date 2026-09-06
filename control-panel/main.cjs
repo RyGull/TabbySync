@@ -26,6 +26,31 @@ let tray = null;
 // persisted — just today's in-memory answer to "what happened last time?".
 let updateStatus = { state: 'idle' };
 
+// Single-instance lock: without this, launching TabbySync Control Panel
+// again while it's already running — clicking a taskbar-pinned icon while
+// the window is minimized/hidden is the case that was actually reported —
+// starts a second, fully independent process instead of just bringing the
+// existing one forward. Both would then load/write the same profiles.json
+// with no coordination between them.
+//
+// Must happen before anything else touches app.* (whenReady included): a
+// losing second launch needs to bail out immediately, not do any of the
+// real startup work first. Scoped by userData path, not by the .exe file,
+// so this doesn't interfere with the Xvfb smoke test — every run there
+// passes its own --user-data-dir, so each is its own "app" as far as the
+// lock is concerned.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.exit(0);
+} else {
+  app.on('second-instance', () => {
+    if (!mainWindow) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    if (!mainWindow.isVisible()) mainWindow.show();
+    mainWindow.focus();
+  });
+}
+
 /** Wraps an IPC handler so thrown errors (with .code/.had/.keeps etc.) survive the trip to the renderer as data, not as Electron's own re-serialized Error (which drops custom properties). See preload.cjs's call() for the matching unwrap. */
 function handle(channel, fn) {
   ipcMain.handle(channel, async (_event, ...args) => {
@@ -531,6 +556,113 @@ async function runSmokeTest(win, core, profileStore, settingsStore) {
       throw new Error(`expected the update-check button to report a dev build, got: "${updateStatusText}"`);
     }
     await shot('12-about-update-check.png');
+    await win.webContents.executeJavaScript(`document.querySelector('.modal-header .close-x').click()`);
+
+    // --- newest batch, item 1/6: theme options carry an icon, and the
+    // theme row now shows the app version alongside it ---
+    const themeOptionsText = await win.webContents.executeJavaScript(
+      `Array.from(document.querySelectorAll('#theme-select option')).map((o) => o.textContent)`
+    );
+    console.log('[smoke-test] theme option labels:', JSON.stringify(themeOptionsText));
+    if (!themeOptionsText.every((t) => /[\u{1F300}-\u{1FAFF}☀-➿]/u.test(t))) {
+      throw new Error(`expected every theme option to carry an icon, got: ${JSON.stringify(themeOptionsText)}`);
+    }
+    const versionText = await win.webContents.executeJavaScript(`document.getElementById('app-version').textContent`);
+    if (!/^v\d+\.\d+\.\d+$/.test(versionText)) throw new Error(`expected the sidebar version text to look like "v1.2.0", got "${versionText}"`);
+
+    // --- item 5: Test connection now lives in the Edit Profile modal, not
+    // its own toolbar button ---
+    if (await win.webContents.executeJavaScript(`!!document.getElementById('btn-test-connection')`)) {
+      throw new Error('the old standalone #btn-test-connection button is still in the DOM — it should have moved into the Edit Profile modal');
+    }
+    await win.webContents.executeJavaScript(`openProfileModal(state.profiles.find((p) => p.id === state.activeId))`);
+    await new Promise((r) => setTimeout(r, 200));
+    await win.webContents.executeJavaScript(
+      `Array.from(document.querySelectorAll('.modal-footer button')).find((b) => b.textContent === 'Test connection').click()`
+    );
+    await new Promise((r) => setTimeout(r, 300));
+    const draftTestText = await win.webContents.executeJavaScript(`document.querySelector('.test-status').textContent`);
+    console.log('[smoke-test] test-connection-in-modal result:', draftTestText);
+    if (!draftTestText || draftTestText === 'Testing…') throw new Error(`Test connection in the modal never resolved, got: "${draftTestText}"`);
+    await shot('13-test-connection-in-modal.png');
+    await win.webContents.executeJavaScript(`document.querySelector('.modal-header .close-x').click()`);
+
+    // --- item 2: drag-and-drop reordering for profiles and tab lists,
+    // "Move up"/"Move down" kept working alongside it ---
+    await win.webContents.executeJavaScript(`(async () => {
+      const p2 = await window.tabbysync.profiles.add({ label: 'Second', provider: 'jsonbin', token: 'demo-token-2' });
+      state.profiles = await window.tabbysync.profiles.list();
+      renderProfileList();
+    })()`);
+    const beforeProfileOrder = await win.webContents.executeJavaScript(`Array.from(document.querySelectorAll('#profile-list .p-label')).map((n) => n.textContent)`);
+    console.log('[smoke-test] profile order before drag:', JSON.stringify(beforeProfileOrder));
+    if (beforeProfileOrder.length !== 2) throw new Error(`expected 2 profiles before the drag test, got ${beforeProfileOrder.length}`);
+
+    // Drags the 2nd profile row onto the 1st's top half — i.e. "put me
+    // first" — the same gesture wireListReorderDrag actually listens for.
+    await win.webContents.executeJavaScript(`(() => {
+      const items = document.querySelectorAll('#profile-list .profile-item');
+      const [first, second] = items;
+      const fireDrag = (el, type, clientY) => el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: new DataTransfer(), clientY }));
+      const rect = first.getBoundingClientRect();
+      fireDrag(second, 'dragstart', rect.top);
+      fireDrag(first, 'dragover', rect.top + 2); // top half -> insert before
+      fireDrag(first, 'drop', rect.top + 2);
+    })()`);
+    await new Promise((r) => setTimeout(r, 200));
+    const afterProfileOrder = await win.webContents.executeJavaScript(`Array.from(document.querySelectorAll('#profile-list .p-label')).map((n) => n.textContent)`);
+    console.log('[smoke-test] profile order after dragging 2nd onto 1st\'s top half:', JSON.stringify(afterProfileOrder));
+    if (JSON.stringify(afterProfileOrder) !== JSON.stringify([beforeProfileOrder[1], beforeProfileOrder[0]])) {
+      throw new Error(`drag-to-reorder didn't swap the profiles: before=${JSON.stringify(beforeProfileOrder)} after=${JSON.stringify(afterProfileOrder)}`);
+    }
+    // "Move down" (kept alongside drag) should un-swap them back.
+    await win.webContents.executeJavaScript(`moveProfile(state.profiles[0], 1)`);
+    await new Promise((r) => setTimeout(r, 200));
+    const afterMoveDown = await win.webContents.executeJavaScript(`Array.from(document.querySelectorAll('#profile-list .p-label')).map((n) => n.textContent)`);
+    if (JSON.stringify(afterMoveDown) !== JSON.stringify(beforeProfileOrder)) {
+      throw new Error(`"Move down" after a drag didn't restore the original order, got: ${JSON.stringify(afterMoveDown)}`);
+    }
+
+    // Same drag gesture, one level down: tab-group headers.
+    await win.webContents.executeJavaScript(`(async () => {
+      const r = await window.tabbysync.tabs.addList(${JSON.stringify(p.id)}, { name: 'Second list' });
+      state.tb.state = r.state;
+      renderTabLists();
+    })()`);
+    const beforeGroupOrder = await win.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.tab-group .g-name')).map((n) => n.textContent)`);
+    console.log('[smoke-test] tab-group order before drag:', JSON.stringify(beforeGroupOrder));
+    if (beforeGroupOrder.length !== 2) throw new Error(`expected 2 tab-group headers before the drag test, got ${beforeGroupOrder.length}`);
+    await win.webContents.executeJavaScript(`(() => {
+      const headers = document.querySelectorAll('.tab-group-header');
+      const [first, second] = headers;
+      const fireDrag = (el, type, clientY) => el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: new DataTransfer(), clientY }));
+      const rect = first.getBoundingClientRect();
+      fireDrag(second, 'dragstart', rect.top);
+      fireDrag(first, 'dragover', rect.top + 2);
+      fireDrag(first, 'drop', rect.top + 2);
+    })()`);
+    await new Promise((r) => setTimeout(r, 200));
+    const afterGroupOrder = await win.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.tab-group .g-name')).map((n) => n.textContent)`);
+    console.log('[smoke-test] tab-group order after dragging 2nd onto 1st\'s top half:', JSON.stringify(afterGroupOrder));
+    if (JSON.stringify(afterGroupOrder) !== JSON.stringify([beforeGroupOrder[1], beforeGroupOrder[0]])) {
+      throw new Error(`drag-to-reorder didn't swap the tab-group headers: before=${JSON.stringify(beforeGroupOrder)} after=${JSON.stringify(afterGroupOrder)}`);
+    }
+    await shot('14-drag-reordered.png');
+
+    // --- item 3: the same ↗/✎ icons appear in the tab-list context menu ---
+    const groupMenuIcons = await win.webContents.executeJavaScript(`(() => {
+      document.querySelector('.tab-group-header').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 200, clientY: 200 }));
+      return Array.from(document.querySelectorAll('.context-menu-item')).slice(0, 2).map((row) => ({
+        label: row.querySelector('.context-menu-main > span:last-child').textContent,
+        iconClass: (row.querySelector('.context-menu-icon') || {}).className || null,
+      }));
+    })()`);
+    console.log('[smoke-test] tab-list context menu icons:', JSON.stringify(groupMenuIcons));
+    if (!groupMenuIcons[0].iconClass || !groupMenuIcons[0].iconClass.includes('icon-open')) {
+      throw new Error(`expected "Open all in browser…" to carry icon-open, got: ${JSON.stringify(groupMenuIcons)}`);
+    }
+    await shot('15-group-context-menu.png');
+    await win.webContents.executeJavaScript(`closeAllMenus()`);
 
     console.log('[smoke-test] done, screenshots in', outDir);
   } catch (e) {
@@ -632,9 +764,14 @@ function registerIpc(core, profileStore, sessions, settingsStore, appMeta) {
     return PROVIDERS;
   });
 
-  handle('profiles:testConnection', async (id) => {
-    const profile = await profileStore.get(id);
-    if (!profile) throw new Error(`No such profile: ${id}`);
+  /**
+   * Shared by profiles:testConnection (an already-saved profile, by id) and
+   * profiles:testConnectionDraft (whatever's currently typed into the Edit
+   * Profile modal, not saved yet) — both just need a profile-shaped object;
+   * neither core.bookmarksCfg/tabsCfg nor remoteBookmarks/remoteTabs care
+   * whether it came from disk or a form.
+   */
+  async function testConnectionFor(profile) {
     const providers = core.getVendored().TabbySyncProviders;
     const results = {};
 
@@ -648,7 +785,7 @@ function registerIpc(core, profileStore, sessions, settingsStore, appMeta) {
     // untested "ok" that happens to look identical to a real success.
     const bmCfg = core.bookmarksCfg(profile);
     if (!providers.isConfigured(bmCfg)) {
-      results.bookmarks = { ok: false, message: 'Not fully configured yet — check the server address, token and sync name in Edit.' };
+      results.bookmarks = { ok: false, message: 'Not fully configured yet — check the server address, token and sync name.' };
     } else {
       try { await core.remoteBookmarks.load(profile); results.bookmarks = { ok: true }; }
       catch (e) { results.bookmarks = { ok: false, message: e.message }; }
@@ -656,12 +793,31 @@ function registerIpc(core, profileStore, sessions, settingsStore, appMeta) {
 
     const tbCfg = core.tabsCfg(profile);
     if (!providers.isConfigured(tbCfg)) {
-      results.tabs = { ok: false, message: 'Not fully configured yet — check the server address, token and sync name in Edit.' };
+      results.tabs = { ok: false, message: 'Not fully configured yet — check the server address, token and sync name.' };
     } else {
       try { await core.remoteTabs.load(profile); results.tabs = { ok: true }; }
       catch (e) { results.tabs = { ok: false, message: e.message }; }
     }
     return results;
+  }
+
+  handle('profiles:testConnection', async (id) => {
+    const profile = await profileStore.get(id);
+    if (!profile) throw new Error(`No such profile: ${id}`);
+    return testConnectionFor(profile);
+  });
+
+  // Lives in the Edit Profile modal now (used to be its own toolbar button
+  // that only ever tested the saved profile). Tests exactly what's in the
+  // form right now — including an edit that hasn't been saved yet, and a
+  // brand-new profile that has no id at all — never touches profileStore or
+  // disk. draft.gistId/jsonbinTabsId/jsonbinBookmarksId come from the
+  // renderer merging in the saved profile's own ids first (see
+  // openProfileModal): those name a specific already-created remote
+  // gist/bin and aren't form fields a person edits directly.
+  handle('profiles:testConnectionDraft', async (draft) => {
+    if (!draft || !draft.provider) throw new Error('Nothing to test yet — fill in the connection details first.');
+    return testConnectionFor(draft);
   });
 
   handle('profiles:deleteRemoteData', async (id) => {
@@ -765,8 +921,13 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-main().catch((e) => {
-  console.error('[TabbySync Control Panel] fatal startup error:', e);
-  dialog.showErrorBox('TabbySync Control Panel failed to start', (e && e.stack) || String(e));
-  app.exit(1);
-});
+// gotSingleInstanceLock is false only for a second launch that's already
+// being torn down (app.exit(0) above) — skip real startup work for it
+// rather than race that exit.
+if (gotSingleInstanceLock) {
+  main().catch((e) => {
+    console.error('[TabbySync Control Panel] fatal startup error:', e);
+    dialog.showErrorBox('TabbySync Control Panel failed to start', (e && e.stack) || String(e));
+    app.exit(1);
+  });
+}
