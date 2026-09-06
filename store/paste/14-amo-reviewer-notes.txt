@@ -10,7 +10,7 @@ To reproduce this exact upload (needs node 22, bash, zip; no npm install is requ
 
   git clone https://github.com/RyGull/TabbySync.git
   cd TabbySync
-  git checkout 8554699   # or the v1.3.15 tag
+  git checkout d76ad52   # or the v1.3.15 tag
   npm test                          # 187 tests, no dependencies
   bash scripts/package.sh firefox   # -> dist/tabbysync-<version>-firefox.zip
 
