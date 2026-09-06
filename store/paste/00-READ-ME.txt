@@ -1,5 +1,5 @@
-Paste-ready text for the Chrome Web Store dashboard
-===================================================
+Paste-ready text for the Chrome Web Store and AMO dashboards
+============================================================
 
 One file per box. Open it, select all, paste. No markdown, no code fences,
 nothing to strip out first — the store's fields are plain text and render
@@ -11,6 +11,16 @@ none of it.
   04..10-permission-*.txt       Privacy practices → one box per permission
   11-permission-host.txt        Privacy practices → host permission justification
   12-whats-new.txt              Optional; some listings show it, some don't
+
+Firefox (addons.mozilla.org) asks for two of its own:
+
+  13-amo-privacy-policy.txt     "This add-on has a Privacy Policy" -> the box
+  14-amo-reviewer-notes.txt     "Notes to Reviewer"
+
+AMO's other listing fields (name, summary, description) take the same text as
+files 01 and 02. It has no per-permission justification boxes -- the data
+declaration in the manifest does that job there -- and its licence picker
+should be set to "All Rights Reserved", the only entry that matches LICENSE.
 
 Two things about the description that are easy to get wrong:
 

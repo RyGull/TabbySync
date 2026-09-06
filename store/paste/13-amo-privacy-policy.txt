@@ -1,0 +1,60 @@
+TabbySync — Privacy Policy
+Last updated: September 6, 2026
+
+TabbySync syncs your bookmarks and your saved tab lists between your own computers, using a destination you choose and control: your own self-hosted server, a private GitHub gist, or a JSONBin.io bin.
+
+THE SHORT VERSION
+TabbySync has no servers of its own and no analytics. Your bookmarks and tabs are stored on your device and sent — directly from your browser — only to the sync destination you configure. The developer never receives, stores, or has access to that data.
+
+WHAT THE EXTENSION ACCESSES
+- bookmarks: read and write your bookmark tree, so it can be synced and merged across devices.
+- tabs: read your open tabs when you choose to save them, and reopen them when you reopen a saved list. TabbySync never listens for page navigation; it reads the tabs that are open at the moment you act.
+- storage / unlimitedStorage: keep your data, settings and sync state locally (browser extension storage, never the browser's own cloud sync).
+- contextMenus: right-click shortcuts, e.g. "Send tabs to TabbySync".
+- alarms: run the periodic background sync on the schedule you set.
+- Host access: requested at runtime for the one host you configure as your sync destination (your own domain, api.github.com, or api.jsonbin.io). The manifest requests no host access up front and installs no content scripts on any page.
+
+TabbySync does not read your browsing history, passwords, form data, or the content of the pages you visit.
+
+WHAT FIREFOX'S INSTALL SCREEN SAYS
+Firefox lists "bookmarks" and "browsing activity" under wording like "Share bookmarks information with extension developer". That wording is Mozilla's, is identical for every add-on, and cannot be changed by the developer. Mozilla requires an add-on to declare any data that leaves the browser, and syncing means your bookmarks and the addresses of your saved tabs leave the browser — to the destination you chose. Nothing goes to the developer; there is no TabbySync server to send it to. Declaring that no data is transmitted would have been false, so it is declared accurately and explained here.
+
+WHERE YOUR DATA IS STORED
+On your device: your data and settings live in the browser's extension storage. This never leaves your device unless you turn sync on. Settings can also write a backup copy to your downloads folder; unless you choose the password-protected backup, that file is readable JSON on your disk.
+
+At your sync destination, sent directly from your browser:
+- Self-hosted — a server you set up and control. Nothing passes through any server operated by the developer. The address must be https://; a plain http:// address is refused, because the access token travels in an Authorization header on every request, outside the encrypted file body. The only exception is localhost / 127.0.0.1, which never leaves your machine.
+- GitHub Gist — a private ("secret") gist in your own GitHub account, using a personal access token you provide. Governed by GitHub's own Privacy Statement.
+- JSONBin.io — a bin under your own JSONBin.io account, using an API key you provide. Governed by JSONBin.io's own Privacy Policy.
+
+Self-hosting keeps your data on a server only you control. GitHub and JSONBin.io are free, no-server alternatives, but they are third parties: once your data (or its ciphertext, if encryption is on) is stored there, it is subject to that provider's policies, not TabbySync's.
+
+ENCRYPTION
+You can set an optional password. When set, your data is encrypted on your device with AES-256-GCM before it is ever sent, so the destination only ever holds ciphertext. The passphrase is never transmitted and is stored only on your device. If you forget it, encrypted data cannot be recovered — there is no reset.
+
+DELETING YOUR DATA
+Settings → Advanced and delete options removes synced data from the destination you configured. Each button asks you to type DELETE and confirm again. A per-provider button deletes the files TabbySync created there and clears that provider's saved URL, token and passphrase from this browser; a reset button attempts the same for every provider ever configured and wipes every TabbySync setting back to a fresh install. This does not touch the actual bookmarks or tabs in your browser, and does not uninstall the extension. TabbySync can only ask a provider to delete; GitHub and JSONBin.io may retain backups or logs under their own retention policies, and your own server keeps whatever your own backups keep.
+
+WHAT THE DEVELOPER DOES AND DOES NOT DO
+- Does not operate a server that receives, stores or processes your bookmarks or tabs.
+- Does not collect analytics, telemetry or usage tracking of any kind.
+- Does not sell, rent or share your data, and does not use it for advertising or for anything unrelated to syncing.
+- Has no visibility into, and no access to, the contents of your server, your gist, or your bin.
+
+FEEDBACK AND DONATIONS (optional, separate from syncing)
+The popup has two optional buttons that do nothing unless you click them. Feedback opens your own email program with a blank message addressed to contact [at] tabbysync [dot] com and a subject line naming the version — no bookmarks, tabs, settings, tokens or identifiers are filled in, and your own mail client sends it. Donate opens a PayPal page in a new tab; no payment information is processed, seen or stored by TabbySync.
+
+TabbySync never contacts a server operated by its developer — not for feedback, not for updates, not for licence checks, not for anything. The only servers it connects to are the sync destination you configure and, if you choose one of the no-server options, GitHub or JSONBin.io.
+
+CHILDREN'S PRIVACY
+TabbySync is not directed at children and does not knowingly collect data from children.
+
+CHANGES TO THIS POLICY
+If this policy changes, the "Last updated" date above will be revised, and material changes are noted in the release notes.
+
+WHO IS RESPONSIBLE
+TabbySync is developed and published by Ryan Gulliver, an individual developer. There is no company, no team, and no third party with access to anything TabbySync stores. Because TabbySync operates no server of any kind, the only personal data that ever reaches the developer is an email you choose to send.
+
+CONTACT
+contact [at] tabbysync [dot] com — the same address the Feedback button opens.
+Also published at https://tabbysync.com/privacy and https://rygull.github.io/TabbySync/privacy.html

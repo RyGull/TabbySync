@@ -1,7 +1,7 @@
-Reopening a large list of saved tabs now asks first and opens them in batches you can stop, instead of opening hundreds at once.
+TabbySync now runs on Firefox, from the same source as the Chrome version.
 
-A sync that would delete most of the bookmarks in your browser now stops and asks which copy is right, instead of applying it.
+Fixes a Firefox bug where synced bookmarks arrived in the Bookmarks Menu (hidden by default) instead of the toolbar, and one where "Save and connect" reported that access wasn't granted without ever asking for it.
 
-Fixes data loss: changing sync method, server address or sync name could delete the bookmarks in your browser on the next sync. If this happened to you, your data is almost certainly still on the destination you started with — set it back and sync.
+The settings page no longer builds any part of itself out of text you typed, closing an injection in the server address preview.
 
-Settings rebuilt around four questions instead of forty controls, with step-by-step guides for GitHub and JSONBin. The popup and the saved-tabs page now use the same plain wording.
+Reopening a large list of saved tabs asks first and opens them in batches you can stop, instead of opening hundreds at once. A sync that would delete most of the bookmarks in your browser stops and asks which copy is right.
