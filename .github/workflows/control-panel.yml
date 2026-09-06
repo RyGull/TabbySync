@@ -145,6 +145,6 @@ jobs:
 
             | File | What it is |
             |---|---|
-            | `TabbySync Control Panel Setup ${{ steps.version.outputs.version }}.exe` | Installer (Start Menu + desktop shortcut) |
+            | `TabbySync-Control-Panel-Setup-${{ steps.version.outputs.version }}.exe` | Installer (Start Menu + desktop shortcut) |
             | `TabbySync-Control-Panel-${{ steps.version.outputs.version }}-portable.exe` | No install — just run it |
             | `*.exe.blockmap`, `latest.yml` | Not for you to download — the installed app's own auto-updater reads these to find and verify new versions. |

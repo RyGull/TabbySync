@@ -1,7 +1,7 @@
 {
   "name": "tabbysync-control-panel",
   "productName": "TabbySync Control Panel",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Windows desktop app for managing every TabbySync sync profile, bookmark and saved tab list in one place.",
   "private": true,
   "type": "module",
@@ -67,7 +67,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "TabbySync Control Panel"
+      "shortcutName": "TabbySync Control Panel",
+      "artifactName": "TabbySync-Control-Panel-Setup-${version}.${ext}"
     },
     "portable": {
       "artifactName": "TabbySync-Control-Panel-${version}-portable.exe"
