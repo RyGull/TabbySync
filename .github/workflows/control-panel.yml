@@ -1,0 +1,128 @@
+name: control-panel
+
+# TabbySync Control Panel — the Windows desktop companion app that lives in
+# control-panel/. Separate from the extension's own test.yml/release.yml on
+# purpose: it has its own dependencies (Electron), its own version, and its
+# own release tags (control-panel-v*, never plain v* — those are the
+# extension's).
+#
+#   git tag control-panel-v1.0.0 && git push origin control-panel-v1.0.0
+#
+# `test` runs on every push/PR (fast, no Electron download — just the core
+# sync/merge logic under Node's own test runner) so a broken profile store,
+# merge, or cross-profile move is caught the same way the extension's own
+# suite catches a broken bookmark merge. `build-windows` — the slow part,
+# an actual Electron + electron-builder run — only happens on demand
+# (workflow_dispatch) or when cutting a release (the tag above), not on
+# every commit; run it by hand from the Actions tab to get an installable
+# build without tagging anything.
+
+on:
+  push:
+    branches: ['**']
+    tags: ['control-panel-v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write   # only used by the release step, on a tag push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: control-panel
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      # Also proves the vendored copies (bookmarks-lib/*, shared/providers.js,
+      # tabs/storage.js) still exist where scripts/vendor.mjs expects them.
+      - name: Vendor the extension modules this app depends on
+        run: npm run vendor
+
+      - name: Run the core logic test suite
+        run: npm test
+
+      - name: Check main.cjs / preload.cjs / app.js parse cleanly
+        run: |
+          node --check main.cjs
+          node --check preload.cjs
+          node --check renderer/app.js
+
+  build-windows:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/control-panel-v')
+    needs: test
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: control-panel
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Read the version from package.json
+        id: version
+        shell: bash
+        run: |
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check the tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/control-panel-v')
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME#control-panel-v}"
+          pkg="${{ steps.version.outputs.version }}"
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match package.json version $pkg"
+            exit 1
+          fi
+
+      - name: Build the Windows installer + portable exe
+        run: npm run dist:win
+
+      - name: List build output
+        shell: bash
+        run: ls -la dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TabbySync-Control-Panel-${{ steps.version.outputs.version }}-windows
+          path: |
+            control-panel/dist/*.exe
+            control-panel/dist/*.exe.blockmap
+          if-no-files-found: error
+
+      - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/control-panel-v')
+        with:
+          name: TabbySync Control Panel ${{ steps.version.outputs.version }}
+          tag_name: ${{ github.ref_name }}
+          draft: true
+          generate_release_notes: true
+          files: |
+            control-panel/dist/*.exe
+          body: |
+            Windows build of the TabbySync Control Panel — manages every
+            TabbySync sync profile, bookmark and saved-tabs list from one
+            desktop app, using the same self-hosted / GitHub Gist / JSONBin
+            destinations as the browser extension.
+
+            | File | What it is |
+            |---|---|
+            | `TabbySync Control Panel Setup ${{ steps.version.outputs.version }}.exe` | Installer (Start Menu + desktop shortcut) |
+            | `TabbySync-Control-Panel-${{ steps.version.outputs.version }}-portable.exe` | No install — just run it |

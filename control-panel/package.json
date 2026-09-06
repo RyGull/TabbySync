@@ -1,0 +1,62 @@
+{
+  "name": "tabbysync-control-panel",
+  "productName": "TabbySync Control Panel",
+  "version": "1.0.0",
+  "description": "Windows desktop app for managing every TabbySync sync profile, bookmark and saved tab list in one place.",
+  "private": true,
+  "type": "module",
+  "main": "main.cjs",
+  "author": "Ryan Gulliver",
+  "license": "SEE LICENSE IN ../LICENSE",
+  "scripts": {
+    "vendor": "node scripts/vendor.mjs",
+    "icon": "node scripts/make-icon.mjs",
+    "prestart": "npm run vendor",
+    "start": "electron .",
+    "pretest": "npm run vendor",
+    "test": "node --test test/*.test.js",
+    "predist:win": "npm run vendor && npm run icon",
+    "dist:win": "electron-builder --win --publish never",
+    "predist:win:dir": "npm run vendor && npm run icon",
+    "dist:win:dir": "electron-builder --win --dir --publish never"
+  },
+  "devDependencies": {
+    "electron": "^44.0.0",
+    "electron-builder": "^25.0.0",
+    "png-to-ico": "^3.0.1"
+  },
+  "build": {
+    "appId": "com.tabbysync.controlpanel",
+    "productName": "TabbySync Control Panel",
+    "copyright": "Copyright (c) 2026 Ryan Gulliver",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "src/**/*",
+      "renderer/**/*",
+      "vendor/**/*",
+      "!**/*.test.js"
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "TabbySync Control Panel"
+    },
+    "portable": {
+      "artifactName": "TabbySync-Control-Panel-${version}-portable.exe"
+    }
+  }
+}

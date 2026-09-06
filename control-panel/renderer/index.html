@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none';">
+<title>TabbySync Control Panel</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="app" class="app">
+
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">🗂️</span>
+        <span class="brand-name">TabbySync<br><small>Control Panel</small></span>
+      </div>
+      <button id="btn-new-profile" class="btn btn-primary btn-block" type="button">+ New profile</button>
+    </div>
+    <div id="profile-list" class="profile-list" role="listbox" aria-label="Sync profiles"></div>
+    <div id="secrets-warning" class="secrets-warning" hidden>
+      ⚠️ Tokens/passphrases are stored in plain text on this system — your OS's secure storage isn't available here.
+    </div>
+    <div class="sidebar-footer">
+      <button id="btn-about" class="btn btn-ghost btn-block" type="button">About</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div id="empty-state" class="empty-state">
+      <p>No profile selected.</p>
+      <p>Add a sync profile on the left to manage its bookmarks and saved tabs — the same self-hosted server, GitHub Gist, or JSONBin destination your TabbySync browser extension uses.</p>
+    </div>
+
+    <div id="profile-view" class="profile-view" hidden>
+      <header class="profile-header">
+        <div class="profile-title">
+          <span id="pv-color" class="color-dot" aria-hidden="true"></span>
+          <h1 id="pv-label">Profile</h1>
+          <span id="pv-provider" class="badge"></span>
+        </div>
+        <div class="profile-actions">
+          <button id="btn-test-connection" class="btn btn-ghost" type="button">Test connection</button>
+          <button id="btn-edit-profile" class="btn btn-ghost" type="button">Edit</button>
+          <button id="btn-profile-menu" class="btn btn-ghost" type="button" aria-haspopup="true">⋯</button>
+        </div>
+      </header>
+
+      <nav class="tabs-strip" role="tablist">
+        <button class="tab-btn active" data-panel="bookmarks" role="tab" aria-selected="true" type="button">📑 Bookmarks</button>
+        <button class="tab-btn" data-panel="tabs" role="tab" aria-selected="false" type="button">🗂️ Saved tabs</button>
+      </nav>
+
+      <section id="panel-bookmarks" class="panel" data-panel="bookmarks">
+        <div class="toolbar">
+          <button id="bm-add-bookmark" class="btn" type="button">+ Bookmark</button>
+          <button id="bm-add-folder" class="btn" type="button">+ Folder</button>
+          <span class="toolbar-sep"></span>
+          <button id="bm-import" class="btn btn-ghost" type="button">Import HTML…</button>
+          <button id="bm-export" class="btn btn-ghost" type="button">Export HTML…</button>
+          <span class="toolbar-sep"></span>
+          <button id="bm-refresh" class="btn btn-ghost" type="button">↻ Refresh</button>
+          <button id="bm-save" class="btn btn-success" type="button">Save<span id="bm-dirty-dot" class="dirty-dot" hidden></span></button>
+          <span id="bm-status" class="status-text"></span>
+        </div>
+        <div id="bm-tree" class="tree" tabindex="0"></div>
+      </section>
+
+      <section id="panel-tabs" class="panel" data-panel="tabs" hidden>
+        <div class="toolbar">
+          <button id="tb-add-list" class="btn" type="button">+ List</button>
+          <span class="toolbar-sep"></span>
+          <button id="tb-trash" class="btn btn-ghost" type="button">🗑 Recently deleted</button>
+          <span class="toolbar-sep"></span>
+          <button id="tb-refresh" class="btn btn-ghost" type="button">↻ Refresh</button>
+          <button id="tb-save" class="btn btn-success" type="button">Save<span id="tb-dirty-dot" class="dirty-dot" hidden></span></button>
+          <span id="tb-status" class="status-text"></span>
+        </div>
+        <div id="tb-list" class="tab-lists"></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<div id="modal-root" class="modal-root" hidden></div>
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
