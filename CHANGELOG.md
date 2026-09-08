@@ -6,6 +6,39 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.3.16 — 2026-09-08
+
+**Recently deleted is back on the toolbar, and long pages fold up.**
+
+- **"Recently deleted" is a toolbar button again.** 1.3.15's tidy-up moved it
+  into the **More** menu, and a menu is the wrong place for the thing you
+  reach for when you have just deleted the wrong list — you are already
+  flustered, and it is one more click and one more guess about which menu.
+  It sits next to **Reopen everything** now, where it used to be. Nothing
+  behind it changed: same 30-day window, same restore, same permanent delete.
+- **Lists collapse.** Every list has a ▾ on the left that folds it up to its
+  header row, and the count next to the name does the same thing for anyone
+  aiming at the words rather than the arrow. **Collapse all** on the toolbar
+  does the lot, and turns into **Expand all** once everything is folded. A
+  page holding a dozen saved lists was several screens of scrolling to get
+  from the first to the second; now it can be one screen.
+- **Which lists are folded is remembered.** It survives closing the page, and
+  the browser. Deliberately *not* synced: whether a list is folded is about
+  the window in front of you rather than about the tabs, so it lives in its
+  own local key (`sl.tab.ui`) that never leaves the machine and never
+  triggers a sync. Nothing new is sent anywhere, which is why this doesn't
+  change what the privacy policy says.
+- **Searching still finds things inside folded lists.** A query opens any
+  folded list that matches for as long as the query is in the box, then puts
+  it back exactly as it was — a search that silently skipped everything you
+  had tidied away would be worse than no search.
+
+**Control Panel 1.5.2.** The Saved tabs panel could already fold lists, but
+forgot which were open the moment you switched profiles or closed the app.
+Now it remembers, per profile, in the app's own `settings.json` (never in the
+synced tab data, for the same reason as above), and gets the same
+**Expand all** / **Collapse all** toolbar button.
+
 ## 1.3.15 — 2026-09-06
 
 **What AMO rejected, and what it warned about.** 1.3.14 was refused at upload

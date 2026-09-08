@@ -122,6 +122,9 @@ header.top {
 .tbtn:active { filter: brightness(.96); }
 .tbtn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .tbtn.primary:hover { filter: brightness(1.07); color: var(--accent-ink); }
+/* Collapse all has nothing to act on until there is a list. */
+.tbtn:disabled { opacity: .45; cursor: default; }
+.tbtn:disabled:hover { border-color: var(--border); color: var(--text); }
 
 /* search box */
 .tsearch {
@@ -231,6 +234,39 @@ header.top {
 .group.pinned { border-left: 3px solid var(--accent); }
 .group.drop-before { box-shadow: inset 0 3px 0 0 var(--accent); }
 .group.drop-after { box-shadow: inset 0 -3px 0 0 var(--accent); }
+
+/* Fold toggle. Sized to the same optical weight as the drag handle and pin
+   next to it, so the header row reads as one strip of small controls rather
+   than one big arrow and some decorations. */
+.twisty {
+  background: none;
+  border: none;
+  padding: 0 2px;
+  margin: 0;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1;
+  flex: 0 0 auto;
+  font-family: inherit;
+  user-select: none;
+}
+.twisty:hover { color: var(--text); }
+.twisty:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+/* Folded: the header row is all that is left, so the card loses the padding
+   and the dashed rule that only made sense with links under it. */
+.group.collapsed { padding-bottom: 0; }
+.group.collapsed > .group-head { border-bottom: none; padding-bottom: 4px; margin-bottom: 4px; }
+.group.collapsed > ul.tabs { display: none; }
+/* A search opens a folded list for as long as the query is in the box. */
+.group.collapsed.search-open { padding-bottom: 6px; }
+.group.collapsed.search-open > .group-head { border-bottom: 1px dashed var(--border); padding-bottom: 6px; }
+.group.collapsed.search-open > ul.tabs { display: block; }
+
+/* The count doubles as a fold target, so it should say so on hover. */
+.group-head .group-meta { cursor: pointer; }
+.group-head .group-meta:hover { color: var(--text); }
 
 .group-handle {
   cursor: grab;

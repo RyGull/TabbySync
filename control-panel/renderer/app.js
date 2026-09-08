@@ -598,6 +598,8 @@ async function selectProfile(id) {
   state.bm = { tree: null, dirty: false, status: 'not loaded' };
   state.tb = { state: null, dirty: false, status: 'not loaded' };
   state.selectedNodeId = null;
+  // Which lists this profile had open last time, before anything renders.
+  hydrateExpandedGroups(id);
   renderProfileList();
   showProfileView();
   // Recorded regardless of whether "reopen last profile" is turned on, so
@@ -1181,6 +1183,7 @@ async function loadTabs(force) {
 function renderTabLists() {
   const root = $('#tb-list');
   clearNode(root);
+  syncFoldAllButton();
   if (!state.tb.state) return;
   const groups = state.tb.state.groups || [];
   if (!groups.length) { root.appendChild(h('div', { class: 'tab-list-empty' }, 'No saved tab lists yet.')); return; }
@@ -1226,6 +1229,57 @@ function renderGroup(g) {
 
 function toggleGroup(id) {
   if (state.expandedGroups.has(id)) state.expandedGroups.delete(id); else state.expandedGroups.add(id);
+  persistExpandedGroups();
+  renderTabLists();
+}
+
+// ---- remembering which lists are open --------------------------------------
+// Folded/open is a per-machine view preference, so it rides in the app's own
+// settings.json rather than in the tab state that syncs to the server —
+// otherwise every twisty click would be a remote write, and one machine's
+// tidying would refold everyone else's lists. Keyed by profile because a list
+// id only means anything inside its own profile.
+
+/** Last settings snapshot for this key, so a write for one profile never drops another profile's entry. */
+let expandedTabGroupsByProfile = {};
+
+function hydrateExpandedGroups(profileId) {
+  const ids = expandedTabGroupsByProfile[profileId];
+  state.expandedGroups = new Set(Array.isArray(ids) ? ids : []);
+}
+
+function persistExpandedGroups() {
+  const p = activeProfile(); if (!p) return;
+  // Prune ids for lists that no longer exist — without this the key would
+  // remember the fold state of every list ever deleted.
+  const live = new Set((state.tb.state && state.tb.state.groups ? state.tb.state.groups : []).map((g) => g.id));
+  const ids = [...state.expandedGroups].filter((id) => live.has(id));
+  const next = { ...expandedTabGroupsByProfile };
+  if (ids.length) next[p.id] = ids; else delete next[p.id];
+  expandedTabGroupsByProfile = next;
+  api.settings.update({ expandedTabGroups: next }).catch((e) => console.error(e));
+}
+
+/** True when every list is already open — what the toolbar button reads off to decide what it says. */
+function allGroupsExpanded() {
+  const groups = (state.tb.state && state.tb.state.groups) || [];
+  return groups.length > 0 && groups.every((g) => state.expandedGroups.has(g.id));
+}
+
+function syncFoldAllButton() {
+  const btn = $('#tb-fold-all');
+  if (!btn) return;
+  const groups = (state.tb.state && state.tb.state.groups) || [];
+  btn.disabled = !groups.length;
+  const expand = !allGroupsExpanded();
+  btn.textContent = expand ? 'Expand all' : 'Collapse all';
+  btn.title = expand ? 'Open every list' : 'Fold every list up so you can see them all at once';
+}
+
+function setAllGroupsExpanded(on) {
+  const groups = (state.tb.state && state.tb.state.groups) || [];
+  state.expandedGroups = new Set(on ? groups.map((g) => g.id) : []);
+  persistExpandedGroups();
   renderTabLists();
 }
 
@@ -1473,6 +1527,7 @@ function openAddTabModal(groupId) {
         if (!urlInput.value.trim()) return showToast('A URL is required.', 'warning');
         m.close();
         state.expandedGroups.add(groupId);
+        persistExpandedGroups();
         await doTabsOp(() => api.tabs.addTab(activeProfile().id, { groupId, url: urlInput.value.trim(), title: titleInput.value.trim() }));
       } }, 'Add'),
     ],
@@ -1582,6 +1637,7 @@ $('#tb-refresh').addEventListener('click', async () => {
 });
 $('#tb-save').addEventListener('click', saveTabs);
 $('#tb-trash').addEventListener('click', openTrashModal);
+$('#tb-fold-all').addEventListener('click', () => setAllGroupsExpanded(!allGroupsExpanded()));
 
 async function saveTabs() {
   const p = activeProfile(); if (!p) return;
@@ -1648,6 +1704,7 @@ async function init() {
   try {
     settings = await api.settings.get();
     $('#theme-select').value = settings.theme;
+    expandedTabGroupsByProfile = settings.expandedTabGroups || {};
   } catch (e) { console.error(e); }
 
   await refreshProfiles();

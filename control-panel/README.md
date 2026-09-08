@@ -63,7 +63,9 @@ to one destination at a time).
   **group the opened tabs into a browser tab group** —
   `chrome.tabs.group()`/`chrome.tabGroups` are extension-only APIs a
   desktop process has no access to, so tabs open ungrouped. Deleted lists
-  go to **Recently deleted** for 30 days, same as the extension. Lists
+  go to **Recently deleted** for 30 days, same as the extension. Which lists
+  are open is remembered per profile between launches (**Expand all** /
+  **Collapse all** on the toolbar does the lot). Lists
   reorder the same way profiles do — drag one list's header onto another's
   (top/bottom half decides above or below), or use "Move up"/"Move down"
   in its ⋯ menu, which stays right where it was. That menu's two most-used

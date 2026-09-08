@@ -505,6 +505,35 @@
     });
   }
 
+  // ---- per-device view state ----------------------------------------------
+
+  // Which lists are collapsed on the tab-list page. Deliberately NOT part of
+  // the synced state: whether a list is folded up is about the window in
+  // front of you, not about the tabs themselves, and pushing it would make
+  // every collapse on one machine a remote write that re-renders the page on
+  // every other one. Its own local key, so a change here never trips the
+  // state/settings watchers that trigger a reload or a sync.
+  var UI_KEY = "sl.tab.ui";
+
+  function getUiState() {
+    return chrome.storage.local.get(UI_KEY).then(function (r) {
+      var u = r[UI_KEY];
+      return { collapsed: (u && Array.isArray(u.collapsed)) ? u.collapsed : [] };
+    });
+  }
+
+  // `liveIds`, when given, prunes ids for lists that no longer exist — without
+  // it this key would grow forever, remembering the fold state of every list
+  // ever deleted.
+  function saveUiState(ui, liveIds) {
+    var collapsed = (ui && Array.isArray(ui.collapsed)) ? ui.collapsed : [];
+    if (Array.isArray(liveIds)) {
+      collapsed = collapsed.filter(function (id) { return liveIds.indexOf(id) >= 0; });
+    }
+    var o = {}; o[UI_KEY] = { collapsed: collapsed };
+    return chrome.storage.local.set(o);
+  }
+
   // Serialize calls so at most one doSync is ever actually talking to the
   // server at a time — without this, two triggers close together (a
   // manual click and schedulePush's own debounced auto-push, or two
@@ -822,6 +851,7 @@
   var TabbySync = {
     STATE_KEY: STATE_KEY,
     STATUS_KEY: STATUS_KEY,
+    UI_KEY: UI_KEY,
     emptyState: emptyState,
     uid: uid,
     slugify: slugify,
@@ -842,6 +872,8 @@
     mergeStates: mergeStates,
     syncNow: syncNow,
     getSyncStatus: getSyncStatus,
+    getUiState: getUiState,
+    saveUiState: saveUiState,
     pushLocalOverwrite: pushLocalOverwrite,
     testConnection: testConnection,
     schedulePush: schedulePush,

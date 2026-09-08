@@ -31,11 +31,16 @@
     <div class="toolbar">
       <input type="search" id="search" class="tsearch" placeholder="Search your saved tabs…" autocomplete="off" spellcheck="false">
       <button class="tbtn primary" id="restore-all">Reopen everything</button>
+      <!-- Folding lists up is how a long page stays navigable, so the control
+           for it is on the toolbar rather than behind the menu. -->
+      <button class="tbtn" id="fold-all" type="button">Collapse all</button>
+      <!-- Recently deleted is where you go when something has gone wrong, and
+           the last place you want to be hunting through a menu. -->
+      <button class="tbtn" id="trash-link" type="button">🗑 Recently deleted</button>
       <details class="menu" id="more-menu">
         <summary class="tbtn">More</summary>
         <div class="menu-body">
           <button class="menu-item" id="sync-now" type="button">Sync now</button>
-          <button class="menu-item" id="trash-link" type="button">Recently deleted…</button>
           <hr>
           <label class="menu-check" title="When on, reopening a link (or everything) also removes it from the list. Off keeps it.">
             <input type="checkbox" id="remove-on-restore"> Remove links after I reopen them

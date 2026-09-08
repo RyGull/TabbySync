@@ -142,9 +142,10 @@ and TabbySync's own local settings.
 - **Saving tabs** — the popup's **Save my tabs**, `Alt`+`Shift`+`O`, or
   right-click the toolbar icon (this tab / others / left / right).
 - **The saved-tabs page** — name, pin, lock, search and reorder your lists;
-  **Reopen** one or **Reopen everything**. Above 15 tabs it asks first and opens
-  them in batches you can stop. Deleted lists wait 30 days in **Recently
-  deleted**.
+  **Reopen** one or **Reopen everything**. Fold a list up with its ▾, or use
+  **Collapse all**, and the page opens the way you left it. Above 15 tabs it
+  asks first and opens them in batches you can stop. Deleted lists wait 30 days
+  in **Recently deleted**, on the toolbar.
 - **Bookmarks** — just use your browser's bookmarks; changes sync automatically
   (debounced), on a timer, and on window focus.
 
@@ -302,7 +303,7 @@ manifest is the right shape for its store, and attaches them to a draft GitHub
 Release.
 
 ```
-git tag v1.3.15 && git push origin v1.3.15
+git tag v1.3.16 && git push origin v1.3.16
 ```
 
 The tag has to match `manifest.json` or the job stops — a release named after a

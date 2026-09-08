@@ -37,7 +37,38 @@ export const DEFAULTS = Object.freeze({
   // this against updateCheckFrequency to decide whether today's launch
   // should check again. Not meant to be hand-edited; null means "never".
   lastUpdateCheckAt: null,
+  // Which saved-tab lists are opened up in the Saved tabs panel, as
+  // { profileId: [groupId, ...] }. Kept here rather than in the synced tab
+  // state on purpose: whether a list is folded is about this window on this
+  // machine, not about the tabs, and writing it into the state would push a
+  // remote change every time you clicked a twisty. Per profile because a
+  // list id only means anything within its own profile.
+  expandedTabGroups: {},
 });
+
+// Ids are strings and there are never many; the caps exist so a corrupt or
+// hand-edited file can't grow this key without bound, not because any real
+// use approaches them.
+const MAX_PROFILES_TRACKED = 200;
+const MAX_GROUPS_PER_PROFILE = 2000;
+
+function sanitizeExpandedTabGroups(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const out = {};
+  for (const [profileId, ids] of Object.entries(value).slice(0, MAX_PROFILES_TRACKED)) {
+    if (!Array.isArray(ids)) continue;
+    const clean = [...new Set(ids.filter((id) => typeof id === 'string' && id))].slice(0, MAX_GROUPS_PER_PROFILE);
+    if (clean.length) out[profileId] = clean;
+  }
+  return out;
+}
+
+// A fresh copy, not the frozen DEFAULTS themselves: expandedTabGroups is an
+// object, and spreading DEFAULTS would hand every caller the same nested one
+// to mutate.
+function freshDefaults() {
+  return { ...DEFAULTS, expandedTabGroups: {} };
+}
 
 function sanitize(patch) {
   const out = {};
@@ -49,6 +80,7 @@ function sanitize(patch) {
   if ('lastActiveProfileId' in patch) out.lastActiveProfileId = patch.lastActiveProfileId || null;
   if ('updateCheckFrequency' in patch && UPDATE_CHECK_FREQUENCIES.has(patch.updateCheckFrequency)) out.updateCheckFrequency = patch.updateCheckFrequency;
   if ('lastUpdateCheckAt' in patch) out.lastUpdateCheckAt = (typeof patch.lastUpdateCheckAt === 'number' && patch.lastUpdateCheckAt > 0) ? patch.lastUpdateCheckAt : null;
+  if ('expandedTabGroups' in patch) out.expandedTabGroups = sanitizeExpandedTabGroups(patch.expandedTabGroups);
   return out;
 }
 
@@ -69,7 +101,7 @@ export function createSettingsStore(dir) {
     try {
       raw = await readFile(filePath, 'utf8');
     } catch (e) {
-      if (e.code === 'ENOENT') { cache = { ...DEFAULTS }; return cache; }
+      if (e.code === 'ENOENT') { cache = freshDefaults(); return cache; }
       throw e;
     }
     let onDisk;
@@ -80,10 +112,10 @@ export function createSettingsStore(dir) {
       // (no credentials, no sync destinations) — falling back to defaults
       // is safer here than refusing to start the app over a corrupt
       // preferences file.
-      cache = { ...DEFAULTS };
+      cache = freshDefaults();
       return cache;
     }
-    cache = { ...DEFAULTS, ...sanitize(onDisk) };
+    cache = { ...freshDefaults(), ...sanitize(onDisk) };
     return cache;
   }
 
@@ -95,7 +127,10 @@ export function createSettingsStore(dir) {
   }
 
   async function get() {
-    return { ...(await load()) };
+    const cur = await load();
+    // Deep enough to cover the one nested value: a shallow spread would hand
+    // every caller the cache's own expandedTabGroups object to mutate.
+    return { ...cur, expandedTabGroups: { ...cur.expandedTabGroups } };
   }
 
   function update(patch) {
@@ -104,7 +139,7 @@ export function createSettingsStore(dir) {
       const next = { ...current, ...sanitize(patch) };
       cache = next;
       await writeToDisk(next);
-      return { ...next };
+      return { ...next, expandedTabGroups: { ...next.expandedTabGroups } };
     });
   }
 

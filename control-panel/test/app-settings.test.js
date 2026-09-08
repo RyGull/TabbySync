@@ -91,3 +91,37 @@ test('lastUpdateCheckAt only accepts a positive number, else null', async () => 
   const s3 = await store.update({ lastUpdateCheckAt: 'yesterday' });
   assert.equal(s3.lastUpdateCheckAt, null);
 });
+
+test('expandedTabGroups round-trips per profile and survives a reload', async () => {
+  const dir = await freshDir();
+  const store1 = createSettingsStore(dir);
+  const s = await store1.update({ expandedTabGroups: { p1: ['g1', 'g2'], p2: ['g9'] } });
+  assert.deepEqual(s.expandedTabGroups, { p1: ['g1', 'g2'], p2: ['g9'] });
+
+  const store2 = createSettingsStore(dir);
+  assert.deepEqual((await store2.get()).expandedTabGroups, { p1: ['g1', 'g2'], p2: ['g9'] });
+});
+
+test('expandedTabGroups drops junk rather than storing it', async () => {
+  const store = createSettingsStore(await freshDir());
+  const s = await store.update({
+    expandedTabGroups: {
+      p1: ['g1', 'g1', '', null, 42, 'g2'], // dupes, blanks and non-strings
+      p2: 'not-an-array',
+      p3: [],                                // nothing open — no reason to keep the key
+    },
+  });
+  assert.deepEqual(s.expandedTabGroups, { p1: ['g1', 'g2'] });
+
+  // A whole value of the wrong shape resets to empty instead of poisoning the file.
+  assert.deepEqual((await store.update({ expandedTabGroups: ['g1'] })).expandedTabGroups, {});
+  assert.deepEqual((await store.update({ expandedTabGroups: null })).expandedTabGroups, {});
+});
+
+test('the default expandedTabGroups is never shared between reads', async () => {
+  const store = createSettingsStore(await freshDir());
+  const a = await store.get();
+  a.expandedTabGroups.p1 = ['leaked'];
+  assert.deepEqual((await store.get()).expandedTabGroups, {});
+  assert.deepEqual(DEFAULTS.expandedTabGroups, {});
+});

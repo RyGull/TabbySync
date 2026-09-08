@@ -13,6 +13,10 @@
   var suppressReload = false;
   var searchQuery = "";
   var countsOverride = null; // set while a search is active; null shows the normal tab/group counts
+  // Ids of the lists folded up right now. Held as a Set for the rendering
+  // path and written back to chrome.storage.local (see persistUi) so the page
+  // opens the way you left it — the whole point of folding a long page up.
+  var collapsed = new Set();
 
   // ---- utilities -----------------------------------------------------------
 
@@ -43,6 +47,45 @@
     // later via the debounced background push.
     TabbySync.saveState(state).catch(function () {})
       .finally(function () { setTimeout(function () { suppressReload = false; }, 200); });
+  }
+
+  // Fold state is per-device and never synced, so it saves on its own rather
+  // than riding along with persist() — collapsing a list is not an edit to
+  // the list, and shouldn't queue a push to the server.
+  function persistUi() {
+    var live = state.groups.map(function (g) { return g.id; });
+    TabbySync.saveUiState({ collapsed: Array.from(collapsed) }, live).catch(function () {});
+  }
+
+  function isCollapsed(gid) { return collapsed.has(gid); }
+
+  function toggleCollapsed(gid) {
+    if (collapsed.has(gid)) collapsed.delete(gid); else collapsed.add(gid);
+    persistUi();
+    render();
+  }
+
+  // True when every list is already folded, which is what the toolbar button
+  // reads off to decide whether it says Collapse all or Expand all.
+  function allCollapsed() {
+    return state.groups.length > 0 && state.groups.every(function (g) { return collapsed.has(g.id); });
+  }
+
+  function setAllCollapsed(on) {
+    collapsed = new Set(on ? state.groups.map(function (g) { return g.id; }) : []);
+    persistUi();
+    render();
+  }
+
+  function syncFoldAllButton() {
+    var b = document.getElementById("fold-all");
+    if (!b) return;
+    b.disabled = !state.groups.length;
+    var fold = !allCollapsed();
+    b.textContent = fold ? "Collapse all" : "Expand all";
+    b.title = fold
+      ? "Fold every list up so you can see them all at once"
+      : "Open every list back up";
   }
 
   // ---- status block (profile / encryption / sync status) -------------------
@@ -516,6 +559,7 @@
   function render() {
     countsOverride = null;
     setCountsDisplay(countsLabel());
+    syncFoldAllButton();
 
     listEl.innerHTML = "";
     if (!state.groups.length) {
@@ -556,6 +600,7 @@
       labels.forEach(function (l) { l.hidden = false; });
       groups.forEach(function (g) {
         g.hidden = false;
+        setSearchOpen(g, false);
         g.querySelectorAll("li.tab").forEach(function (t) { t.hidden = false; });
       });
       countsOverride = null;
@@ -573,10 +618,26 @@
         if (vis) { any = true; shown++; }
       });
       g.hidden = !any;
+      // A folded list with matches in it has to open, or searching a page
+      // you have tidied away returns nothing you can see. This overrides the
+      // fold for the duration of the search only — it never writes to the
+      // saved fold state, so clearing the box puts everything back.
+      setSearchOpen(g, any);
     });
     countsOverride = shown + " match" + (shown === 1 ? "" : "es") +
       " for “" + searchQuery.trim() + "”";
     setCountsDisplay(countsOverride);
+  }
+
+  // Opens (or releases) a folded list for the duration of a search, keeping
+  // the twisty telling the truth about what is on screen.
+  function setSearchOpen(groupEl, on) {
+    groupEl.classList.toggle("search-open", !!on);
+    if (!groupEl.classList.contains("collapsed")) return;
+    var t = groupEl.querySelector(".twisty");
+    if (!t) return;
+    t.textContent = on ? "\u25be" : "\u25b8";
+    t.setAttribute("aria-expanded", on ? "true" : "false");
   }
 
   function sectionLabel(text) {
@@ -585,11 +646,24 @@
   }
 
   function renderGroup(g) {
-    var group = el("div", "group" + (g.locked ? " locked" : "") + (g.pinned ? " pinned" : ""));
+    var folded = isCollapsed(g.id);
+    var group = el("div", "group" + (g.locked ? " locked" : "") + (g.pinned ? " pinned" : "") +
+      (folded ? " collapsed" : ""));
     group.dataset.gid = g.id;
     group.dataset.name = (g.name || "").toLowerCase();
 
     var head = el("div", "group-head");
+
+    // Fold toggle. A real <button> rather than a styled span so it is
+    // reachable by keyboard and announced as a control, and so its state
+    // travels in aria-expanded instead of only in the arrow's shape.
+    var twisty = el("button", "twisty", folded ? "\u25b8" : "\u25be");
+    twisty.type = "button";
+    twisty.title = folded ? "Open this list" : "Fold this list up";
+    twisty.setAttribute("aria-expanded", folded ? "false" : "true");
+    twisty.setAttribute("aria-label", (folded ? "Open" : "Fold up") + " " + groupLabelSafe(g));
+    twisty.addEventListener("click", function (e) { e.stopPropagation(); toggleCollapsed(g.id); });
+    head.appendChild(twisty);
 
     // group drag handle (reorder whole group)
     var ghandle = el("span", "group-handle", "⠿");
@@ -623,8 +697,14 @@
     name.addEventListener("keydown", function (e) { if (e.key === "Enter") name.blur(); });
     head.appendChild(name);
 
-    head.appendChild(el("span", "group-meta",
-      g.tabs.length + " tab" + (g.tabs.length === 1 ? "" : "s") + " · " + formatDate(g.createdAt)));
+    // The count is dead space on the header row and reads as part of the
+    // list's identity, so it folds too — the twisty is small, and people
+    // aim at the words.
+    var meta = el("span", "group-meta",
+      g.tabs.length + " tab" + (g.tabs.length === 1 ? "" : "s") + " · " + formatDate(g.createdAt));
+    meta.title = folded ? "Open this list" : "Fold this list up";
+    meta.addEventListener("click", function () { toggleCollapsed(g.id); });
+    head.appendChild(meta);
 
     if (g.locked) head.appendChild(el("span", "lock-note", "Locked"));
 
@@ -945,6 +1025,9 @@
     applyFilter();
   });
   document.getElementById("restore-all").addEventListener("click", restoreAll);
+  document.getElementById("fold-all").addEventListener("click", function () {
+    setAllCollapsed(!allCollapsed());
+  });
   document.getElementById("delete-all").addEventListener("click", deleteAllUnlocked);
   document.getElementById("export").addEventListener("click", function () { openExportScope("all"); });
   document.getElementById("import").addEventListener("click", openImport);
@@ -967,8 +1050,9 @@
   // ---- load / live updates -------------------------------------------------
 
   function reload() {
-    return Promise.all([TabbySync.getState(), TabbySync.getSettings()]).then(function (r) {
+    return Promise.all([TabbySync.getState(), TabbySync.getSettings(), TabbySync.getUiState()]).then(function (r) {
       state = r[0]; settings = r[1];
+      collapsed = new Set(r[2].collapsed);
       var rr = document.getElementById("remove-on-restore");
       if (rr) rr.checked = !!settings.removeOnRestore;
       render();
