@@ -152,6 +152,16 @@ export function createSessionManager(profileStore) {
     sessions.delete(profileId);
   }
 
+  /**
+   * Forgets every open session. Only a restore-from-backup that replaces the
+   * whole profile list should call this: those sessions hold loaded state for
+   * profiles that are about to stop existing, and a queued save against one
+   * of them would be writing to a destination the user just replaced.
+   */
+  function dropAllSessions() {
+    sessions.clear();
+  }
+
   // ---- cross-profile copy/move — the point of having "one roof" -----------
   //
   // Copy always fetches the TARGET fresh from its own remote (or reuses an
@@ -335,7 +345,7 @@ export function createSessionManager(profileStore) {
   return {
     loadBookmarks, applyBookmarkOp, saveBookmarks, discardBookmarks,
     loadTabs, applyTabsOp, saveTabs, discardTabs,
-    status, dropSession,
+    status, dropSession, dropAllSessions,
     copyBookmarkToProfile, moveBookmarkToProfile,
     copyListToProfile, moveListToProfile,
     copyTabToProfile, moveTabToProfile,

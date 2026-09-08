@@ -153,3 +153,48 @@ test('syncName is sanitized the same way the extension sanitizes it', async () =
   const p = await store.add({ label: 'X', provider: 'custom', serverUrl: 'https://x/', token: 't', syncName: 'my sync name!!' });
   assert.equal(p.syncName, 'my-sync-name');
 });
+
+test('replaceAll wipes what is there and restores the supplied profiles, ids intact', async () => {
+  const store = createProfileStore(await freshDir());
+  const mine = await store.add({ label: 'Mine', provider: 'jsonbin', token: 'keep-me' });
+
+  const restored = await store.replaceAll([
+    { id: 'profile_from_backup', label: 'Home', provider: 'custom', serverUrl: 'https://home.example/y.php', token: 'tok', createdAt: 5, updatedAt: 6 },
+    { id: 'profile_other', label: 'Work', provider: 'gist', token: 'tok2', gistId: 'g1' },
+  ]);
+
+  assert.equal(restored.length, 2);
+  // Ids come from the backup, not freshly minted — the restored settings
+  // (lastActiveProfileId, expandedTabGroups) are keyed by them.
+  assert.deepEqual(restored.map((p) => p.id), ['profile_from_backup', 'profile_other']);
+  assert.equal(await store.get(mine.id), null, 'the pre-existing profile should be gone');
+
+  // Secrets came through, and list() still redacts them by default.
+  assert.equal((await store.get('profile_from_backup')).token, 'tok');
+  assert.deepEqual((await store.list()).map((p) => p.hasToken), [true, true]);
+});
+
+test('replaceAll validates everything before deleting anything', async () => {
+  const store = createProfileStore(await freshDir());
+  const mine = await store.add({ label: 'Mine', provider: 'jsonbin', token: 'keep-me' });
+
+  // The second entry is invalid (http:// to a non-loopback host). A restore
+  // that deleted first and validated as it went would leave the user with
+  // neither their old profiles nor the new ones.
+  await assert.rejects(() => store.replaceAll([
+    { id: 'ok', label: 'Fine', provider: 'jsonbin', token: 't' },
+    { id: 'bad', label: 'Broken', provider: 'custom', serverUrl: 'http://example.com/y.php' },
+  ]), /must use https/);
+
+  const still = await store.list();
+  assert.equal(still.length, 1);
+  assert.equal(still[0].id, mine.id, 'a rejected restore must leave the existing profiles untouched');
+});
+
+test('replaceAll refuses a backup that names the same profile id twice', async () => {
+  const store = createProfileStore(await freshDir());
+  await assert.rejects(() => store.replaceAll([
+    { id: 'dupe', label: 'A', provider: 'jsonbin', token: 't' },
+    { id: 'dupe', label: 'B', provider: 'jsonbin', token: 't' },
+  ]), /same profile id twice/);
+});

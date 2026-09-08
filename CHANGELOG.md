@@ -33,11 +33,54 @@ Versions before 1.3.0 predate this changelog; their history is in the git log.
   it back exactly as it was — a search that silently skipped everything you
   had tidied away would be worse than no search.
 
-**Control Panel 1.5.2.** The Saved tabs panel could already fold lists, but
+**Control Panel 1.6.0.** The Saved tabs panel could already fold lists, but
 forgot which were open the moment you switched profiles or closed the app.
 Now it remembers, per profile, in the app's own `settings.json` (never in the
 synced tab data, for the same reason as above), and gets the same
-**Expand all** / **Collapse all** toolbar button.
+**Expand all** / **Collapse all** toolbar button. Two new features alongside
+it:
+
+- **A PIN lock.** First launch offers to set a 4–12 digit PIN. Once set, the
+  app asks for it at every start, after however many idle minutes you choose,
+  and whenever you pick **Lock now** (`Ctrl+L`, or the tray menu). Reloading
+  or restarting always relocks regardless of the idle setting. Change it,
+  change the timeout, or turn it off in **Options → Security**.
+
+  The lock is enforced in the app's main process, not by the screen you see:
+  while locked, every IPC channel refuses except the four the lock screen
+  itself needs, so a locked app hands out no profile, credential, bookmark or
+  saved tab however it is asked. The PIN is stored as a salted `scrypt` hash
+  in its own `security.json` that **fails closed** — a damaged file leaves the
+  app locked and names the file to delete, rather than quietly unlocking it —
+  and wrong attempts are counted on disk with an escalating delay, so
+  relaunching the app doesn't reset the count.
+
+  What it is not: encryption. Your profiles sit in the app's data folder
+  under your Windows account either way, and the DPAPI protection on the
+  credentials inside them is tied to that account rather than to the PIN, so
+  anyone already signed in as you can still read them with the app closed.
+  This stops the person who sits down at your unlocked desk; it is not a
+  defence against someone who has your Windows login. The setup screen,
+  Options and the in-app privacy policy all say so in as many words.
+
+- **Export and import everything.** **Options → Backup** writes every profile
+  and every app setting to one file. *Without credentials* omits all tokens
+  and sync passphrases — safe to keep anywhere, at the cost of re-entering
+  them after restoring. *Everything, including credentials* is always sealed
+  with a passphrase, using the same AES-256-GCM/PBKDF2 envelope the extension
+  uses for its own backups. There is no third option: nothing in this app
+  writes a live token to a file in the clear.
+
+  Importing shows what is in the file first — profile count, names, whether
+  it carries credentials, when it was written — then asks. **Add** brings
+  them in alongside what you have, with fresh ids, changing no settings.
+  **Replace** deletes every profile in the app and restores the file exactly,
+  settings included, behind a second confirmation. Neither touches anything
+  on your sync servers.
+
+The in-app privacy policy now covers both: what `security.json` holds (a salt
+and a hash, never the PIN), what an export contains in each of its two shapes,
+and the plain statement that the PIN locks the window rather than the files.
 
 ## 1.3.15 — 2026-09-06
 

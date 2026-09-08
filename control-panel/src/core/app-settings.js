@@ -44,7 +44,22 @@ export const DEFAULTS = Object.freeze({
   // remote change every time you clicked a twisty. Per profile because a
   // list id only means anything within its own profile.
   expandedTabGroups: {},
+  // How long the app stays unlocked with no interaction before the PIN
+  // screen comes back. Idle, not absolute: the point is "you walked away",
+  // and a timer that relocks mid-edit teaches people to pick a shorter PIN.
+  // The PIN itself lives in security.json (see src/core/pin-lock.js), never
+  // here — this file falls back to defaults when it can't be parsed, which
+  // is the right call for a theme and completely the wrong one for a lock.
+  pinIdleMinutes: 15,
+  // Whether the first-run "set a PIN" prompt has been answered, either way.
+  // Without this, declining it would mean being asked again on every single
+  // launch — a prompt you cannot get rid of is one people learn to dismiss
+  // without reading.
+  pinSetupSeen: false,
 });
+
+const MIN_PIN_IDLE_MINUTES = 1;
+const MAX_PIN_IDLE_MINUTES = 480;
 
 // Ids are strings and there are never many; the caps exist so a corrupt or
 // hand-edited file can't grow this key without bound, not because any real
@@ -81,6 +96,15 @@ function sanitize(patch) {
   if ('updateCheckFrequency' in patch && UPDATE_CHECK_FREQUENCIES.has(patch.updateCheckFrequency)) out.updateCheckFrequency = patch.updateCheckFrequency;
   if ('lastUpdateCheckAt' in patch) out.lastUpdateCheckAt = (typeof patch.lastUpdateCheckAt === 'number' && patch.lastUpdateCheckAt > 0) ? patch.lastUpdateCheckAt : null;
   if ('expandedTabGroups' in patch) out.expandedTabGroups = sanitizeExpandedTabGroups(patch.expandedTabGroups);
+  if ('pinIdleMinutes' in patch) {
+    const n = Math.round(Number(patch.pinIdleMinutes));
+    // Out-of-range or non-numeric falls back to the default rather than being
+    // ignored: a silently-dropped patch would leave the Options field showing
+    // a value the app isn't actually using.
+    out.pinIdleMinutes = Number.isFinite(n) && n >= MIN_PIN_IDLE_MINUTES && n <= MAX_PIN_IDLE_MINUTES
+      ? n : DEFAULTS.pinIdleMinutes;
+  }
+  if ('pinSetupSeen' in patch) out.pinSetupSeen = !!patch.pinSetupSeen;
   return out;
 }
 

@@ -100,6 +100,11 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && modalStack.length) modalStack[modalStack.length - 1].close();
 });
 
+/** Everything open, shut. Used when the app locks: a modal is a window onto the data the lock screen is there to cover. */
+function closeAllModals() {
+  for (const m of modalStack.slice()) m.close();
+}
+
 function confirmDialog({ title, message, confirmLabel, danger }) {
   return new Promise((resolve) => {
     const m = openModal({
@@ -1693,7 +1698,175 @@ window.addEventListener('beforeunload', (e) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// The PIN gate, renderer half
+//
+// Everything below draws and drives the lock screen. It does NOT enforce the
+// lock — main.cjs does that, by refusing every IPC channel while locked (see
+// its handle()). That split is deliberate: this code lives in a window with a
+// DevTools console, so anything it alone decided would be one console line
+// away from being decided differently. Here we ask main what the state is,
+// draw it, and pass PINs through.
+// ---------------------------------------------------------------------------
+
+const lockUi = {
+  screen: null,
+  msg: null,
+  started: false,   // has the app proper been booted once this document?
+};
+
+function showLockMessage(text, ok) {
+  lockUi.msg.textContent = text || '';
+  lockUi.msg.classList.toggle('ok', !!ok);
+}
+
+function showLockScreen(mode) {
+  $('#app').hidden = true;
+  lockUi.screen.hidden = false;
+  $('#lock-unlock').hidden = mode !== 'unlock';
+  $('#lock-setup').hidden = mode !== 'setup';
+  showLockMessage('');
+  const field = mode === 'setup' ? $('#setup-pin') : $('#lock-pin');
+  field.value = '';
+  if (mode === 'unlock') $('#lock-pin').value = '';
+  else { $('#setup-pin').value = ''; $('#setup-pin2').value = ''; }
+  // A window that isn't focused yet (launched minimized, restored from the
+  // tray) still gets the caret in the right place the moment it is.
+  setTimeout(() => field.focus(), 0);
+}
+
+async function hideLockScreenAndStart() {
+  lockUi.screen.hidden = true;
+  $('#app').hidden = false;
+  if (lockUi.started) return;
+  lockUi.started = true;
+  await startApp();
+}
+
+/** Renders a throttle as a countdown the person can actually plan around. */
+function throttleMessage(ms) {
+  const secs = Math.ceil(ms / 1000);
+  if (secs >= 60) {
+    const mins = Math.ceil(secs / 60);
+    return `Too many wrong PINs. Try again in about ${mins} minute${mins === 1 ? '' : 's'}.`;
+  }
+  return `Too many wrong PINs. Try again in ${secs} second${secs === 1 ? '' : 's'}.`;
+}
+
+async function submitUnlock(e) {
+  e.preventDefault();
+  const btn = $('#lock-submit');
+  const pin = $('#lock-pin').value;
+  btn.disabled = true;
+  try {
+    const r = await api.pin.unlock(pin);
+    if (r.ok) { showLockMessage(''); await hideLockScreenAndStart(); return; }
+    $('#lock-pin').value = '';
+    $('#lock-pin').focus();
+    showLockMessage(r.throttledForMs > 0 ? throttleMessage(r.throttledForMs) : 'That PIN is not right.');
+  } catch (err) {
+    // PIN_THROTTLED arrives as a thrown error because it is not an answer to
+    // "is this the PIN" at all — nothing was even checked.
+    showLockMessage(err.code === 'PIN_THROTTLED' && err.waitMs ? throttleMessage(err.waitMs) : err.message);
+  } finally { btn.disabled = false; }
+}
+
+async function submitSetup(e) {
+  e.preventDefault();
+  const pin = $('#setup-pin').value;
+  const again = $('#setup-pin2').value;
+  if (pin !== again) {
+    showLockMessage('Those two PINs are not the same.');
+    $('#setup-pin2').value = '';
+    $('#setup-pin2').focus();
+    return;
+  }
+  const btn = $('#setup-submit');
+  btn.disabled = true;
+  try {
+    await api.pin.setup(pin);
+    await hideLockScreenAndStart();
+  } catch (err) {
+    showLockMessage(err.message);
+    $('#setup-pin').value = ''; $('#setup-pin2').value = '';
+    $('#setup-pin').focus();
+  } finally { btn.disabled = false; }
+}
+
+async function skipSetup() {
+  try { await api.pin.skipSetup(); } catch (e) { console.error(e); }
+  await hideLockScreenAndStart();
+}
+
+// Bumped while someone is using the app so the idle timer doesn't fire under
+// them. Throttled hard — the main process only needs to know "still here",
+// and a per-mousemove IPC call would be thousands of round trips a minute.
+const ACTIVITY_PING_MS = 20 * 1000;
+let lastActivityPing = 0;
+function noteActivity() {
+  const now = Date.now();
+  if (now - lastActivityPing < ACTIVITY_PING_MS) return;
+  lastActivityPing = now;
+  api.pin.activity().catch(() => {});
+}
+
+function wireLockScreen() {
+  lockUi.screen = $('#lock-screen');
+  lockUi.msg = $('#lock-msg');
+  $('#lock-unlock').addEventListener('submit', submitUnlock);
+  $('#lock-setup').addEventListener('submit', submitSetup);
+  $('#setup-skip').addEventListener('click', skipSetup);
+
+  for (const evt of ['pointerdown', 'keydown', 'wheel']) {
+    window.addEventListener(evt, () => { if (!lockUi.screen.hidden) return; noteActivity(); }, { passive: true });
+  }
+
+  // Idle timeout, "Lock now" from the tray or File menu — main decides, we
+  // draw it. Nothing is torn down: the app stays loaded behind the screen and
+  // simply cannot talk to main until a PIN goes back through.
+  api.pin.onChanged((state) => {
+    if (state.locked) {
+      closeAllModals();
+      showLockScreen('unlock');
+      showLockMessage('Locked. Enter your PIN to carry on.', true);
+    } else {
+      hideLockScreenAndStart().catch((e) => console.error(e));
+    }
+  });
+}
+
+/** Decides what the first frame is: the app, a PIN prompt, or the first-run offer. */
 async function init() {
+  wireLockScreen();
+  let status;
+  try {
+    status = await api.pin.status();
+  } catch (e) {
+    // If we can't even ask, stay locked and say why. Failing open here would
+    // mean a broken IPC channel is a way past the lock.
+    console.error(e);
+    showLockScreen('unlock');
+    showLockMessage('Could not check the lock. Restart the app.');
+    return;
+  }
+
+  if (status.unrecoverable) {
+    showLockScreen('unlock');
+    $('#lock-unlock').hidden = true;
+    showLockMessage('The PIN file is damaged, so the app stays locked.');
+    const recovery = $('#lock-recovery');
+    recovery.hidden = false;
+    recovery.textContent =
+      `Delete this file to clear the PIN and start over — your profiles and settings are separate files and are not affected: ${status.securityFile}`;
+    return;
+  }
+
+  if (status.isSet && status.locked) { showLockScreen('unlock'); return; }
+  if (!status.isSet && !status.setupSeen) { showLockScreen('setup'); return; }
+  await hideLockScreenAndStart();
+}
+
+async function startApp() {
   try {
     const info = await api.app.info();
     $('#secrets-warning').hidden = info.secretsAvailable;
@@ -1784,9 +1957,322 @@ async function openOptionsModal() {
         h('p', { class: 'hint' }, 'A found update always downloads in the background and asks before installing, regardless of how often it looks for one — this only controls how often it looks.'),
         openUpdatePopupBtn,
       ]),
+      securitySection(settings),
+      backupSection(),
     ]),
     footer: [h('button', { class: 'btn btn-primary', type: 'button', onclick: () => m.close() }, 'Close')],
   });
+}
+
+// ---------------------------------------------------------------------------
+// Options → Security (the PIN)
+// ---------------------------------------------------------------------------
+
+function securitySection(settings) {
+  const body = h('div', { class: 'options-section' }, [
+    h('h3', { class: 'options-section-title' }, 'Security'),
+    h('div', { class: 'hint', id: 'opt-pin-state' }, 'Checking…'),
+  ]);
+  renderSecuritySection(body, settings).catch((e) => showError(e, 'Could not read the lock settings.'));
+  return body;
+}
+
+async function renderSecuritySection(container, settings) {
+  const status = await api.pin.status();
+  clearNode(container);
+  container.appendChild(h('h3', { class: 'options-section-title' }, 'Security'));
+
+  const idle = h('input', {
+    type: 'number', id: 'opt-pin-idle', min: '1', max: '480', step: '1',
+    value: String(status.idleMinutes || settings.pinIdleMinutes),
+  });
+  idle.addEventListener('change', () => {
+    api.settings.update({ pinIdleMinutes: Number(idle.value) })
+      .then((next) => { idle.value = String(next.pinIdleMinutes); })
+      .catch((e) => showError(e, 'Could not save that option.'));
+  });
+
+  const redraw = () => renderSecuritySection(container, settings).catch((e) => console.error(e));
+
+  if (status.isSet) {
+    container.appendChild(h('p', { class: 'hint' }, 'A PIN is set. The app asks for it every time it starts, and after it has been sitting idle.'));
+    container.appendChild(h('div', { class: 'field' }, [
+      h('label', { for: 'opt-pin-idle' }, 'Lock again after this many minutes idle'),
+      idle,
+      h('div', { class: 'hint' }, 'Restarting or reloading the app always locks it again, whatever this says.'),
+    ]));
+    container.appendChild(h('div', { class: 'two-col-row' }, [
+      h('button', { class: 'btn', type: 'button', onclick: () => openChangePinModal(redraw) }, 'Change PIN…'),
+      h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => { api.pin.lock().catch((e) => showError(e)); } }, 'Lock now'),
+    ]));
+    container.appendChild(h('button', { class: 'btn btn-danger btn-block', type: 'button', onclick: () => openRemovePinModal(redraw) }, 'Turn the PIN off…'));
+  } else {
+    container.appendChild(h('p', { class: 'hint' }, 'No PIN is set — the app opens straight into your profiles.'));
+    container.appendChild(h('button', { class: 'btn btn-primary btn-block', type: 'button', onclick: () => openSetPinModal(redraw) }, 'Set a PIN…'));
+  }
+
+  // Said in Options too, not only on the first-run screen, because this is
+  // where someone decides how much to rely on it.
+  container.appendChild(h('p', { class: 'hint' },
+    'The PIN locks this window. It does not encrypt anything on disk: your profiles are stored in your Windows account’s app data either way, and anyone signed in as you can read them with the app closed. It is a lock on the door, not a safe.'));
+}
+
+/** One shape for all three PIN dialogs — they differ only in which fields they ask for and what they call when submitted. */
+function pinDialog({ title, intro, fields, confirmLabel, danger, onSubmit }) {
+  const inputs = fields.map(() => h('input', {
+    type: 'password', inputmode: 'numeric', autocomplete: 'off', spellcheck: 'false', maxlength: '12',
+    class: 'lock-pin',
+  }));
+  const msg = h('p', { class: 'lock-msg' });
+  const body = h('div', {}, [
+    intro ? h('p', { class: 'hint' }, intro) : null,
+    ...fields.map((f, i) => h('div', { class: 'field' }, [h('label', {}, f), inputs[i]])),
+    msg,
+  ]);
+  const submit = h('button', { class: danger ? 'btn btn-danger' : 'btn btn-primary', type: 'button' }, confirmLabel);
+  const m = openModal({
+    title,
+    body,
+    footer: [h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => m.close() }, 'Cancel'), submit],
+  });
+  async function go() {
+    submit.disabled = true;
+    msg.textContent = '';
+    try {
+      await onSubmit(inputs.map((i) => i.value));
+      m.close();
+    } catch (e) {
+      msg.textContent = e.code === 'PIN_THROTTLED' && e.waitMs ? throttleMessage(e.waitMs) : e.message;
+      for (const i of inputs) i.value = '';
+      inputs[0].focus();
+    } finally { submit.disabled = false; }
+  }
+  submit.addEventListener('click', go);
+  for (const i of inputs) {
+    i.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+  }
+  setTimeout(() => inputs[0].focus(), 0);
+  return m;
+}
+
+function openSetPinModal(done) {
+  pinDialog({
+    title: 'Set a PIN',
+    intro: '4 to 12 digits. You will be asked for it every time the app starts.',
+    fields: ['Choose a PIN', 'Type it again'],
+    confirmLabel: 'Set PIN',
+    onSubmit: async ([pin, again]) => {
+      if (pin !== again) throw new Error('Those two PINs are not the same.');
+      await api.pin.setup(pin);
+      showToast('PIN set.', 'success');
+      done();
+    },
+  });
+}
+
+function openChangePinModal(done) {
+  pinDialog({
+    title: 'Change PIN',
+    fields: ['Current PIN', 'New PIN', 'Type the new one again'],
+    confirmLabel: 'Change PIN',
+    onSubmit: async ([current, next, again]) => {
+      if (next !== again) throw new Error('The two new PINs are not the same.');
+      await api.pin.change({ currentPin: current, newPin: next });
+      showToast('PIN changed.', 'success');
+      done();
+    },
+  });
+}
+
+function openRemovePinModal(done) {
+  pinDialog({
+    title: 'Turn the PIN off',
+    intro: 'The app will open straight into your profiles from now on, with nothing asked.',
+    fields: ['Current PIN'],
+    confirmLabel: 'Turn it off',
+    danger: true,
+    onSubmit: async ([current]) => {
+      await api.pin.disable({ currentPin: current });
+      showToast('PIN turned off.', 'success');
+      done();
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Options → Backup: everything this app knows, as one file
+// ---------------------------------------------------------------------------
+
+function backupSection() {
+  return h('div', { class: 'options-section' }, [
+    h('h3', { class: 'options-section-title' }, 'Backup'),
+    h('p', { class: 'hint' }, 'Every profile and every setting in this app, as one file — for moving to a new PC, or keeping a copy before you change something.'),
+    h('div', { class: 'two-col-row' }, [
+      h('button', { class: 'btn', type: 'button', onclick: () => openExportModal() }, 'Export…'),
+      h('button', { class: 'btn', type: 'button', onclick: () => openImportModal() }, 'Import…'),
+    ]),
+  ]);
+}
+
+function openExportModal() {
+  const plainExport = h('input', { type: 'radio', name: 'exp-scope', id: 'exp-plain', checked: true });
+  const fullExport = h('input', { type: 'radio', name: 'exp-scope', id: 'exp-full' });
+  const pass1 = h('input', { type: 'password', autocomplete: 'off', spellcheck: 'false', disabled: true });
+  const pass2 = h('input', { type: 'password', autocomplete: 'off', spellcheck: 'false', disabled: true });
+  const msg = h('p', { class: 'lock-msg' });
+
+  const sync = () => {
+    const full = fullExport.checked;
+    pass1.disabled = !full;
+    pass2.disabled = !full;
+    if (!full) { pass1.value = ''; pass2.value = ''; }
+  };
+  plainExport.addEventListener('change', sync);
+  fullExport.addEventListener('change', sync);
+
+  const go = h('button', { class: 'btn btn-primary', type: 'button' }, 'Choose where to save…');
+  const m = openModal({
+    title: 'Export settings and profiles',
+    body: h('div', {}, [
+      h('div', { class: 'checkbox-field' }, [plainExport, h('label', { for: 'exp-plain' }, 'Settings and profiles, without credentials')]),
+      h('p', { class: 'hint' }, 'Server addresses, sync names and every app option, but no tokens and no sync passphrases. Safe to email yourself or keep in cloud storage. You re-enter each credential after restoring.'),
+      h('div', { class: 'checkbox-field' }, [fullExport, h('label', { for: 'exp-full' }, 'Everything, including credentials (encrypted)')]),
+      h('p', { class: 'hint' }, 'Restores as a working setup with nothing to re-type. Because it carries live credentials it is always sealed with a passphrase — there is no plaintext version of this option, and there is no way to recover the file if you forget the passphrase.'),
+      h('div', { class: 'field' }, [h('label', {}, 'Passphrase'), pass1]),
+      h('div', { class: 'field' }, [h('label', {}, 'Type it again'), pass2]),
+      msg,
+    ]),
+    footer: [h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => m.close() }, 'Cancel'), go],
+  });
+
+  go.addEventListener('click', async () => {
+    const includeSecrets = fullExport.checked;
+    if (includeSecrets) {
+      if (pass1.value.length < 8) { msg.textContent = 'Use a passphrase of at least 8 characters — this file holds live credentials.'; return; }
+      if (pass1.value !== pass2.value) { msg.textContent = 'Those two passphrases are not the same.'; return; }
+    }
+    go.disabled = true;
+    try {
+      const r = await api.backup.export({ includeSecrets, passphrase: includeSecrets ? pass1.value : '' });
+      m.close();
+      if (!r.saved) return;
+      showToast(`Exported ${r.profileCount} profile${r.profileCount === 1 ? '' : 's'}${r.includesSecrets ? ' (encrypted)' : ' (no credentials)'}.`, 'success');
+    } catch (e) {
+      msg.textContent = e.message;
+    } finally { go.disabled = false; }
+  });
+}
+
+async function openImportModal() {
+  let picked;
+  try {
+    picked = await api.backup.read({});
+  } catch (e) { return showError(e, 'That file could not be read as a backup.'); }
+  if (!picked.picked) return;
+
+  if (picked.needsPassphrase) {
+    const opened = await askBackupPassphrase(picked.filePath);
+    if (!opened) return;
+    picked = opened;
+  }
+  showImportChoices(picked);
+}
+
+/** A sealed backup needs its passphrase before we can even say what is in it. */
+function askBackupPassphrase(filePath) {
+  return new Promise((resolve) => {
+    const pass = h('input', { type: 'password', autocomplete: 'off', spellcheck: 'false' });
+    const msg = h('p', { class: 'lock-msg' });
+    const go = h('button', { class: 'btn btn-primary', type: 'button' }, 'Open');
+    const m = openModal({
+      title: 'This backup is protected',
+      body: h('div', {}, [
+        h('p', { class: 'hint' }, 'It was exported with credentials, so it is encrypted. Enter the passphrase you set when you exported it.'),
+        h('div', { class: 'field' }, [h('label', {}, 'Passphrase'), pass]),
+        msg,
+      ]),
+      footer: [h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => { m.close(); resolve(null); } }, 'Cancel'), go],
+      onClose: () => resolve(null),
+    });
+    async function attempt() {
+      go.disabled = true; msg.textContent = '';
+      try {
+        const r = await api.backup.read({ filePath, passphrase: pass.value });
+        m.close();
+        resolve({ ...r, passphrase: pass.value });
+      } catch (e) {
+        msg.textContent = e.message;
+        pass.value = ''; pass.focus();
+      } finally { go.disabled = false; }
+    }
+    go.addEventListener('click', attempt);
+    pass.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); attempt(); } });
+    setTimeout(() => pass.focus(), 0);
+  });
+}
+
+/** What is in the file, then merge-or-replace. Nothing has been written at this point. */
+function showImportChoices(picked) {
+  const s = picked.summary;
+  const list = s.labels.slice(0, 12);
+  const m = openModal({
+    title: 'Import settings and profiles',
+    body: h('div', {}, [
+      h('p', {}, [
+        h('strong', {}, `${s.profileCount} profile${s.profileCount === 1 ? '' : 's'}`),
+        s.createdAt ? `, exported ${fmtWhen(s.createdAt)}` : '',
+        s.appVersion ? ` by version ${s.appVersion}` : '',
+        '.',
+      ]),
+      h('ul', { class: 'plain-list' }, list.map((l) => h('li', {}, l))),
+      s.labels.length > list.length ? h('p', { class: 'hint' }, `…and ${s.labels.length - list.length} more.`) : null,
+      h('p', { class: 'hint' }, s.includesSecrets
+        ? 'This backup carries the sync credentials, so the restored profiles will be ready to use.'
+        : 'This backup has no credentials in it — you will need to re-enter each profile’s token and sync passphrase afterwards.'),
+      h('p', { class: 'hint' }, h('strong', {}, 'Add'), ' keeps everything you already have and brings these in alongside it, as new profiles. ',
+        h('strong', {}, 'Replace'), ' deletes every profile you currently have and restores this file exactly, settings included.'),
+    ]),
+    footer: [
+      h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => m.close() }, 'Cancel'),
+      h('button', { class: 'btn', type: 'button', onclick: () => { m.close(); runImport(picked, 'merge'); } }, 'Add to what I have'),
+      h('button', { class: 'btn btn-danger', type: 'button', onclick: () => { m.close(); confirmReplace(picked); } }, 'Replace everything'),
+    ],
+  });
+}
+
+async function confirmReplace(picked) {
+  const existing = state.profiles.length;
+  const ok = await confirmDialog({
+    title: 'Replace everything?',
+    message: `This deletes ${existing} profile${existing === 1 ? '' : 's'} currently in this app and restores the ${picked.summary.profileCount} in the backup, along with its settings. Nothing on your sync servers is touched — only this app's own copy. There is no undo.`,
+    confirmLabel: 'Delete mine and restore',
+    danger: true,
+  });
+  if (ok) runImport(picked, 'replace');
+}
+
+async function runImport(picked, mode) {
+  try {
+    const r = await api.backup.apply({ filePath: picked.filePath, passphrase: picked.passphrase || '', mode });
+    // A replace changed the profile list out from under everything on screen,
+    // so go back to the empty state and let the user pick from what is there
+    // now rather than leaving a panel open on a profile that no longer exists.
+    state.activeId = null;
+    state.bm = { tree: null, dirty: false, status: 'not loaded' };
+    state.tb = { state: null, dirty: false, status: 'not loaded' };
+    await refreshProfiles();
+    showEmptyState();
+    try {
+      const settings = await api.settings.get();
+      $('#theme-select').value = settings.theme;
+      expandedTabGroupsByProfile = settings.expandedTabGroups || {};
+    } catch (e) { console.error(e); }
+    showToast(r.replaced
+      ? `Restored ${r.added} profile${r.added === 1 ? '' : 's'}.`
+      : `Added ${r.added} profile${r.added === 1 ? '' : 's'}.`, 'success');
+  } catch (e) {
+    showError(e, 'That backup could not be imported.');
+  }
 }
 
 /** An inline text link that opens externally — this app never uses a raw <a href> (see the ↗ open-in-browser buttons), so this is a button styled to read like one. */
@@ -1820,9 +2306,18 @@ function openPrivacyModal() {
     h('h4', {}, 'What the Control Panel stores on your PC'),
     h('ul', {}, [
       h('li', {}, [h('code', {}, 'profiles.json'), ' — normally under ', h('code', {}, '%APPDATA%\\TabbySync Control Panel\\'), '. Holds every profile you\'ve added: its name, provider type, server address / Gist id / JSONBin bin ids, and its access token and optional sync passphrase.']),
-      h('li', {}, [h('code', {}, 'settings.json'), ' in the same folder — app preferences: theme, whether the app starts with Windows, starts minimized, what the close (✕) button does, and (if turned on) which profile to reopen automatically.']),
+      h('li', {}, [h('code', {}, 'settings.json'), ' in the same folder — app preferences: theme, whether the app starts with Windows, starts minimized, what the close (✕) button does, which profile to reopen automatically (if turned on), which saved-tab lists you had open, and how many idle minutes before the PIN lock closes again.']),
+      h('li', {}, [h('code', {}, 'security.json'), ' in the same folder, only once you set a PIN — a random salt and a scrypt hash of your PIN, plus a count of recent wrong attempts. Your PIN itself is not in it and cannot be worked back out of it.']),
     ]),
-    h('p', {}, 'Neither file is sent anywhere by the Control Panel itself — they just sit on your disk like any other application\'s settings.'),
+    h('p', {}, 'None of these files is sent anywhere by the Control Panel itself — they just sit on your disk like any other application\'s settings.'),
+
+    h('h4', {}, 'The PIN lock'),
+    h('p', {}, 'The PIN locks this app\'s window: it is asked for at every start, after the app has been idle for as long as you set, and whenever you choose Lock now. It is checked in the app\'s main process, so a locked app will not answer any request for your profiles, credentials, bookmarks or saved tabs.'),
+    h('p', {}, 'It does not encrypt anything, and it is worth being clear about that. The files above sit in your Windows account\'s app data whether or not a PIN is set, and the protection on the credentials inside them is tied to your Windows account rather than to the PIN — so anyone already signed in as you can read them with the app closed. The PIN stops someone walking up to your unlocked screen. It is not a defence against someone who has your Windows login.'),
+
+    h('h4', {}, 'Exporting your settings and profiles'),
+    h('p', {}, 'Options → Backup writes your profiles and app settings to a file you choose, on your PC. Nothing is uploaded and no copy is kept anywhere else. You pick one of two shapes: without credentials, which leaves every token and sync passphrase out of the file entirely, or everything including credentials, which is always encrypted with a passphrase you set (AES-256-GCM, the same scheme the browser extension uses for its own backups). There is no option that writes a working credential to a file in the clear.'),
+    h('p', {}, 'Once a backup file exists it is an ordinary file on your disk: what happens to it is up to you. An encrypted one cannot be opened without its passphrase, and there is no way to recover it if you forget it.'),
 
     h('h4', {}, 'How saved tokens and passphrases are protected'),
     h('p', {}, [

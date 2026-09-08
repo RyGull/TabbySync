@@ -8,7 +8,51 @@
 </head>
 <body>
 
-<div id="app" class="app">
+<!-- The lock screen. Present from the very first frame and only removed once
+     the main process says the app is unlocked — the alternative, rendering
+     the app and covering it up, means the covered-up thing was rendered.
+     Note this is the VISIBLE half of the gate only: the enforcing half is in
+     main.cjs, where every IPC channel refuses while locked, so deleting this
+     element from DevTools reveals an app that answers no questions. -->
+<div id="lock-screen" class="lock-screen">
+  <div class="lock-box">
+    <div class="lock-mark" aria-hidden="true">🗂️</div>
+    <h1 class="lock-title">TabbySync Control Panel</h1>
+
+    <!-- Unlock: what you see on every launch once a PIN exists. -->
+    <form id="lock-unlock" class="lock-form">
+      <label for="lock-pin">Enter your PIN</label>
+      <input id="lock-pin" class="lock-pin" type="password" inputmode="numeric" autocomplete="off"
+             spellcheck="false" maxlength="12" aria-describedby="lock-msg">
+      <button id="lock-submit" class="btn btn-primary btn-block" type="submit">Unlock</button>
+    </form>
+
+    <!-- First run: set one. -->
+    <form id="lock-setup" class="lock-form" hidden>
+      <p class="lock-lede">Set a PIN to keep your sync profiles behind a lock on this computer.</p>
+      <label for="setup-pin">Choose a PIN (4–12 digits)</label>
+      <input id="setup-pin" class="lock-pin" type="password" inputmode="numeric" autocomplete="off"
+             spellcheck="false" maxlength="12">
+      <label for="setup-pin2">Type it again</label>
+      <input id="setup-pin2" class="lock-pin" type="password" inputmode="numeric" autocomplete="off"
+             spellcheck="false" maxlength="12">
+      <button id="setup-submit" class="btn btn-primary btn-block" type="submit">Set PIN and continue</button>
+      <button id="setup-skip" class="btn btn-ghost btn-block" type="button">Not now</button>
+      <!-- Said here, not just in the docs: a lock that lets you believe it
+           encrypts your data is worse than no lock. -->
+      <p class="lock-note">
+        This locks the app window. It does not encrypt the files on this PC —
+        anyone signed in to this Windows account can still read them. You can
+        change or remove the PIN later in Options.
+      </p>
+    </form>
+
+    <p id="lock-msg" class="lock-msg" role="status" aria-live="polite"></p>
+    <p id="lock-recovery" class="lock-note" hidden></p>
+  </div>
+</div>
+
+<div id="app" class="app" hidden>
 
   <aside class="sidebar">
     <div class="sidebar-header">

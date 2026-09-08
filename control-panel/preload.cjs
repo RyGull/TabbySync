@@ -46,6 +46,35 @@ contextBridge.exposeInMainWorld('tabbysync', {
     update: (patch) => call('settings:update', patch),
   },
 
+  // The PIN gate. Nothing here can read the PIN back out — status() reports
+  // only whether one is set — and the lock is enforced in the main process
+  // (see main.cjs's handle()), so this bridge is the renderer's way to ask
+  // about and change the lock, never the thing that enforces it.
+  pin: {
+    status: () => call('pin:status'),
+    setup: (pin) => call('pin:setup', pin),
+    unlock: (pin) => call('pin:unlock', pin),
+    skipSetup: () => call('pin:skipSetup'),
+    change: (args) => call('pin:change', args),
+    disable: (args) => call('pin:disable', args),
+    lock: () => call('pin:lock'),
+    activity: () => call('pin:activity'),
+    // Main tells the renderer when the lock closes on its own — the idle
+    // timeout, "Lock now" from the tray or the File menu. Returns an
+    // unsubscribe function for the same reason app.onUpdateStatus does.
+    onChanged: (cb) => {
+      const listener = (_event, state) => cb(state);
+      ipcRenderer.on('lock:changed', listener);
+      return () => ipcRenderer.removeListener('lock:changed', listener);
+    },
+  },
+
+  backup: {
+    export: (args) => call('backup:export', args),
+    read: (args) => call('backup:read', args),
+    apply: (args) => call('backup:apply', args),
+  },
+
   profiles: {
     list: () => call('profiles:list'),
     get: (id) => call('profiles:get', id),

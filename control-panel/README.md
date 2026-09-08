@@ -155,6 +155,53 @@ to one destination at a time).
   nothing installed to update in place, so it always reports "not
   available" there; download a new copy by hand instead.
 
+- **PIN lock.** On first launch the app offers to set a 4–12 digit PIN;
+  once set, it asks for it at every start, after a configurable idle
+  period, and on demand from **Lock now** (`Ctrl+L`, and the tray menu).
+  Change it, change the idle timeout, or turn it off in **Options →
+  Security**. Reloading or restarting always relocks, whatever the idle
+  setting says.
+
+  Read this part before relying on it: **the PIN locks the app window, it
+  does not encrypt anything.** Your profiles live in this app's data folder
+  under your Windows account either way, and their secrets are encrypted
+  with DPAPI, which is bound to *that account* rather than to the PIN — so
+  anyone already signed in as you can read them with the app closed. This
+  stops the person who sits down at your unlocked desk. It is not a defence
+  against someone who has your Windows login. The app says as much on the
+  setup screen and in Options rather than letting a padlock imply
+  otherwise.
+
+  What it *is* built to withstand: the lock is enforced in the **main
+  process**, not the renderer — every IPC channel refuses while locked
+  except the four the lock screen itself needs, so deleting the lock screen
+  from DevTools reveals an app that answers no questions. The PIN is stored
+  as a salted `scrypt` hash in its own `security.json`, which **fails
+  closed**: a damaged or unreadable file leaves the app locked rather than
+  quietly unlocked, and says which file to delete to start over. Wrong
+  attempts are counted *on disk* with an escalating delay after the fifth,
+  so relaunching the app doesn't reset the count — against a four-digit
+  secret the throttle matters more than the hash does.
+
+- **Export and import everything.** **Options → Backup** writes every
+  profile and every app setting to one file, in one of two shapes. *Without
+  credentials* leaves out tokens and sync passphrases — safe to email
+  yourself or keep in cloud storage, at the cost of re-entering each
+  credential after restoring. *Everything, including credentials* is
+  **always** sealed with a passphrase you choose, using the same
+  AES-256-GCM/PBKDF2 envelope the browser extension uses for its own
+  backups (the actual vendored `bookmarks/lib/crypto.js`, not a
+  re-implementation). There is deliberately no third option: no path
+  through this app writes a live token to disk in the clear.
+
+  Importing shows you what is in the file first — how many profiles, their
+  names, whether it carries credentials, when it was written — and then
+  asks: **Add** brings them in alongside what you already have, with fresh
+  ids so nothing can collide, and changes no settings; **Replace** deletes
+  every profile currently in the app and restores the file exactly,
+  settings included, after a second confirmation. Nothing on your sync
+  servers is touched either way — this is the app's own copy only.
+
 ## How it stays compatible with the extension
 
 Rather than re-implement the extension's merge/crypto/provider logic (and
@@ -246,6 +293,15 @@ local check. The `.ico` app icon is generated from the extension's own
   to your system's default browser instead (`shell.openExternal`), including
   the provider setup-instruction links and "open in browser" on tabs.
 
+- **The PIN gate is enforced at the IPC boundary**, in `main.cjs`'s
+  `handle()`, rather than by the lock screen the renderer draws. A channel
+  has to opt in with `allowWhileLocked` to answer while locked, only the
+  four PIN channels do, and `test/lock-gate.test.js` fails if that list ever
+  grows without someone editing it deliberately.
+- **Backups never contain plaintext credentials.** `src/core/backup.js`
+  refuses to serialize a payload carrying secrets without a passphrase, so
+  the rule holds for any future caller and not just today's UI.
+
 ## Known limitations
 
 - **Bookmark deletions are not recoverable from within this app.** Saved
@@ -255,6 +311,16 @@ local check. The `.ico` app icon is generated from the extension's own
   restore one from once a save has gone through. Deleting a folder asks for
   confirmation and says how many items are inside it precisely because of
   this.
+- **A forgotten PIN cannot be recovered, only cleared.** There is no reset
+  question and no backdoor — deleting `security.json` from the app's data
+  folder turns the lock off, and your profiles and settings (separate
+  files) are untouched by that. The lock screen names the exact path when
+  the file is damaged. This is a consequence of the PIN not being an
+  encryption key: nothing is encrypted *with* it, so nothing is lost when
+  it goes.
+- **The lock protects the app, not the files.** See the PIN entry under
+  Features. Anyone signed in to the same Windows account can read your
+  profiles with the app closed, PIN or no PIN.
 - Drag-and-drop reorders within a list/folder and moves between them; it
   does not currently support dropping onto a profile in the sidebar — use
   the right-click "Move/Copy to another profile…" menu for that instead.
@@ -293,6 +359,18 @@ that matters most: it runs a small in-memory fake self-hosted server keyed
 by URL and proves a cross-profile **move** actually removes from the source
 only after the target save has genuinely succeeded, and that a failed
 removal is reported as `MOVE_PARTIAL` rather than silently duplicating data.
+
+Three of the suites exist to hold down a security property rather than a
+behaviour. `test/pin-lock.test.js` proves the PIN is stored as a salted
+hash and never as digits, that a damaged `security.json` fails closed, and
+that the wrong-attempt throttle survives a restart (it drives an injectable
+clock, so it doesn't actually sit out an exponential backoff).
+`test/lock-gate.test.js` reads `main.cjs` as text and fails if any channel
+other than the four PIN ones can answer while the app is locked — the kind
+of regression that would look completely fine on screen.
+`test/backup.test.js` proves a credential-free export contains no token
+anywhere in its bytes, and that an export carrying credentials cannot be
+written without a passphrase.
 
 There's also a screenshot-based smoke test of the real Electron UI
 (`TABBYSYNC_SMOKE_TEST=<dir> electron .`, headless via `xvfb-run` on Linux)

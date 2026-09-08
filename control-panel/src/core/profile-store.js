@@ -235,6 +235,50 @@ export function createProfileStore(dir, opts = {}) {
     });
   }
 
+  /**
+   * Wipes every profile and writes the supplied ones in their place, keeping
+   * whatever ids they arrive with. Only a full restore-from-backup should
+   * call this — it is the one operation here that destroys data the user did
+   * not individually delete, and the caller is responsible for having asked
+   * first. Ids are kept rather than minted because a restore's settings
+   * (lastActiveProfileId, expandedTabGroups) are keyed by them.
+   */
+  async function replaceAll(profiles) {
+    return enqueue(async () => {
+      const now = Date.now();
+      const seen = new Set();
+      const next = [];
+      for (const input of profiles) {
+        const id = input.id || newId('profile');
+        if (seen.has(id)) throw new Error(`replaceAll() was given the same profile id twice: ${id}`);
+        seen.add(id);
+        next.push(validate({
+          ...input,
+          id,
+          label: (input.label || 'Imported profile').trim(),
+          color: input.color || DEFAULT_COLORS[next.length % DEFAULT_COLORS.length],
+          provider: input.provider || 'custom',
+          serverUrl: input.serverUrl || '',
+          token: input.token || '',
+          syncName: sanitizeSyncName(input.syncName || ''),
+          passphrase: input.passphrase || '',
+          gistId: input.gistId || '',
+          jsonbinTabsId: input.jsonbinTabsId || '',
+          jsonbinBookmarksId: input.jsonbinBookmarksId || '',
+          createdAt: input.createdAt || now,
+          updatedAt: now,
+        }));
+      }
+      // Built and validated in full before anything is written, so a bad
+      // profile halfway down a restore file can't leave you with half your
+      // old setup deleted and half a new one in place.
+      const store = await load();
+      store.profiles = next;
+      await writeToDisk(store);
+      return store.profiles.map(redact);
+    });
+  }
+
   /** idsInOrder must contain every existing profile id exactly once. */
   async function reorder(idsInOrder) {
     return enqueue(async () => {
@@ -259,5 +303,6 @@ export function createProfileStore(dir, opts = {}) {
     remove,
     duplicate,
     reorder,
+    replaceAll,
   };
 }

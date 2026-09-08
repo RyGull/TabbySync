@@ -51,10 +51,103 @@ if (!gotSingleInstanceLock) {
   });
 }
 
-/** Wraps an IPC handler so thrown errors (with .code/.had/.keeps etc.) survive the trip to the renderer as data, not as Electron's own re-serialized Error (which drops custom properties). See preload.cjs's call() for the matching unwrap. */
-function handle(channel, fn) {
+// ---------------------------------------------------------------------------
+// The PIN gate
+//
+// What it is: a walk-up lock. It stops whoever sits down at your unlocked
+// desktop from reading your sync destinations, moving bookmarks between
+// profiles, or exporting your setup. What it is NOT: encryption of the data
+// at rest. See src/core/pin-lock.js's header for the whole story, and the
+// Options panel, which says the same thing to the user's face rather than
+// letting a padlock icon imply more than it delivers.
+//
+// Three rules the rest of this file exists to keep:
+//   1. Locked means locked at the IPC boundary, not just on screen (handle()).
+//   2. Relock on a reload or a restart, always. The unlocked flag lives here
+//      in the main process and is set to true the moment the renderer starts
+//      navigating anywhere, so Ctrl+R is a lock, not a bypass.
+//   3. Idle relock, not absolute. lockState.lastActivityAt is bumped by the
+//      renderer while someone is actually using the app.
+// ---------------------------------------------------------------------------
+
+const IDLE_CHECK_MS = 15 * 1000;
+
+const lockState = {
+  // Starts locked and stays that way until a PIN is verified — or until the
+  // gate is opened because no PIN is set at all (see refreshLockRequirement).
+  locked: true,
+  required: true,
+  lastActivityAt: 0,
+  idleMinutes: 15,
+  timer: null,
+};
+
+let pinStore = null;
+
+/** Tells the renderer to draw (or drop) the lock screen. */
+function announceLockState() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('lock:changed', { locked: lockState.locked, required: lockState.required });
+  }
+}
+
+/** With no PIN set there is nothing to enforce, so the gate stands open. */
+async function refreshLockRequirement() {
+  const status = await pinStore.status();
+  lockState.required = status.isSet;
+  if (!status.isSet) lockState.locked = false;
+  return status;
+}
+
+function markUnlocked() {
+  lockState.locked = false;
+  lockState.lastActivityAt = Date.now();
+  announceLockState();
+}
+
+function lockNow() {
+  if (!lockState.required || lockState.locked) return;
+  lockState.locked = true;
+  announceLockState();
+}
+
+/** One timer for the app's lifetime; cheap enough to just keep running. */
+function startIdleWatch(settingsStore) {
+  if (lockState.timer) clearInterval(lockState.timer);
+  lockState.timer = setInterval(async () => {
+    if (!lockState.required || lockState.locked) return;
+    try {
+      const { pinIdleMinutes } = await settingsStore.get();
+      lockState.idleMinutes = pinIdleMinutes;
+    } catch { /* keep the last known value */ }
+    const idleFor = Date.now() - lockState.lastActivityAt;
+    if (idleFor >= lockState.idleMinutes * 60 * 1000) lockNow();
+  }, IDLE_CHECK_MS);
+  // Never a reason to hold the process open on its own account.
+  if (lockState.timer.unref) lockState.timer.unref();
+}
+
+/**
+ * Wraps an IPC handler so thrown errors (with .code/.had/.keeps etc.) survive
+ * the trip to the renderer as data, not as Electron's own re-serialized Error
+ * (which drops custom properties). See preload.cjs's call() for the matching
+ * unwrap.
+ *
+ * Also where the PIN gate is actually enforced. Every channel refuses while
+ * the app is locked unless it opts in with `allowWhileLocked` — the lock
+ * screen the renderer draws is only the visible half of this, and the visible
+ * half is the half anyone with Ctrl+Shift+I can delete. Denying at the
+ * handler means a locked app serves no profile, no token, no bookmark and no
+ * saved tab to anything, however the request was made.
+ */
+function handle(channel, fn, { allowWhileLocked = false } = {}) {
   ipcMain.handle(channel, async (_event, ...args) => {
     try {
+      if (!allowWhileLocked && lockState.locked) {
+        const e = new Error('TabbySync Control Panel is locked. Enter your PIN to continue.');
+        e.code = 'LOCKED';
+        throw e;
+      }
       const data = await fn(...args);
       return { ok: true, data };
     } catch (e) {
@@ -119,6 +212,17 @@ async function createWindow(settingsStore) {
     }
   });
 
+  // Rule 2 of the gate: a reload relocks. Ctrl+R, the View menu's Reload,
+  // a renderer crash and reload — all of them start a main-frame navigation,
+  // and all of them must land on the lock screen rather than on a page whose
+  // JavaScript state happened to say "unlocked". Cheap and total: set the
+  // flag here, and every IPC handler is closed again before the new document
+  // has run a line of script.
+  mainWindow.webContents.on('did-start-navigation', (_event, _url, _isInPlace, isMainFrame) => {
+    if (!isMainFrame) return;
+    if (lockState.required) lockState.locked = true;
+  });
+
   // Surfaces renderer console output (including our own window.onerror hook
   // in app.js) in the main process's own log — the only place to see a
   // renderer crash when there is no DevTools window open to look at.
@@ -155,6 +259,9 @@ function createTray(settingsStore) {
   tray.setToolTip('TabbySync Control Panel');
   const menu = Menu.buildFromTemplate([
     { label: 'Show TabbySync Control Panel', click: () => { mainWindow.show(); mainWindow.focus(); } },
+    // Reachable without bringing the window forward first, which is the
+    // situation you are in when you are already walking away from the desk.
+    { label: 'Lock now', click: () => lockNow() },
     { type: 'separator' },
     { label: 'Quit', click: () => { isQuitting = true; app.quit(); } },
   ]);
@@ -210,7 +317,16 @@ function buildMenu() {
         {
           label: 'Options…',
           accelerator: 'Ctrl+,',
-          click: () => mainWindow && mainWindow.webContents.send('menu:open-options'),
+          // Options holds the PIN controls themselves, so opening it over a
+          // lock screen would be a way around the lock. Same for Privacy
+          // below, which is only a document but has no business appearing
+          // over a screen that is supposed to show nothing.
+          click: () => { if (mainWindow && !lockState.locked) mainWindow.webContents.send('menu:open-options'); },
+        },
+        {
+          label: 'Lock now',
+          accelerator: 'Ctrl+L',
+          click: () => lockNow(),
         },
         { type: 'separator' },
         // A deliberate menu click is an unambiguous "quit" — unlike the
@@ -240,7 +356,7 @@ function buildMenu() {
         { label: 'TabbySync on GitHub', click: () => shell.openExternal(GITHUB_URL) },
         {
           label: 'Privacy Policy',
-          click: () => mainWindow && mainWindow.webContents.send('menu:open-privacy'),
+          click: () => { if (mainWindow && !lockState.locked) mainWindow.webContents.send('menu:open-privacy'); },
         },
         { type: 'separator' },
         { label: 'Donate…', click: () => shell.openExternal(DONATE_URL) },
@@ -432,6 +548,11 @@ async function main() {
       : undefined,
   });
   const settingsStore = core.createSettingsStore(userDataDir);
+  pinStore = core.createPinStore(userDataDir);
+
+  // Decided before a window exists, so the very first frame the renderer
+  // paints is already the right one — locked, or the app.
+  await refreshLockRequirement();
 
   await core.loadVendored(); // fail fast at startup rather than on the first click
   const sessions = core.createSessionManager(profileStore);
@@ -450,6 +571,17 @@ async function main() {
   app.setLoginItemSettings({ openAtLogin: settings.startWithWindows });
 
   registerIpc(core, profileStore, sessions, settingsStore, { secretsAvailable, userDataDir });
+
+  // The smoke test runs against a throwaway --user-data-dir, so it would meet
+  // the first-run "set a PIN" screen every time and photograph that instead
+  // of the app. Answering the prompt on its behalf is the whole fix — it
+  // sets no PIN, so the gate below still stands open. Inert unless this
+  // exact env var is set, same as runSmokeTest itself.
+  if (process.env.TABBYSYNC_SMOKE_TEST) await settingsStore.update({ pinSetupSeen: true });
+
+  lockState.idleMinutes = settings.pinIdleMinutes;
+  lockState.lastActivityAt = Date.now();
+  startIdleWatch(settingsStore);
 
   createTray(settingsStore);
   await createWindow(settingsStore);
@@ -1057,6 +1189,7 @@ async function loadCore() {
   const [
     profileStoreMod, sessionsMod, providerShimMod, bmOpsMod, tabOpsMod,
     remoteBookmarksMod, remoteTabsMod, cfgMapMod, appSettingsMod,
+    pinLockMod, backupMod,
   ] = await Promise.all([
     import('./src/core/profile-store.js'),
     import('./src/core/sessions.js'),
@@ -1067,12 +1200,23 @@ async function loadCore() {
     import('./src/core/remote-tabs.js'),
     import('./src/core/cfg-map.js'),
     import('./src/core/app-settings.js'),
+    import('./src/core/pin-lock.js'),
+    import('./src/core/backup.js'),
   ]);
   const bookmarksIoMod = await import('./vendor/bookmarks-lib/bookmarks-io.js');
   const treeMod = await import('./vendor/bookmarks-lib/tree.js');
   return {
     createProfileStore: profileStoreMod.createProfileStore,
     createSettingsStore: appSettingsMod.createSettingsStore,
+    createPinStore: pinLockMod.createPinStore,
+    pinProblem: pinLockMod.pinProblem,
+    buildBackup: backupMod.buildBackup,
+    serializeBackup: backupMod.serializeBackup,
+    parseBackup: backupMod.parseBackup,
+    backupIsEncrypted: backupMod.backupIsEncrypted,
+    summarizeBackup: backupMod.summarizeBackup,
+    profilesForImport: backupMod.profilesForImport,
+    settingsForImport: backupMod.settingsForImport,
     createSessionManager: sessionsMod.createSessionManager,
     loadVendored: providerShimMod.loadVendored,
     getVendored: providerShimMod.getVendored,
@@ -1094,6 +1238,73 @@ async function loadCore() {
 
 function registerIpc(core, profileStore, sessions, settingsStore, appMeta) {
   const { bmOps, tabOps } = core;
+
+  // ---- the PIN gate -------------------------------------------------------
+  // These four are the only channels that answer while locked, and between
+  // them they can reveal exactly one thing: whether a PIN is set. Nothing
+  // here echoes the PIN, its hash, or its salt back to the renderer.
+  handle('pin:status', async () => {
+    const status = await refreshLockRequirement();
+    const { pinIdleMinutes, pinSetupSeen } = await settingsStore.get();
+    return {
+      isSet: status.isSet,
+      unrecoverable: status.unrecoverable,
+      locked: lockState.locked,
+      throttledForMs: status.throttledForMs,
+      idleMinutes: pinIdleMinutes,
+      setupSeen: pinSetupSeen,
+      securityFile: status.filePath,
+    };
+  }, { allowWhileLocked: true });
+
+  handle('pin:setup', async (pin) => {
+    await pinStore.set(pin);
+    await settingsStore.update({ pinSetupSeen: true });
+    await refreshLockRequirement();
+    // Setting a PIN doesn't lock you out of the session you set it in —
+    // you just proved you know it.
+    markUnlocked();
+    return { ok: true };
+  }, { allowWhileLocked: true });
+
+  handle('pin:unlock', async (pin) => {
+    const ok = await pinStore.verify(pin);
+    if (ok) markUnlocked();
+    // A wrong PIN returns false rather than throwing: the caller wants to
+    // show "that's not it" and let them try again, and the throttle (which
+    // does throw, with code PIN_THROTTLED) is the thing that needs to be
+    // distinguishable from it.
+    return { ok, throttledForMs: await pinStore.throttleRemaining() };
+  }, { allowWhileLocked: true });
+
+  // Answering the first-run prompt with "not now". Recorded so it is asked
+  // once, not on every launch.
+  handle('pin:skipSetup', async () => {
+    await settingsStore.update({ pinSetupSeen: true });
+    return { ok: true };
+  }, { allowWhileLocked: true });
+
+  // Everything past here needs an already-unlocked app, which is also why
+  // changing or removing the PIN doesn't need a second identity check beyond
+  // the current PIN these take.
+  handle('pin:change', async ({ currentPin, newPin }) => {
+    await pinStore.change(currentPin, newPin);
+    markUnlocked();
+    return { ok: true };
+  });
+
+  handle('pin:disable', async ({ currentPin }) => {
+    await pinStore.clear(currentPin);
+    await refreshLockRequirement();
+    return { ok: true };
+  });
+
+  handle('pin:lock', () => { lockNow(); return { ok: true }; });
+
+  // Bumped by the renderer while someone is actually using the app (throttled
+  // there — see app.js's noteActivity). Cheap by design: no work, no disk,
+  // just a timestamp the idle watcher reads.
+  handle('pin:activity', () => { lockState.lastActivityAt = Date.now(); return { ok: true }; });
 
   // ---- settings ---------------------------------------------------------
   handle('settings:get', () => settingsStore.get());
@@ -1278,6 +1489,93 @@ function registerIpc(core, profileStore, sessions, settingsStore, appMeta) {
       count += 1;
     }
     return { imported: count, tree: result && result.tree };
+  });
+
+  // ---- backup: every profile and setting, as one file ---------------------
+  //
+  // Two shapes, and the difference is the whole design: a credential-free
+  // file you can store anywhere, or a full one that is always sealed with a
+  // passphrase. src/core/backup.js refuses to serialize secrets without one,
+  // so there is no path through this app that writes a live token to disk in
+  // the clear.
+
+  handle('backup:export', async ({ includeSecrets, passphrase }) => {
+    // includeSecrets needs the unredacted profiles; the redacted list carries
+    // hasToken/hasPassphrase booleans instead of the values, and buildBackup
+    // throws rather than quietly exporting those as if they were credentials.
+    const profiles = await profileStore.list({ includeSecrets: !!includeSecrets });
+    const settings = await settingsStore.get();
+    const payload = core.buildBackup({
+      profiles,
+      settings,
+      includeSecrets: !!includeSecrets,
+      appVersion: app.getVersion(),
+    });
+    const text = await core.serializeBackup(payload, passphrase || '');
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+      title: includeSecrets ? 'Export everything (encrypted)' : 'Export settings and profiles',
+      defaultPath: `tabbysync-control-panel-${includeSecrets ? 'full-' : ''}${stamp}.json`,
+      filters: [{ name: 'TabbySync backup', extensions: ['json'] }],
+    });
+    if (canceled || !filePath) return { saved: false };
+    await fs.writeFile(filePath, text, 'utf8');
+    return { saved: true, filePath, profileCount: payload.profiles.length, includesSecrets: payload.includesSecrets };
+  });
+
+  // Split from the apply step on purpose: the renderer has to be able to show
+  // what is in a file — how many profiles, whether it carries credentials,
+  // when it was written — and ask merge-or-replace BEFORE anything is
+  // touched. A one-shot "import" that picked a file and overwrote everything
+  // in the same call could not do that.
+  handle('backup:read', async ({ filePath, passphrase } = {}) => {
+    let target = filePath;
+    if (!target) {
+      const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+        title: 'Import settings and profiles',
+        properties: ['openFile'],
+        filters: [{ name: 'TabbySync backup', extensions: ['json'] }],
+      });
+      if (canceled || !filePaths.length) return { picked: false };
+      target = filePaths[0];
+    }
+    const text = await fs.readFile(target, 'utf8');
+    if (!passphrase && core.backupIsEncrypted(text)) {
+      // Ask for the passphrase before doing anything else, and hand back the
+      // path so the second call doesn't reopen the file picker.
+      return { picked: true, filePath: target, needsPassphrase: true };
+    }
+    const payload = await core.parseBackup(text, passphrase || '');
+    return { picked: true, filePath: target, needsPassphrase: false, summary: core.summarizeBackup(payload) };
+  });
+
+  handle('backup:apply', async ({ filePath, passphrase, mode }) => {
+    const text = await fs.readFile(filePath, 'utf8');
+    const payload = await core.parseBackup(text, passphrase || '');
+    const incoming = core.profilesForImport(payload, mode);
+
+    if (mode === 'replace') {
+      // Every open editing session belongs to profiles that are about to stop
+      // existing; dropping them first stops a queued save from writing to a
+      // destination the user just replaced.
+      sessions.dropAllSessions();
+      await profileStore.replaceAll(incoming);
+      const settings = core.settingsForImport(payload, mode);
+      if (settings) {
+        const next = await settingsStore.update(settings);
+        nativeTheme.themeSource = next.theme;
+        app.setLoginItemSettings({ openAtLogin: next.startWithWindows });
+      }
+      return { mode, added: incoming.length, replaced: true };
+    }
+
+    // Merge: fresh ids, nothing existing touched, settings left completely
+    // alone — pulling a profile out of someone else's export should not
+    // change your theme or your close behaviour.
+    let added = 0;
+    for (const p of incoming) { await profileStore.add(p); added += 1; }
+    return { mode, added, replaced: false };
   });
 
   // ---- saved tabs -------------------------------------------------------

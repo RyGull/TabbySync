@@ -156,7 +156,10 @@ add/remove/move/copy bookmarks and saved tabs between them without a
 browser? **[TabbySync Control Panel](control-panel/)** is a companion
 Windows desktop app for exactly that — same self-hosted/Gist/JSONBin
 destinations, same merge and encryption, but built to hold several profiles
-side by side instead of the extension's one-at-a-time. See
+side by side instead of the extension's one-at-a-time. It can also sit
+behind a PIN (asked at every start and after an idle period you set), and
+export every profile and setting to a single file — with credentials left
+out, or included and always encrypted with a passphrase. See
 [`control-panel/README.md`](control-panel/README.md) for what it does, how
 it stays wire-compatible with the extension, and how to build or install it.
 
