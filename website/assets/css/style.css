@@ -170,6 +170,66 @@ code {
 .btn-ghost { background: var(--panel); color: var(--text); border-color: var(--line); }
 .btn-ghost:hover { background: var(--panel-2); }
 
+/* ------------------------------------------------------- download row */
+
+/* The three ways to get TabbySync — Chromium, Firefox, Windows — as three
+   equal cards rather than one button that guesses. Every card is a real link
+   in the delivered HTML; main.js only promotes the one that matches the
+   visitor's browser (.is-detected + the badge). Nothing is ever hidden, so a
+   wrong guess costs a highlight, not a download.
+
+   Equal width by default, on purpose: the extension and the desktop app are
+   not the same kind of thing, but they are all "get it here", and ranking one
+   of the two stores above the other would be a claim about the visitor that
+   the row deliberately does not make. */
+.download-row {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px; margin: 0 auto; max-width: 780px; text-align: left;
+}
+.dl-card {
+  position: relative;
+  display: flex; align-items: center; gap: 13px;
+  padding: 16px 18px; border-radius: var(--radius);
+  background: var(--panel); color: var(--text);
+  border: 1px solid var(--line); box-shadow: var(--shadow);
+  transition: transform .15s, box-shadow .15s, background .15s, border-color .15s;
+}
+.dl-card:hover {
+  text-decoration: none; transform: translateY(-2px);
+  background: var(--bg); border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  box-shadow: 0 4px 8px rgba(20, 24, 33, .06), 0 14px 30px rgba(20, 24, 33, .10);
+}
+.dl-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.dl-icon { flex: none; width: 34px; height: 34px; color: var(--muted); }
+.dl-icon svg {
+  width: 100%; height: 100%;
+  fill: none; stroke: currentColor; stroke-width: 1.6;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+/* The Windows mark is four filled panes, not an outline like the other two. */
+.dl-icon-solid svg { fill: currentColor; stroke: none; }
+
+.dl-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.dl-text strong { font-size: 15px; letter-spacing: -.01em; }
+.dl-sub { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+
+/* The one main.js touches. Colour and lift, not size: a card that grew on
+   detection would reflow the row under the visitor as the script runs. */
+.dl-card.is-detected {
+  background: var(--bg);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent), var(--shadow);
+}
+.dl-card.is-detected .dl-icon { color: var(--accent); }
+
+.dl-badge {
+  position: absolute; top: -9px; right: 12px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--accent-ink); background: var(--accent);
+  padding: 3px 8px; border-radius: 999px; white-space: nowrap;
+}
+
 /* ----------------------------------------------------------- section base */
 
 section { padding: 88px 0; }
@@ -180,6 +240,10 @@ section { padding: 88px 0; }
 
 .features { background: var(--panel); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+/* An odd card count leaves the last row short. A single card stranded against
+   the left edge reads as a layout bug rather than a deliberate stop, so centre
+   it; a pair is left as-is, since two of three columns still reads as a row. */
+.feature-card:last-child:nth-child(3n + 1) { grid-column: 2; }
 .feature-card {
   background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius);
   padding: 26px; box-shadow: var(--shadow);
@@ -330,6 +394,9 @@ section { padding: 88px 0; }
 
 @media (max-width: 880px) {
   .feature-grid { grid-template-columns: 1fr 1fr; }
+  /* Two columns and an odd number of cards leaves a lone one in the last row;
+     see the three-column version of this rule beside .feature-grid above. */
+  .feature-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
   /* Stacked, the copy always reads before the picture it describes. */
   .shot-row { grid-template-columns: 1fr; gap: 26px; }
   .shot-block .shot-copy { text-align: left; }
@@ -356,6 +423,12 @@ section { padding: 88px 0; }
   .nav-toggle.is-open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
 
   .feature-grid { grid-template-columns: 1fr; }
+  /* One column: every card is already full width, so the orphan rules above
+     have nothing left to correct and would only add a redundant span. */
+  .feature-card:last-child:nth-child(odd) { grid-column: auto; }
+  /* Three cards side by side stop being tappable targets long before the text
+     stops fitting. Full-width rows instead, in the delivered order. */
+  .download-row { grid-template-columns: 1fr; max-width: 420px; }
   .footer-inner { grid-template-columns: 1fr; gap: 28px; }
   section { padding: 60px 0; }
   .hero { padding: 56px 0 64px; }

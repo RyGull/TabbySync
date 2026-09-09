@@ -40,7 +40,7 @@ require __DIR__ . '/includes/header.php';
   <div class="wrap content-narrow">
     <ul class="install-steps">
       <li><a href="/">The home page</a> — what <?= e(SITE_NAME) ?> is and how it works</li>
-      <li><a href="/#install">Install</a> — the Chrome Web Store listing and the from-source route</li>
+      <li><a href="/#install">Install</a> — Chrome, Firefox, the Windows app, and the from-source route</li>
       <li><a href="<?= e(PRIVACY_PATH) ?>">Privacy policy</a> — what the extension touches and where it goes</li>
       <li><a href="<?= e(CONTACT_PATH) ?>">Contact</a> — if a link on this site is what sent you here, please say so</li>
     </ul>

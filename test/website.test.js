@@ -358,8 +358,14 @@ test('the social card the metadata points at actually exists', () => {
 });
 
 // ---------------------------------------------------------------------------
-// The install button names the browser in front of it
+// The download row: three real links, one of them highlighted
 // ---------------------------------------------------------------------------
+//
+// The page ships a card per target — Chromium, Firefox, Windows — and main.js
+// only *promotes* whichever matches the visitor. That split is the thing worth
+// pinning: the moment the script starts rewriting hrefs or hiding cards again,
+// a visitor with JavaScript off, or one whose user agent is spoofed (which is
+// free to do), loses options that were correct for them.
 //
 // Every Chromium browser says "Chrome" in its user agent, so the order of the
 // checks in detectBrowser() is the entire mechanism. This runs the real
@@ -367,10 +373,11 @@ test('the social card the metadata points at actually exists', () => {
 // the source and hoping.
 
 const cta = read('website/assets/js/main.js');
+const downloads = read('website/includes/downloads.php');
 
 function detectWith(ua, brands) {
   const from = cta.indexOf('var EDGE_NOTE');
-  const to = cta.indexOf('function applyBrowser(');
+  const to = cta.indexOf('function promote(');
   assert.ok(from > 0 && to > from, 'the browser detection is no longer where the test expects it');
   // Everything from the per-browser notes through detectBrowser(), lifted out
   // and run as-is — the notes are declared above hasBrand and the function
@@ -378,6 +385,17 @@ function detectWith(ua, brands) {
   const body = cta.slice(from, to) + '; return detectBrowser();';
   const nav = { userAgent: ua };
   if (brands) nav.userAgentData = { brands: brands.map((brand) => ({ brand })) };
+  return new Function('navigator', body)(nav);
+}
+
+/** Run detectWindows() out of main.js against a real navigator shape. */
+function windowsWith(ua, platform) {
+  const from = cta.indexOf('function detectWindows(');
+  const to = cta.indexOf('var detected = detectBrowser();');
+  assert.ok(from > 0 && to > from, 'detectWindows() is no longer where the test expects it');
+  const body = cta.slice(from, to) + '; return detectWindows();';
+  const nav = { userAgent: ua };
+  if (platform !== undefined) nav.userAgentData = { platform };
   return new Function('navigator', body)(nav);
 }
 
@@ -407,35 +425,157 @@ test('Brave is found by its own API, since its user agent is Chrome’s', () => 
     'nothing calls the one API that identifies Brave, whose user agent is identical to Chrome’s');
 });
 
-test('Firefox is never sent to the Chrome Web Store', () => {
+test('Firefox is sent to its own listing, never to the Chrome Web Store', () => {
   const ff = detectWith('Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:142.0) Gecko/20100101 Firefox/142.0');
   assert.equal(ff.name, 'Firefox');
   assert.equal(ff.store, 'firefox', 'Gecko cannot install from the Chrome Web Store');
+});
+
+test('Windows is detected from the OS, not from the browser', () => {
+  // The Windows app is orthogonal to the browser: Chrome on Windows should
+  // light up both cards, and Chrome on macOS only the one.
+  assert.equal(windowsWith(CHROMIUM), true, 'a Windows user agent was not recognised');
+  assert.equal(windowsWith('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'),
+    false, 'a Mac was offered the Windows installer as "your system"');
+  // userAgentData.platform is exact where it exists and must win over the
+  // string, which browsers freeze and lie in.
+  assert.equal(windowsWith(CHROMIUM, 'macOS'), false,
+    'userAgentData.platform must be preferred over the user agent string');
+  assert.equal(windowsWith('Mozilla/5.0 (X11; Linux x86_64)', 'Windows'), true);
+  // Windows Phone's old UA says "Windows Phone", never "Windows NT".
+  assert.equal(windowsWith('Mozilla/5.0 (compatible; MSIE 10.0; Windows Phone 8.0; Trident/6.0)'), false,
+    'Windows Phone was offered a desktop .exe');
 });
 
 test('Safari and unknown browsers are handled without a wrong promise', () => {
   const safari = detectWith('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15');
   assert.equal(safari.name, 'Safari');
   assert.equal(safari.store, null, 'there is no Safari build, so no store to point at');
-  assert.match(cta, /"Not available for " \+ browser\.name/, 'an unsupported browser still gets an "Add to" button');
+  assert.match(safari.note, /no Safari version/,
+    'Safari is told nothing, so the visitor is left to work out why no card is highlighted');
 
   assert.equal(detectWith('Mozilla/5.0 (X11; Linux x86_64) KHTML/6.0 Konqueror/24.08'), null,
     'an unrecognised browser must leave the page as rendered rather than guess');
 });
 
-test('the page works with the script disabled, and the script invents no URLs', () => {
-  const index = read('website/index.php');
-  // What a visitor with no JavaScript sees has to be the answer that is right
-  // most often, and it has to be a real link.
-  assert.match(index, /data-install-cta[\s\S]{0,300}>Add to Chrome</,
-    'the rendered button is not the Chrome Web Store one');
-  assert.match(index, /data-store-chrome="<\?= e\(CHROME_STORE_URL\) \?>"/,
-    'the store URL is not read from config.php');
-  assert.match(index, /data-store-firefox="<\?= e\(FIREFOX_STORE_LIVE \? FIREFOX_STORE_URL : ''\) \?>"/,
-    'the Firefox link must stay empty until the listing is live, or it is a 404');
-  // config.php is the only place a store URL may live.
+test('all three downloads are real links in the delivered HTML', () => {
+  // The whole point of the row: no JavaScript, no detection, still three
+  // correct destinations. A card built by script would be an empty hero for
+  // anyone the script does not run for.
+  for (const [attr, constant] of [
+    ['chrome', 'CHROME_STORE_URL'],
+    ['firefox', 'FIREFOX_STORE_URL'],
+    ['windows', 'CONTROL_PANEL_URL'],
+  ]) {
+    const card = new RegExp(`data-dl="${attr}"[^>]*href="<\\?= e\\(${constant}\\) \\?>"`);
+    assert.match(downloads, card,
+      `the ${attr} card is missing, or its href is not read from ${constant} in config.php`);
+  }
+  // config.php is the only place a store URL may live — in the markup as well
+  // as in the script. Checked as "no absolute URL at all", rather than by
+  // listing the hosts: the card sub-labels legitimately *name* a store in
+  // prose ("addons.mozilla.org"), and a hostname in visible copy is not a
+  // link. What must never appear is something clickable that config.php does
+  // not control.
+  assert.ok(!/https?:\/\//.test(downloads),
+    'downloads.php hardcodes an absolute URL instead of reading it from config.php');
   assert.ok(!/chromewebstore|addons\.mozilla/.test(cta),
     'main.js hardcodes a store URL instead of reading it from the markup');
+});
+
+test('the home page renders the row rather than restating it', () => {
+  const index = read('website/index.php');
+  const includes = [...index.matchAll(/includes\/downloads\.php/g)];
+  assert.equal(includes.length, 2,
+    'the hero and the Install section must both render the shared partial — two hand-maintained copies drift');
+  assert.ok(!/data-dl="/.test(index),
+    'index.php spells out a download card of its own instead of including the partial');
+});
+
+test('detection only highlights — it never rewrites a link or hides a card', () => {
+  // The failure this guards against is subtle: detection is allowed to be
+  // wrong (user agents are spoofed, and a rewritten label is how the old
+  // single-button version could send a Firefox user to a Chrome-only link).
+  // Highlighting a card that is already correct cannot be wrong in that way.
+  assert.ok(!/setAttribute\(\s*["']href["']/.test(cta),
+    'main.js writes an href — a wrong guess now changes where a visitor lands, not just what is highlighted');
+  assert.ok(!/removeAttribute\(\s*["']href["']/.test(cta),
+    'main.js strips an href, leaving a card that looks clickable and is not');
+  assert.ok(!/\.hidden\s*=\s*true/.test(cta),
+    'main.js hides something; every download must stay reachable however detection goes');
+  // What it is allowed to do, and must keep doing.
+  assert.match(cta, /classList\.add\("is-detected"\)/, 'nothing marks the matching card');
+  assert.match(downloads, /data-dl-badge hidden/,
+    'the badge must ship hidden, or every card claims to be the visitor\'s browser');
+});
+
+test('the data-dl values are exactly what the script looks for', () => {
+  // A rename on either side silently stops promoting anything, and nothing
+  // about the page looks broken — it just quietly stops helping.
+  const inMarkup = new Set([...downloads.matchAll(/data-dl="([a-z]+)"/g)].map((m) => m[1]));
+  assert.deepEqual([...inMarkup].sort(), ['chrome', 'firefox', 'windows']);
+
+  const stores = new Set([...cta.matchAll(/store:\s*"([a-z]+)"/g)].map((m) => m[1]));
+  for (const store of stores) {
+    assert.ok(inMarkup.has(store), `detectBrowser() returns store "${store}", which no card carries`);
+  }
+  assert.match(cta, /promote\("windows"/, 'nothing ever promotes the Windows card');
+});
+
+// ---------------------------------------------------------------------------
+// The versions and floors the download cards state out loud
+// ---------------------------------------------------------------------------
+//
+// Each of these is a number shown to a visitor that is decided somewhere else
+// in the repository. Stated once and then left behind is exactly how a
+// download button ends up advertising a version that was never released.
+
+test('the Firefox floor on the site is the one the add-on actually declares', () => {
+  const min = config.match(/const FIREFOX_MIN_VERSION\s*=\s*'([^']+)'/)?.[1];
+  assert.ok(min, 'FIREFOX_MIN_VERSION not found in website/config.php');
+  const gecko = read('scripts/make-manifest.mjs')
+    .match(/GECKO_MIN_VERSION\s*=\s*'([^']+)'/)?.[1];
+  assert.ok(gecko, 'GECKO_MIN_VERSION not found in scripts/make-manifest.mjs');
+  assert.equal(min, gecko.split('.')[0],
+    'the site advertises a different minimum Firefox than the uploaded manifest requires');
+});
+
+test('the Windows download points at the app’s own release, not "latest"', () => {
+  // /releases/latest was wrong here: the extension (v*) and the app
+  // (control-panel-v*) both cut releases in this one repository, so the first
+  // extension release after an app release pointed "Download for Windows" at a
+  // release containing nothing but store zips.
+  assert.ok(!/CONTROL_PANEL_URL\s*=.*releases\/latest/.test(config),
+    'the Windows download is back on /releases/latest, which the next extension release will break');
+  assert.match(config, /releases\/download\/'\s*\.\s*CONTROL_PANEL_TAG/,
+    'the Windows download does not point at the control-panel-v tag it was built from');
+  assert.match(config, /const CONTROL_PANEL_TAG\s*=\s*'control-panel-v'/,
+    'the release tag is no longer built from the app version');
+});
+
+test('the Windows version and filename match what the app actually builds', () => {
+  const shown = config.match(/const CONTROL_PANEL_VERSION\s*=\s*'([^']+)'/)?.[1];
+  assert.ok(shown, 'CONTROL_PANEL_VERSION not found in website/config.php');
+
+  const pkg = JSON.parse(read('control-panel/package.json'));
+  assert.equal(shown, pkg.version,
+    'the site advertises a Control Panel version that control-panel/package.json does not build');
+
+  // The installer filename is not a guess — electron-builder is told exactly
+  // what to call it, and the download URL is built from that same shape.
+  const artifact = pkg.build?.nsis?.artifactName;
+  assert.equal(artifact, 'TabbySync-Control-Panel-Setup-${version}.${ext}',
+    'the NSIS artifact name changed; the download URL in config.php now 404s');
+  assert.match(config, /TabbySync-Control-Panel-Setup-'\s*\.\s*CONTROL_PANEL_VERSION\s*\.\s*'\.exe/,
+    'the download URL no longer matches build.nsis.artifactName');
+});
+
+test('the extension version on the site matches the manifest it describes', () => {
+  const shown = config.match(/const CURRENT_VERSION\s*=\s*'([^']+)'/)?.[1];
+  assert.ok(shown, 'CURRENT_VERSION not found in website/config.php');
+  const manifest = JSON.parse(read('manifest.json'));
+  assert.equal(shown, manifest.version,
+    'the site footer states a version the extension does not ship');
 });
 
 // ---------------------------------------------------------------------------

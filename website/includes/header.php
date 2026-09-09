@@ -43,16 +43,29 @@ $schema_graph = [
         '@type' => 'SoftwareApplication',
         '@id'   => SITE_URL . '/#extension',
         'name'  => SITE_NAME,
-        'description' => 'Browser extension that syncs your bookmarks and your open tabs to a '
-            . 'destination you control — your own server, a private GitHub Gist, or a JSONBin.io '
-            . 'bin — with optional end-to-end encryption.',
+        'description' => 'Browser extension for Chromium browsers and Firefox that syncs your '
+            . 'bookmarks and your open tabs to a destination you control — your own server, a '
+            . 'private GitHub Gist, or a JSONBin.io bin — with optional end-to-end encryption.',
         'applicationCategory' => 'BrowserApplication',
         'applicationSubCategory' => 'Browser Extension',
-        'operatingSystem' => 'Chrome, Edge, Brave, Vivaldi, Opera (Chromium 88+)',
+        // Both engines' floors, named. Chromium 88 is where MV3 became usable;
+        // FIREFOX_MIN_VERSION is the add-on's own strict_min_version, not a
+        // guess — see the constant in config.php.
+        'operatingSystem' => FIREFOX_STORE_LIVE
+            ? 'Chrome, Edge, Brave, Vivaldi, Opera (Chromium 88+); Firefox ' . FIREFOX_MIN_VERSION . '+'
+            : 'Chrome, Edge, Brave, Vivaldi, Opera (Chromium 88+)',
         'softwareVersion' => CURRENT_VERSION,
         'url'         => SITE_URL . '/',
         'downloadUrl' => CHROME_STORE_LIVE ? CHROME_STORE_URL : GITHUB_URL,
         'installUrl'  => CHROME_STORE_LIVE ? CHROME_STORE_URL : null,
+        // Every store the same extension is published on. sameAs is the
+        // property for "this thing, listed elsewhere" — installUrl takes one
+        // URL, and dropping the second listing would tell a search engine the
+        // Firefox build does not exist.
+        'sameAs' => array_values(array_filter([
+            CHROME_STORE_LIVE  ? CHROME_STORE_URL  : null,
+            FIREFOX_STORE_LIVE ? FIREFOX_STORE_URL : null,
+        ])),
         'author'      => ['@id' => SITE_URL . '/#author'],
         'privacyPolicy' => SITE_URL . PRIVACY_PATH,
         'isAccessibleForFree' => true,
@@ -69,12 +82,45 @@ $schema_graph = [
         'featureList' => [
             'Three-way merge sync for the whole bookmark tree',
             'Stash open tabs into named lists and restore them anywhere',
+            'Runs on Chromium browsers and on Firefox from one codebase',
             'Self-hosted endpoint, private GitHub Gist, or JSONBin.io',
             'Optional AES-256-GCM end-to-end encryption',
             'No account, no analytics, no telemetry',
         ],
     ], static fn ($v) => $v !== null),
 ];
+
+/**
+ * The Windows desktop app is a second, separate product — its own version, its
+ * own release tags, its own installer — so it gets its own node rather than
+ * being folded into the extension's. Claiming one SoftwareApplication that is
+ * somehow both a browser extension and a Windows program would describe
+ * neither, and the version number could only be right for one of them.
+ */
+if (CONTROL_PANEL_LIVE) {
+    $schema_graph[] = [
+        '@type' => 'SoftwareApplication',
+        '@id'   => SITE_URL . '/#control-panel',
+        'name'  => SITE_NAME . ' Control Panel',
+        'description' => 'Windows desktop app for managing every ' . SITE_NAME . ' sync profile in '
+            . 'one place — move and copy bookmarks and saved-tab lists between profiles without a '
+            . 'browser.',
+        'applicationCategory' => 'UtilitiesApplication',
+        'operatingSystem' => 'Windows 10, Windows 11 (64-bit)',
+        'softwareVersion' => CONTROL_PANEL_VERSION,
+        'url'         => SITE_URL . '/#control-panel',
+        'downloadUrl' => CONTROL_PANEL_URL,
+        'softwareRequirements' => SITE_NAME . ' sync destination (self-hosted, GitHub Gist, or JSONBin.io)',
+        'author'      => ['@id' => SITE_URL . '/#author'],
+        'privacyPolicy' => SITE_URL . PRIVACY_PATH,
+        'isAccessibleForFree' => true,
+        'offers' => [
+            '@type' => 'Offer',
+            'price' => '0',
+            'priceCurrency' => 'USD',
+        ],
+    ];
+}
 if (isset($page_schema) && is_array($page_schema)) {
     $schema_graph[] = $page_schema;
 }
@@ -168,6 +214,9 @@ send_security_headers($page_recaptcha);
       <a href="/#how-it-works">How it works</a>
       <a href="/#privacy">Privacy</a>
       <a href="/#install">Install</a>
+<?php if (CONTROL_PANEL_LIVE): ?>
+      <a href="/#control-panel">Windows app</a>
+<?php endif; ?>
       <a href="<?= e(CONTACT_PATH) ?>">Contact</a>
       <a href="<?= e(GITHUB_URL) ?>" target="_blank" rel="noopener">Source</a>
     </nav>

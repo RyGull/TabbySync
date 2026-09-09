@@ -40,24 +40,51 @@ const PAYPAL_URL     = 'https://www.paypal.com/ncp/payment/B25W7V9VRGQG4';
 const CHROME_STORE_LIVE = true;
 const CHROME_STORE_URL  = 'https://chromewebstore.google.com/detail/tabbysync/lfbdjnceepjfamkjclkeahnjhebedfdk';
 
-// The Firefox build is with Mozilla for review. Until it is public, a visitor
-// on Firefox is told that rather than being pointed at a Chrome Web Store link
-// their browser cannot use, or at an addons.mozilla.org URL that 404s.
+// The Firefox add-on is published on addons.mozilla.org. Same switch pattern
+// as the Chrome one above, for the same reason: if the listing is ever pulled,
+// flipping this back to false removes the Firefox button and returns a visitor
+// on Firefox to the build-from-source path, with no other edits.
 //
-// When it is approved: paste the listing URL here and flip the switch. The
-// button on the site changes by itself — assets/js/main.js reads both values
-// off the markup, so there is nothing else to edit.
-const FIREFOX_STORE_LIVE = false;
-const FIREFOX_STORE_URL  = '';
+// The URL is deliberately the locale-less form. AMO redirects it to whichever
+// locale the visitor's browser asks for, so hard-coding /en-US/firefox/ here
+// would send every non-English visitor through an extra redirect to a page in
+// the wrong language.
+const FIREFOX_STORE_LIVE = true;
+const FIREFOX_STORE_URL  = 'https://addons.mozilla.org/addon/tabbysync/';
+// The oldest Firefox the add-on claims to run on, shown on the download card.
+// This is not a marketing number: it is the strict_min_version the uploaded
+// manifest actually carries, so a visitor on an older Firefox is told before
+// clicking rather than by AMO afterwards. GECKO_MIN_VERSION in
+// scripts/make-manifest.mjs is where that floor is really decided, and
+// test/website.test.js fails if this drifts away from it.
+const FIREFOX_MIN_VERSION = '140';
 
-// TabbySync Control Panel — a companion Windows desktop app, developed and
-// released separately from the extension (control-panel/ in the repo, its
-// own version, its own control-panel-v* release tags). Live as of
-// control-panel-v1.0.0 (2026-09-06) — /releases/latest resolves to whatever
-// the newest published (non-draft) release is, so a future control-panel-v*
-// release needs no edit here at all.
-const CONTROL_PANEL_LIVE = true;
-const CONTROL_PANEL_URL  = GITHUB_URL . '/releases/latest';
+// TabbySync Control Panel — the companion Windows desktop app, developed and
+// released separately from the extension (control-panel/ in the repo, its own
+// version, its own control-panel-v* release tags).
+//
+// CONTROL_PANEL_VERSION has to be bumped by hand for each control-panel-v*
+// release, and that is on purpose: this used to point at /releases/latest,
+// which is wrong here. Both the extension (v*) and the app (control-panel-v*)
+// cut GitHub Releases in this one repository, and /releases/latest resolves to
+// whichever is newest *overall* — so the first extension release after an app
+// release silently pointed "Download for Windows" at a release containing
+// nothing but store zips. A link that is right until the next unrelated
+// release is not right.
+//
+// The installer filename is not a guess: control-panel/package.json pins it as
+// build.nsis.artifactName = TabbySync-Control-Panel-Setup-${version}.exe, so
+// the version below is the only variable in it.
+const CONTROL_PANEL_LIVE    = true;
+const CONTROL_PANEL_VERSION = '1.6.0'; // keep in step with control-panel/package.json
+const CONTROL_PANEL_TAG     = 'control-panel-v' . CONTROL_PANEL_VERSION;
+// Straight at the installer, so the button downloads rather than landing the
+// visitor on a release page to hunt through the assets list.
+const CONTROL_PANEL_URL     = GITHUB_URL . '/releases/download/' . CONTROL_PANEL_TAG
+    . '/TabbySync-Control-Panel-Setup-' . CONTROL_PANEL_VERSION . '.exe';
+// The release page itself — release notes, and the portable .exe for anyone
+// who would rather not run an installer.
+const CONTROL_PANEL_RELEASE_URL = GITHUB_URL . '/releases/tag/' . CONTROL_PANEL_TAG;
 
 /**
  * The "What's this about?" options on /contact. The first entry is an empty

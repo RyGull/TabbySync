@@ -104,21 +104,22 @@
     setTimeout(sweep, 1500);
   }
 
-  // ---- install button: name the browser the visitor is actually using -----
+  // ---- download row: promote the card that matches this visitor -----------
+  //
+  // The page ships three real, correct links (Chromium, Firefox, Windows —
+  // see includes/downloads.php). Nothing below ever hides one, rewrites a
+  // label, or invents a URL: it adds a class and unhides a badge on the card
+  // that matches, and writes one line of small print. User agents are freely
+  // spoofed and detection is allowed to be wrong, so being wrong has to cost
+  // no more than the wrong card being highlighted — a visitor with no
+  // JavaScript, or an unrecognised browser, still sees every option.
   //
   // Every Chromium browser puts "Chrome" in its user agent, so the order of
-  // these checks is the whole trick: the specific ones have to run before the
-  // generic one, or Edge, Opera, Vivaldi and Samsung Internet all answer
+  // the checks below is the whole trick: the specific ones have to run before
+  // the generic one, or Edge, Opera, Vivaldi and Samsung Internet all answer
   // "Chrome". Brave is the exception — it deliberately looks exactly like
   // Chrome, and the only reliable tell is navigator.brave.isBrave(), which is
   // a promise, so it runs as a second pass below.
-  //
-  // This only ever changes the label, the link and one line of small print.
-  // The markup already carries the right default for a visitor with no
-  // JavaScript or an unrecognised browser, and nothing here hides an option:
-  // the Chrome Web Store link in the Install section stays visible whatever
-  // this decides. Detection can be wrong — user agents are freely spoofed —
-  // so being wrong has to cost nothing more than a mis-named button.
   var EDGE_NOTE = "Edge installs this from the Chrome Web Store — it asks you to “Allow extensions " +
                   "from other stores” the first time.";
   var OPERA_NOTE = "Opera needs its “Install Chrome Extensions” add-on before it can install from " +
@@ -161,26 +162,41 @@
     return null; // unrecognised: leave the page exactly as it was rendered
   }
 
-  function applyBrowser(browser) {
-    var buttons = document.querySelectorAll("[data-install-cta]");
-    var noteEl = document.querySelector("[data-install-note]");
-    if (!browser || !buttons.length) return;
+  // Marks one card in every download row on the page — the hero renders one
+  // and the Install section another, from the same partial.
+  function promote(which, badgeText) {
+    var cards = document.querySelectorAll('[data-dl="' + which + '"]');
+    for (var i = 0; i < cards.length; i++) {
+      cards[i].classList.add("is-detected");
+      var badge = cards[i].querySelector("[data-dl-badge]");
+      if (!badge) continue;
+      if (badgeText) badge.textContent = badgeText;
+      badge.hidden = false;
+    }
+    return cards.length > 0;
+  }
 
-    // "Add to Safari" would be a button that cannot do what it says.
-    var label = browser.store ? "Add to " + browser.name : "Not available for " + browser.name;
-    var href = null;
+  function setNote(text) {
+    if (!text) return;
+    var notes = document.querySelectorAll("[data-install-note]");
+    for (var i = 0; i < notes.length; i++) {
+      notes[i].textContent = text;
+      notes[i].hidden = false;
+    }
+  }
+
+  function applyBrowser(browser) {
+    if (!browser) return;
     var note = browser.note || "";
 
-    if (browser.store === "chrome") {
-      href = buttons[0].getAttribute("data-store-chrome") || null;
-    } else if (browser.store === "firefox") {
-      href = buttons[0].getAttribute("data-store-firefox") || null;
-      if (!href) {
-        // Reviewed, not published. Saying so beats a dead link or a Chrome
-        // Web Store button that Firefox cannot do anything with.
-        label = "Firefox version in review";
-        note = "The Firefox add-on is with Mozilla for review. Until it is approved you can build " +
-               "it from source — see Install, below.";
+    if (browser.store) {
+      // The card is only in the markup when config.php says that store is
+      // live, so a missing one is a deliberate switch, not an oversight —
+      // say what to do instead rather than silently highlighting nothing.
+      var found = promote(browser.store, "Your browser");
+      if (!found && browser.store === "firefox") {
+        note = "The Firefox add-on is not listed at the moment. You can still build it from " +
+               "source — see Install, below.";
       }
     }
 
@@ -189,22 +205,31 @@
              "computer.";
     }
 
-    for (var i = 0; i < buttons.length; i++) {
-      buttons[i].textContent = label;
-      if (href) buttons[i].setAttribute("href", href);
-      else buttons[i].setAttribute("href", "#install");
-      if (!href) buttons[i].removeAttribute("target");
+    setNote(note);
+  }
+
+  // The Windows card is about the operating system, not the browser, so it is
+  // matched separately and can light up alongside either store card. Chrome on
+  // Windows is the common case: both are the right answer for that visitor.
+  //
+  // userAgentData.platform is the non-deprecated source and is exact where it
+  // exists; the user agent string is the fallback. "Windows NT" is checked
+  // rather than "Windows" so Windows Phone's old UA doesn't match.
+  function detectWindows() {
+    var data = navigator.userAgentData;
+    if (data && typeof data.platform === "string" && data.platform !== "") {
+      return data.platform === "Windows";
     }
-    if (noteEl && note) {
-      noteEl.textContent = note;
-      noteEl.hidden = false;
-    }
+    return /Windows NT/.test(navigator.userAgent || "");
   }
 
   var detected = detectBrowser();
   applyBrowser(detected);
+  if (detectWindows() && !(detected && detected.mobile)) promote("windows", "Your system");
 
-  // Second pass for Brave, which answers "Chrome" to everything above.
+  // Second pass for Brave, which answers "Chrome" to everything above. Only
+  // the note can differ — both send you to the same store card, which the
+  // first pass has already promoted.
   if (detected && detected.name === "Chrome" && navigator.brave && navigator.brave.isBrave) {
     navigator.brave.isBrave().then(function (isBrave) {
       if (isBrave) applyBrowser({ name: "Brave", store: "chrome", mobile: detected.mobile });

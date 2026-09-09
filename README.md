@@ -1,12 +1,15 @@
 # TabbySync
 
 **Self-hosted sync for your bookmarks _and_ your open tabs — two tools in one
-extension.** TabbySync began as two separate extensions that were later
-merged into a single Manifest V3 extension (any Chromium browser) that talks
-to **one sync destination, one token and one sync name**. Turn on the bookmark
-sync, the tab sync, or both. Self-hosting your own endpoint is the recommended
-setup — free, no-server alternatives (GitHub Gist, JSONBin.io) are also
-available for anyone who doesn't have a server, see [below](#no-server-free-alternatives).
+extension, on every browser you use.** TabbySync began as two separate
+extensions that were later merged into a single Manifest V3 extension —
+running on **Chromium browsers and on Firefox from one codebase** — that talks
+to **one sync destination, one token and one sync name**. A companion
+**Windows desktop app** manages every sync profile from outside the browser.
+Turn on the bookmark sync, the tab sync, or both. Self-hosting your own
+endpoint is the recommended setup — free, no-server alternatives (GitHub Gist,
+JSONBin.io) are also available for anyone who doesn't have a server, see
+[below](#no-server-free-alternatives).
 
 - 📑 **Bookmarks** — syncs your whole bookmark tree (bar + other bookmarks) with
   a true three-way merge, so adds/edits/moves/deletes from several devices are
@@ -25,8 +28,15 @@ because each engine namespaces its own file on the server:
 Same **sync name** on another computer → that computer shares the same data.
 Different names stay separate. Nothing ever leaves your own server.
 
-**[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/tabbysync/lfbdjnceepjfamkjclkeahnjhebedfdk)**
-· [tabbysync.com](https://tabbysync.com) · [Privacy policy](https://rygull.github.io/TabbySync/privacy.html)
+### Get it
+
+| | | |
+|---|---|---|
+| **[Add to Chrome](https://chromewebstore.google.com/detail/tabbysync/lfbdjnceepjfamkjclkeahnjhebedfdk)** | Chrome, Edge, Brave, Vivaldi, Opera | Chrome Web Store |
+| **[Add to Firefox](https://addons.mozilla.org/addon/tabbysync/)** | Firefox 140+ | addons.mozilla.org |
+| **[Download for Windows](https://github.com/RyGull/TabbySync/releases)** | Windows 10/11, 64-bit | newest `control-panel-v*` release |
+
+[tabbysync.com](https://tabbysync.com) · [Privacy policy](https://rygull.github.io/TabbySync/privacy.html)
 
 ## Screenshots
 
@@ -45,20 +55,34 @@ below for how that works. Light mode shown; the dark files sit beside each one i
 
 ## Install
 
-**[Add TabbySync from the Chrome Web Store](https://chromewebstore.google.com/detail/tabbysync/lfbdjnceepjfamkjclkeahnjhebedfdk)**
-— one click, and it auto-updates. Works in any Chromium browser (Chrome, Edge,
-Brave, Vivaldi, Opera).
+One click from whichever store your browser uses, and it auto-updates:
+
+* **[Chrome Web Store](https://chromewebstore.google.com/detail/tabbysync/lfbdjnceepjfamkjclkeahnjhebedfdk)** — Chrome, Edge, Brave, Vivaldi, Opera, and any
+  other Chromium browser.
+* **[Firefox Add-ons](https://addons.mozilla.org/addon/tabbysync/)** — Firefox 140 or newer. (140 is where the
+  built-in data-collection consent screen landed; see
+  [Firefox](#firefox) for why that is the floor.)
 
 Then click the TabbySync icon → the popup lets you enable Bookmarks, Tabs, or
 both, and open **Options**.
+
+The same extension, the same file format, the same server: a bookmark saved
+from Firefox and one saved from Chrome land in the same file under the same
+sync name.
 
 ### Or load it unpacked
 
 Running from source instead (to audit it, or to track `main`):
 
-1. In your browser open `chrome://extensions`, turn on **Developer mode**.
+**Chromium:**
+
+1. Open `chrome://extensions`, turn on **Developer mode**.
 2. **Load unpacked** → select this repo's folder (the one containing `manifest.json`).
 3. Click the TabbySync icon → **Options**.
+
+**Firefox** needs its own manifest built first, because the one at the repo
+root declares a service worker Firefox will not run — see
+[Loading it in Firefox](#loading-it-in-firefox).
 
 An unpacked copy never auto-updates — you pull the repo yourself when a new
 version lands.
@@ -163,6 +187,14 @@ out, or included and always encrypted with a passphrase. See
 [`control-panel/README.md`](control-panel/README.md) for what it does, how
 it stays wire-compatible with the extension, and how to build or install it.
 
+**[Download the installer](https://github.com/RyGull/TabbySync/releases)** — pick the newest
+`control-panel-v*` release (Windows 10/11, 64-bit). Not `/releases/latest`:
+the extension (`v*`) and the app (`control-panel-v*`) both cut releases in
+this repository, so "latest" is whichever came last overall and is usually the
+extension's, which carries no `.exe`. Each app release also has a portable
+`.exe` for anyone who would rather not install. Once installed it updates
+itself. Entirely optional: the extension works fully on its own without it.
+
 ## How it's built
 
 The extension lives at the repo root:
@@ -229,6 +261,9 @@ settled "synced" status, so the pictures show an ordinary healthy profile rather
 than the artifact of there being no server on the machine that took them.
 
 ## Firefox
+
+**Published on AMO: [addons.mozilla.org/addon/tabbysync](https://addons.mozilla.org/addon/tabbysync/).** The rest of
+this section is how the port works and how to run it from source.
 
 The same source builds both browsers. There is no second copy of the code and
 no `firefox/` folder — only the manifest differs, and it is derived from
@@ -412,10 +447,12 @@ for why, and for what to include in a report.
 ### Trademarks
 
 TabbySync is not affiliated with, endorsed by, or sponsored by any of the
-services it can sync to. Chrome and Chromium are trademarks of Google LLC;
+browsers it runs on or the services it can sync to. Chrome and Chromium are
+trademarks of Google LLC; Firefox and Mozilla are trademarks of the Mozilla
+Foundation; Windows and Microsoft Edge are trademarks of Microsoft Corporation;
 GitHub and Gist are trademarks of GitHub, Inc.; PayPal is a trademark of PayPal,
 Inc.; JSONBin.io is the property of its owner. They are named here only to
-describe what TabbySync interoperates with.
+describe what TabbySync runs on and interoperates with.
 
 ### Disclaimer
 

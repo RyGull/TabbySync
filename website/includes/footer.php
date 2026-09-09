@@ -18,6 +18,12 @@ require_once __DIR__ . '/../config.php';
 <?php if (CHROME_STORE_LIVE): ?>
         <li><a href="<?= e(CHROME_STORE_URL) ?>" target="_blank" rel="noopener">Chrome Web Store listing</a></li>
 <?php endif; ?>
+<?php if (FIREFOX_STORE_LIVE): ?>
+        <li><a href="<?= e(FIREFOX_STORE_URL) ?>" target="_blank" rel="noopener">Firefox Add-ons listing</a></li>
+<?php endif; ?>
+<?php if (CONTROL_PANEL_LIVE): ?>
+        <li><a href="<?= e(CONTROL_PANEL_URL) ?>">Control Panel for Windows</a></li>
+<?php endif; ?>
         <li><a href="<?= e(GITHUB_URL) ?>" target="_blank" rel="noopener">Source on GitHub</a></li>
         <li><a href="<?= e(LICENSE_URL) ?>" target="_blank" rel="noopener">License</a></li>
         <li><a href="<?= e(CHANGELOG_URL) ?>" target="_blank" rel="noopener">Changelog</a></li>
@@ -51,7 +57,7 @@ require_once __DIR__ . '/../config.php';
   <div class="wrap footer-legal">
     <p>&copy; <?= date('Y') ?> Ryan Gulliver. <?= e(SITE_NAME) ?> is source-available, not open source —
       see the <a href="<?= e(LICENSE_URL) ?>" target="_blank" rel="noopener">license</a> for what that means.
-      Not affiliated with Google, GitHub, PayPal, or JSONBin.io.</p>
+      Not affiliated with Google, Mozilla, Microsoft, GitHub, PayPal, or JSONBin.io.</p>
     <p class="footer-version">v<?= e(CURRENT_VERSION) ?></p>
   </div>
 </footer>

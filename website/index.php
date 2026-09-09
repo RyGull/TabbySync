@@ -7,9 +7,10 @@ require_once __DIR__ . '/config.php';
 // and what it does inside ~60 characters, and the description says who it is
 // for and what makes it different inside ~155, because past that Google
 // truncates and the rest is written for nobody.
-$page_title       = SITE_NAME . ' — self-hosted bookmark and tab sync for Chrome';
+$page_title       = SITE_NAME . ' — self-hosted bookmark and tab sync for Chrome, Firefox & Windows';
 $page_description = 'Sync your bookmarks and open tabs to a server you control — or a private '
-    . 'GitHub Gist — with optional end-to-end encryption. No account, no analytics, no tracking.';
+    . 'GitHub Gist — with optional end-to-end encryption. Chrome, Firefox and a Windows desktop '
+    . 'app. No account, no analytics, no tracking.';
 require __DIR__ . '/includes/header.php';
 ?>
 
@@ -17,36 +18,18 @@ require __DIR__ . '/includes/header.php';
 <section class="hero">
   <div class="hero-bg" aria-hidden="true"></div>
   <div class="wrap hero-inner">
-    <span class="eyebrow">Two tools. One extension. Your server.</span>
+    <span class="eyebrow">Chrome · Firefox · Windows</span>
     <h1>Sync your bookmarks and your open tabs — <span class="accent">without handing them to anyone</span>.</h1>
     <p class="hero-lede">
-      <?= e(SITE_NAME) ?> began as two separate extensions, later merged into one
-      Manifest&nbsp;V3 extension that talks to <strong>one sync destination, one
-      token and one sync name</strong>. Self-hosting is the recommended setup —
-      free, no-server alternatives exist for anyone who doesn't have one.
+      One Manifest&nbsp;V3 extension for <strong>Chromium browsers and Firefox</strong>,
+      plus a <strong>Windows desktop app</strong> for managing every sync profile in one
+      place. All of it talks to <strong>one sync destination, one token and one sync
+      name</strong> — a server you control, or a free no-server alternative if you
+      don't have one.
     </p>
-    <div class="hero-actions">
-      <?php if (CHROME_STORE_LIVE): ?>
-        <?php /* The label and link are rewritten client-side to name the browser
-                actually in use — see the install-button section of
-                assets/js/main.js. What is rendered here is what a visitor with
-                no JavaScript gets, so it has to be the answer that is right
-                most often: the Chrome Web Store, which every Chromium browser
-                can install from. */ ?>
-        <a class="btn btn-primary" data-install-cta
-           data-store-chrome="<?= e(CHROME_STORE_URL) ?>"
-           data-store-firefox="<?= e(FIREFOX_STORE_LIVE ? FIREFOX_STORE_URL : '') ?>"
-           href="<?= e(CHROME_STORE_URL) ?>" target="_blank" rel="noopener">Add to Chrome</a>
-      <?php else: ?>
-        <a class="btn btn-primary" href="#install">Install it now</a>
-      <?php endif; ?>
-      <a class="btn btn-ghost" href="<?= e(GITHUB_URL) ?>" target="_blank" rel="noopener">
-        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.89 1.53 2.34 1.09 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.56-1.11-4.56-4.95 0-1.09.39-1.99 1.03-2.69-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.03a9.4 9.4 0 0 1 5 0c1.91-1.3 2.75-1.03 2.75-1.03.55 1.37.2 2.39.1 2.64.64.7 1.03 1.6 1.03 2.69 0 3.85-2.34 4.7-4.57 4.95.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/></svg>
-        View source
-      </a>
-    </div>
-    <p class="hero-note" data-install-note hidden></p>
-    <p class="hero-note">Free. No account. No ads. No analytics — <a href="#privacy">verified below</a>.</p>
+    <?php require __DIR__ . '/includes/downloads.php'; ?>
+    <p class="hero-note">Free. No account. No ads. No analytics — <a href="#privacy">verified below</a>.
+      <a href="<?= e(GITHUB_URL) ?>" target="_blank" rel="noopener">View the source</a>.</p>
   </div>
 </section>
 
@@ -107,6 +90,17 @@ require __DIR__ . '/includes/header.php';
         <p>Not realistic to self-host? A private GitHub Gist or a JSONBin.io bin work
           too — both meaningfully less private than self-hosting, which is why the
           password lock is recommended for either.</p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4.5" width="19" height="13" rx="2"/><path d="M8 20.5h8M12 17.5v3"/></svg>
+        </div>
+        <h3>Same everywhere you work</h3>
+        <p>The identical extension runs on Chromium browsers and on Firefox — one
+          codebase, one manifest, two builds — and the Windows Control Panel manages
+          every profile from the desktop. Whatever you sync from, the file on your
+          server is the same file.</p>
       </article>
 
       <article class="feature-card">
@@ -203,7 +197,8 @@ require __DIR__ . '/includes/header.php';
         <div>
           <h3>Install the extension</h3>
           <p>Add it from the <a href="<?= e(CHROME_STORE_URL) ?>" target="_blank" rel="noopener">Chrome
-            Web Store</a>, or load the source unpacked (see <a href="#install">Install</a>).</p>
+            Web Store</a> or <a href="<?= e(FIREFOX_STORE_URL) ?>" target="_blank" rel="noopener">Firefox
+            Add-ons</a>, or load the source unpacked (see <a href="#install">Install</a>).</p>
         </div>
       </li>
       <li>
@@ -265,31 +260,35 @@ require __DIR__ . '/includes/header.php';
   <div class="wrap install-inner">
     <h2 class="section-title">Install it today</h2>
     <p class="section-lede">
-      <?= e(SITE_NAME) ?> is on the Chrome Web Store — one click in any Chromium
-      browser (Chrome, Edge, Brave, Vivaldi, Opera). A Firefox build exists and is
-      with Mozilla for review:
+      One click on the Chrome Web Store (Chrome, Edge, Brave, Vivaldi, Opera) or on
+      Firefox Add-ons. The Windows app is optional and separate — take it if you juggle
+      more than one sync profile.
     </p>
+    <?php require __DIR__ . '/includes/downloads.php'; ?>
     <ol class="install-steps">
-      <li>Add it from the <a href="<?= e(CHROME_STORE_URL) ?>" target="_blank" rel="noopener">Chrome Web Store</a>.</li>
+      <li>Add the extension from the store your browser uses.</li>
       <li>Click the <?= e(SITE_NAME) ?> icon, choose Bookmarks, Tabs, or both, and open Settings.</li>
       <li>Point it at a destination — your own server, a private GitHub Gist, or JSONBin.io.</li>
     </ol>
     <div class="hero-actions">
-      <a class="btn btn-primary" data-install-cta
-         data-store-chrome="<?= e(CHROME_STORE_URL) ?>"
-         data-store-firefox="<?= e(FIREFOX_STORE_LIVE ? FIREFOX_STORE_URL : '') ?>"
-         href="<?= e(CHROME_STORE_URL) ?>" target="_blank" rel="noopener">Add to Chrome</a>
       <a class="btn btn-ghost" href="<?= e(GITHUB_URL) ?>" target="_blank" rel="noopener">Get the source on GitHub</a>
     </div>
     <details class="install-alt">
       <summary>Prefer to load it unpacked from source?</summary>
       <ol class="install-steps">
         <li>Clone or download the <a href="<?= e(GITHUB_URL) ?>" target="_blank" rel="noopener">source</a>.</li>
-        <li>Open <code>chrome://extensions</code>, turn on <strong>Developer mode</strong>.</li>
-        <li><strong>Load unpacked</strong> → select the folder containing <code>manifest.json</code>.</li>
+        <li><strong>Chromium:</strong> open <code>chrome://extensions</code>, turn on
+          <strong>Developer mode</strong>, then <strong>Load unpacked</strong> → the folder
+          containing <code>manifest.json</code>.</li>
+        <li><strong>Firefox:</strong> run <code>npm run dev:firefox</code> to build
+          <code>dist/firefox/</code> — Firefox needs its own manifest, because the one in the
+          repository declares a service worker Firefox will not run. Then
+          <code>about:debugging</code> → <strong>This Firefox</strong> →
+          <strong>Load Temporary Add-on…</strong> → pick that folder's
+          <code>manifest.json</code>.</li>
       </ol>
       <p class="shot-note">An unpacked copy never auto-updates — you pull the repo yourself when a
-        new version lands.</p>
+        new version lands. A temporary add-on in Firefox also goes away when Firefox restarts.</p>
     </details>
   </div>
 </section>
@@ -300,18 +299,20 @@ require __DIR__ . '/includes/header.php';
   <div class="wrap install-inner">
     <h2 class="section-title">Managing more than one sync profile?</h2>
     <p class="section-lede">
-      <strong>TabbySync Control Panel</strong> is a companion Windows desktop app —
+      <strong>TabbySync Control Panel</strong> is the companion Windows desktop app —
       add, remove, move and copy bookmarks and saved-tab lists across every sync
       profile you have (work, personal, a home server…) from one place, without a
       browser. Same self-hosted / GitHub Gist / JSONBin destinations, the same merge
-      and encryption as the extension above.
+      and encryption as the extension. It updates itself once installed.
     </p>
     <div class="hero-actions">
-      <a class="btn btn-primary" href="<?= e(CONTROL_PANEL_URL) ?>" target="_blank" rel="noopener">Download for Windows</a>
-      <a class="btn btn-ghost" href="<?= e(GITHUB_URL) ?>/tree/main/control-panel" target="_blank" rel="noopener">See what's inside</a>
+      <a class="btn btn-primary" href="<?= e(CONTROL_PANEL_URL) ?>">Download <?= e(SITE_NAME) ?> Control Panel <?= e(CONTROL_PANEL_VERSION) ?></a>
+      <a class="btn btn-ghost" href="<?= e(CONTROL_PANEL_RELEASE_URL) ?>" target="_blank" rel="noopener">Release notes &amp; portable build</a>
     </div>
-    <p class="shot-note">Free and source-available under the same license as the extension.
-      Entirely optional — the browser extension works fully on its own without it.</p>
+    <p class="shot-note">Windows 10/11, 64-bit. Free and source-available under the same license as
+      the extension, and entirely optional — the extension works fully on its own without it.
+      Prefer not to run an installer? The release page above also carries a portable
+      <code>.exe</code>.</p>
   </div>
 </section>
 <?php endif; ?>
