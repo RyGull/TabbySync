@@ -147,6 +147,36 @@ stored files are unreadable even to whoever holds them. It never leaves your
 device — type the same one on every computer. **If you forget it, the data
 can't be recovered.**
 
+## Backing up your settings
+
+Settings — the destination, the access code, the sync name, every option — live
+only in `chrome.storage.local`, which is per-install. That survives a store
+update, but **not the extension's identity changing**: a browser treats an
+unpacked or temporarily-loaded copy and the store copy as two different
+extensions with separate storage, so swapping one for the other reads as a
+fresh install and every credential has to be retyped. Nothing is ever lost from
+the sync destination when that happens — a first sync with no merge base
+unions rather than deletes (`bookmarks/lib/engine.js`) — but retyping a bearer
+token is not a recovery plan.
+
+**Settings → Back up these settings** writes them to a file, in one of two
+shapes. The rule is `shared/settings-backup.js`'s, and it is the same rule the
+Control Panel enforces for the same secrets:
+
+| | Contains | Encrypted |
+|---|---|---|
+| **Save settings** | Everything except the access code and password lock | No — there is nothing sensitive in it |
+| **Save settings and credentials** | Everything | **Always**, with a passphrase you choose (min 8 chars) |
+
+There is deliberately no third option: a plaintext file holding a live bearer
+token is not a backup. Saved tab lists are *not* included — they have their own
+backup on the saved-tabs page, they are already synced, and restoring a stale
+copy over a live sync can resurrect lists deleted on another machine.
+
+A restore is a partial write: anything the file does not mention is left alone,
+so restoring a credential-free backup onto a working install never blanks the
+token that install already has.
+
 ## Deleting your synced data
 
 Settings → **Advanced and delete options**, at the bottom of the page. Type `DELETE` to

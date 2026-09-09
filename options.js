@@ -11,6 +11,10 @@
 import { buildHtml, parseNetscape } from './bookmarks/lib/bookmarks-io.js';
 import { encryptJSON, decryptJSON, isEncrypted } from './bookmarks/lib/crypto.js';
 import { readLiveModel, importTopLevel } from './bookmarks/lib/import-merge.js';
+import {
+  buildSettingsBackup, serializeSettingsBackup, parseSettingsBackup,
+  summarizeSettingsBackup, settingsToApply, MIN_PASSPHRASE_LENGTH,
+} from './shared/settings-backup.js';
 
 const SL = self.TabbySyncConfig;
 const SF = self.TabbySyncServerFiles;
@@ -1055,6 +1059,96 @@ $('danger-wipe-all').addEventListener('click', async () => {
     ? 'Local settings cleared, with some remote deletes failed (see the popup). Reloading…'
     : 'Done — everything deleted and reset. Reloading…', failures.length ? 'bad' : 'ok');
   setTimeout(() => location.reload(), 1200);
+});
+
+// ---------------------------------------------------------------------------
+// Settings, as a file
+// ---------------------------------------------------------------------------
+//
+// The rule lives in shared/settings-backup.js and is enforced there, not here:
+// a backup either carries no credentials, or it is encrypted. This code only
+// collects a passphrase and moves bytes — if it tried to decide the policy,
+// there would be two places to get it wrong.
+
+/** Every key this extension owns, so the export sees the whole picture. */
+function allStorageKeys() {
+  return Object.values(SL.KEYS);
+}
+
+async function settingsExport(includeSecrets) {
+  const pass = $('set-backup-pass').value;
+  if (includeSecrets && pass.length < MIN_PASSPHRASE_LENGTH) {
+    status('set-io-status',
+      `Enter a passphrase of at least ${MIN_PASSPHRASE_LENGTH} characters — this file holds your access code.`, 'bad');
+    return;
+  }
+  try {
+    const stored = await chrome.storage.local.get(allStorageKeys());
+    const payload = buildSettingsBackup({
+      stored,
+      includeSecrets,
+      appVersion: chrome.runtime.getManifest().version,
+    });
+    const text = await serializeSettingsBackup(payload, includeSecrets ? pass : '');
+    const suffix = includeSecrets ? 'full' : 'settings';
+    download(`tabbysync-${suffix}-${todayStamp()}.json`, text, 'application/json');
+    flash('set-io-status', includeSecrets
+      ? 'Saved an encrypted backup of your settings and credentials.'
+      : 'Saved your settings. Your access code and password lock are not in this file.', 'ok');
+  } catch (e) {
+    status('set-io-status', e.message, 'bad');
+  }
+}
+$('set-exp').addEventListener('click', () => settingsExport(false));
+$('set-exp-enc').addEventListener('click', () => settingsExport(true));
+
+$('set-imp').addEventListener('click', () => $('set-file').click());
+$('set-file').addEventListener('change', async () => {
+  const file = $('set-file').files[0];
+  if (!file) return;
+  $('set-file').value = '';
+  try {
+    const text = await file.text();
+    let payload;
+    try {
+      payload = await parseSettingsBackup(text, $('set-backup-pass').value);
+    } catch (e) {
+      // Say which of the two it is. "Import failed" for a locked file that
+      // just needs its passphrase typed in the box above is not an answer.
+      if (e.code === 'PASSPHRASE_REQUIRED') {
+        status('set-io-status', 'That backup is encrypted — put its passphrase in the box above and try again.', 'bad');
+        return;
+      }
+      if (e.code === 'BAD_PASSPHRASE') {
+        status('set-io-status', 'That passphrase does not open this backup.', 'bad');
+        return;
+      }
+      throw e;
+    }
+
+    // Nothing has been written yet. Say what is about to change, and what will
+    // still need typing afterwards, BEFORE overwriting a working setup.
+    const s = summarizeSettingsBackup(payload);
+    const when = s.createdAt ? new Date(s.createdAt).toLocaleString() : 'an unknown date';
+    const missing = s.omittedSecrets.length
+      ? '\n\nThis backup has no credentials in it, so after restoring you will need to re-enter ' +
+        'your access code and password lock. Anything already saved here is kept, not blanked.'
+      : '\n\nIt carries your credentials, so this should be ready to sync straight away.';
+    const ok = confirm(
+      `Restore ${s.settingCount} setting${s.settingCount === 1 ? '' : 's'} saved on ${when}` +
+      (s.appVersion ? ` by version ${s.appVersion}` : '') + '?' +
+      (s.serverUrl ? `\n\nSync destination: ${s.serverUrl}` : '') +
+      (s.syncName ? `\nSync name: ${s.syncName}` : '') +
+      '\n\nThis replaces the settings on this page. Your saved tab lists and your bookmarks ' +
+      'are not touched.' + missing);
+    if (!ok) { status('set-io-status', 'Nothing was changed.', ''); return; }
+
+    await chrome.storage.local.set(settingsToApply(payload));
+    flash('set-io-status', 'Settings restored. Reloading…', 'ok');
+    setTimeout(() => location.reload(), 1200);
+  } catch (e) {
+    status('set-io-status', 'Restore failed: ' + e.message, 'bad');
+  }
 });
 
 // ---- the Windows desktop app -------------------------------------------------
