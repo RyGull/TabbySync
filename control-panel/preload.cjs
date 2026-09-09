@@ -58,6 +58,16 @@ contextBridge.exposeInMainWorld('tabbysync', {
     change: (args) => call('pin:change', args),
     disable: (args) => call('pin:disable', args),
     lock: () => call('pin:lock'),
+  },
+
+  // Windows Hello, which is an alternative way through the PIN gate above and
+  // never a replacement for it. Like the PIN, nothing here can read anything
+  // back out: unlock() reports only whether Windows said yes, and the decision
+  // to actually unlock is made in the main process, not by this answer.
+  hello: {
+    unlock: () => call('hello:unlock'),
+    enable: (args) => call('hello:enable', args),
+    disable: () => call('hello:disable'),
     activity: () => call('pin:activity'),
     // Main tells the renderer when the lock closes on its own — the idle
     // timeout, "Lock now" from the tray or the File menu. Returns an

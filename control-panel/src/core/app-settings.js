@@ -56,6 +56,16 @@ export const DEFAULTS = Object.freeze({
   // launch — a prompt you cannot get rid of is one people learn to dismiss
   // without reading.
   pinSetupSeen: false,
+  // Whether the lock screen offers Windows Hello before the PIN box.
+  //
+  // Only ever an ALTERNATIVE to the PIN, never a replacement: see
+  // src/core/hello.js. It cannot be turned on without a PIN already set, and
+  // clearing the PIN turns it back off — a fingerprint reader that dies must
+  // not be able to lock someone out of every profile they have. Storing it
+  // here (which falls back to defaults on a corrupt file) is safe precisely
+  // because the safe default is false: losing this setting means being asked
+  // for a PIN, which is the floor anyway.
+  helloEnabled: false,
 });
 
 const MIN_PIN_IDLE_MINUTES = 1;
@@ -105,6 +115,7 @@ function sanitize(patch) {
       ? n : DEFAULTS.pinIdleMinutes;
   }
   if ('pinSetupSeen' in patch) out.pinSetupSeen = !!patch.pinSetupSeen;
+  if ('helloEnabled' in patch) out.helloEnabled = !!patch.helloEnabled;
   return out;
 }
 

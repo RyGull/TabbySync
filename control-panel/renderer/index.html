@@ -21,6 +21,16 @@
 
     <!-- Unlock: what you see on every launch once a PIN exists. -->
     <form id="lock-unlock" class="lock-form">
+      <!-- Windows Hello, when it is turned on AND this machine can do it
+           right now. Ships hidden and is revealed by app.js on main's say-so,
+           never the renderer's: a button drawn here on a guess would be a
+           button that does nothing on a PC with no sensor. The PIN field
+           below it is always present — Hello is the fast path, never the
+           only one. -->
+      <button id="lock-hello" class="btn btn-primary btn-block" type="button" hidden>
+        Unlock with Windows Hello
+      </button>
+      <p id="lock-hello-or" class="lock-or" hidden>or</p>
       <label for="lock-pin">Enter your PIN</label>
       <input id="lock-pin" class="lock-pin" type="password" inputmode="numeric" autocomplete="off"
              spellcheck="false" maxlength="12" aria-describedby="lock-msg">

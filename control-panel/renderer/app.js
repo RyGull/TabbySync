@@ -1712,7 +1712,8 @@ window.addEventListener('beforeunload', (e) => {
 const lockUi = {
   screen: null,
   msg: null,
-  started: false,   // has the app proper been booted once this document?
+  started: false,        // has the app proper been booted once this document?
+  helloOffered: false,   // is the Windows Hello button currently on screen?
 };
 
 function showLockMessage(text, ok) {
@@ -1720,11 +1721,28 @@ function showLockMessage(text, ok) {
   lockUi.msg.classList.toggle('ok', !!ok);
 }
 
+/**
+ * Shows or hides the Windows Hello button.
+ *
+ * `offer` is main's answer, not ours: it is already the AND of "the user
+ * turned it on", "a PIN exists behind it" and "this machine can do it right
+ * now" (see main.cjs's pin:status). The renderer must not second-guess it —
+ * drawing this button on a hunch would be a button that does nothing.
+ */
+function setHelloOffer(offer) {
+  lockUi.helloOffered = !!offer;
+  $('#lock-hello').hidden = !offer;
+  $('#lock-hello-or').hidden = !offer;
+}
+
 function showLockScreen(mode) {
   $('#app').hidden = true;
   lockUi.screen.hidden = false;
   $('#lock-unlock').hidden = mode !== 'unlock';
   $('#lock-setup').hidden = mode !== 'setup';
+  // Never on the first-run setup screen: there is no PIN yet, so there is
+  // nothing for Hello to be an alternative to.
+  if (mode !== 'unlock') setHelloOffer(false);
   showLockMessage('');
   const field = mode === 'setup' ? $('#setup-pin') : $('#lock-pin');
   field.value = '';
@@ -1769,6 +1787,35 @@ async function submitUnlock(e) {
     // "is this the PIN" at all — nothing was even checked.
     showLockMessage(err.code === 'PIN_THROTTLED' && err.waitMs ? throttleMessage(err.waitMs) : err.message);
   } finally { btn.disabled = false; }
+}
+
+/**
+ * Unlock with Windows Hello.
+ *
+ * Failure is never fatal and never blocking: whatever Windows says, the PIN
+ * field is still sitting right there, and the only job here is to say why
+ * Hello did not work so the fallback does not look like a bug. A state that
+ * cannot succeed again (no sensor, policy) also withdraws the button, so it
+ * stops offering something this PC will not do.
+ */
+async function unlockWithHello() {
+  const btn = $('#lock-hello');
+  btn.disabled = true;
+  showLockMessage('Waiting for Windows Hello…', true);
+  try {
+    const r = await api.hello.unlock();
+    if (r.ok) { showLockMessage(''); await hideLockScreenAndStart(); return; }
+    if (!r.retryable) setHelloOffer(false);
+    // Cancelling is a decision, not an error — say nothing and let them type.
+    showLockMessage(r.message || (r.state === 'Canceled' ? '' : 'Windows Hello did not unlock. Enter your PIN.'));
+  } catch (err) {
+    setHelloOffer(false);
+    showLockMessage('Windows Hello is not working. Enter your PIN.');
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    $('#lock-pin').focus();
+  }
 }
 
 async function submitSetup(e) {
@@ -1816,6 +1863,7 @@ function wireLockScreen() {
   $('#lock-unlock').addEventListener('submit', submitUnlock);
   $('#lock-setup').addEventListener('submit', submitSetup);
   $('#setup-skip').addEventListener('click', skipSetup);
+  $('#lock-hello').addEventListener('click', unlockWithHello);
 
   for (const evt of ['pointerdown', 'keydown', 'wheel']) {
     window.addEventListener(evt, () => { if (!lockUi.screen.hidden) return; noteActivity(); }, { passive: true });
@@ -1829,6 +1877,11 @@ function wireLockScreen() {
       closeAllModals();
       showLockScreen('unlock');
       showLockMessage('Locked. Enter your PIN to carry on.', true);
+      // Re-asked rather than remembered: a sensor can be unplugged, or policy
+      // applied, between launch and this relock.
+      api.pin.status()
+        .then((s) => setHelloOffer(s.hello && s.hello.offer))
+        .catch(() => setHelloOffer(false));
     } else {
       hideLockScreenAndStart().catch((e) => console.error(e));
     }
@@ -1861,7 +1914,11 @@ async function init() {
     return;
   }
 
-  if (status.isSet && status.locked) { showLockScreen('unlock'); return; }
+  if (status.isSet && status.locked) {
+    showLockScreen('unlock');
+    setHelloOffer(status.hello && status.hello.offer);
+    return;
+  }
   if (!status.isSet && !status.setupSeen) { showLockScreen('setup'); return; }
   await hideLockScreenAndStart();
 }
@@ -1968,6 +2025,88 @@ async function openOptionsModal() {
 // Options → Security (the PIN)
 // ---------------------------------------------------------------------------
 
+/**
+ * Windows Hello, inside the Security section and only ever under a PIN that
+ * is already set — which is why it is appended in the status.isSet branch
+ * below and nowhere else.
+ *
+ * The copy here is deliberate about what Hello is and is not. It is a faster
+ * way through the same lock, over data that Windows already protects at rest
+ * with your account. It is not encryption and it is not a stronger boundary,
+ * and telling someone otherwise would be selling them a lock that does less
+ * than they think.
+ */
+function helloRow(status, redraw) {
+  const hello = status.hello || {};
+
+  if (!hello.available && !hello.enabled) {
+    // Nothing to offer and nothing turned on: say why, once, and stop.
+    return h('p', { class: 'hint' },
+      hello.message || 'Windows Hello is not available on this PC.');
+  }
+
+  if (hello.enabled) {
+    return h('div', {}, [
+      h('p', { class: 'hint' }, hello.available
+        ? 'Windows Hello is on. The lock screen offers it first, and your PIN still works if it ever does not.'
+        : `Windows Hello is on but not working right now — ${hello.message || 'this PC cannot use it.'} The lock screen falls back to your PIN.`),
+      h('button', {
+        class: 'btn btn-block', type: 'button',
+        onclick: () => {
+          api.hello.disable()
+            .then(redraw)
+            .catch((e) => showError(e, 'Could not turn Windows Hello off.'));
+        },
+      }, 'Stop using Windows Hello'),
+    ]);
+  }
+
+  return h('div', {}, [
+    h('p', { class: 'hint' }, 'Unlock with your fingerprint, face or Windows Hello PIN instead of typing this app’s PIN. Your PIN stays set either way — it is what you fall back to if Hello ever stops working, so this is about typing less, not about stronger protection.'),
+    h('button', {
+      class: 'btn btn-block', type: 'button',
+      onclick: () => openEnableHelloModal(redraw),
+    }, 'Use Windows Hello…'),
+  ]);
+}
+
+/**
+ * Turning Hello on asks for the current PIN and then runs a live Hello check.
+ * Both on purpose: the PIN proves the app is yours, and the live check proves
+ * this machine will actually do it — enabling it on a PC where it silently
+ * fails would mean finding out at the next lock screen.
+ */
+function openEnableHelloModal(redraw) {
+  const pin = h('input', { type: 'password', inputmode: 'numeric', autocomplete: 'off', spellcheck: 'false', maxlength: '12' });
+  const msg = h('p', { class: 'lock-msg' });
+  const go = h('button', { class: 'btn btn-primary', type: 'button' }, 'Turn it on');
+  const m = openModal({
+    title: 'Use Windows Hello',
+    body: h('div', {}, [
+      h('p', { class: 'hint' }, 'Enter this app’s PIN, then confirm with Windows Hello. Your PIN is not replaced — it stays as the way in if Hello is ever unavailable.'),
+      h('div', { class: 'field' }, [h('label', {}, 'Current PIN'), pin]),
+      msg,
+    ]),
+    footer: [h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => m.close() }, 'Cancel'), go],
+  });
+  async function attempt() {
+    go.disabled = true; msg.textContent = 'Waiting for Windows Hello…';
+    try {
+      const r = await api.hello.enable({ currentPin: pin.value });
+      if (!r.ok) { msg.textContent = r.message || 'Windows Hello did not confirm it was you.'; return; }
+      m.close();
+      showToast('Windows Hello is on. Your PIN still works.', 'success');
+      redraw();
+    } catch (e) {
+      msg.textContent = e.message;
+      pin.value = ''; pin.focus();
+    } finally { go.disabled = false; }
+  }
+  go.addEventListener('click', attempt);
+  pin.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); attempt(); } });
+  setTimeout(() => pin.focus(), 0);
+}
+
 function securitySection(settings) {
   const body = h('div', { class: 'options-section' }, [
     h('h3', { class: 'options-section-title' }, 'Security'),
@@ -2005,6 +2144,7 @@ async function renderSecuritySection(container, settings) {
       h('button', { class: 'btn', type: 'button', onclick: () => openChangePinModal(redraw) }, 'Change PIN…'),
       h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => { api.pin.lock().catch((e) => showError(e)); } }, 'Lock now'),
     ]));
+    container.appendChild(helloRow(status, redraw));
     container.appendChild(h('button', { class: 'btn btn-danger btn-block', type: 'button', onclick: () => openRemovePinModal(redraw) }, 'Turn the PIN off…'));
   } else {
     container.appendChild(h('p', { class: 'hint' }, 'No PIN is set — the app opens straight into your profiles.'));

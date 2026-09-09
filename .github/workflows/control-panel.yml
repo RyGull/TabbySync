@@ -67,9 +67,54 @@ jobs:
           node --check preload.cjs
           node --check renderer/app.js
 
+  # The Windows Hello addon (native/hello/) is the one thing in this repository
+  # that cannot be compiled on the Linux runner the rest of the suite uses, and
+  # build-windows below only runs on a tag or a manual dispatch — so without
+  # this job a C++ mistake would sit undiscovered until release day. This is
+  # the compile alone: no Electron download, no installer, a couple of minutes.
+  #
+  # Node-API means the resulting .node is ABI-stable, so what compiles here is
+  # what ships; this is not a different build from the release one.
+  native-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: control-panel
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build the Windows Hello addon
+        run: npm run build:native
+
+      # Compiling is not the same as loading. This proves the module
+      # initialises and exports the shape src/core/hello.js expects, and that
+      # checkAvailability() answers rather than throwing — on a runner with no
+      # Hello hardware, "DeviceNotPresent" is the correct answer and a
+      # perfectly good smoke test.
+      - name: Load it and ask what it can do
+        shell: bash
+        run: |
+          node -e "
+            const addon = require('./native/hello/build/Release/tabbysync_hello.node');
+            if (addon.supported !== true) throw new Error('the Windows build reports supported:false');
+            for (const fn of ['checkAvailability', 'requestVerification']) {
+              if (typeof addon[fn] !== 'function') throw new Error('missing export: ' + fn);
+            }
+            const state = addon.checkAvailability();
+            console.log('checkAvailability() ->', state);
+            if (typeof state !== 'string') throw new Error('checkAvailability did not return a string');
+          "
+
   build-windows:
     if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/control-panel-v')
-    needs: test
+    needs: [test, native-windows]
     runs-on: windows-latest
     defaults:
       run:

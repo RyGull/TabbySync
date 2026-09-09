@@ -10,14 +10,15 @@
   "license": "SEE LICENSE IN ../LICENSE",
   "scripts": {
     "vendor": "node scripts/vendor.mjs",
+    "build:native": "node-gyp rebuild --directory=native/hello",
     "icon": "node scripts/make-icon.mjs",
-    "prestart": "npm run vendor && npm run icon",
+    "prestart": "npm run vendor && npm run icon && npm run build:native",
     "start": "electron .",
     "pretest": "npm run vendor",
     "test": "node --test test/*.test.js",
-    "predist:win": "npm run vendor && npm run icon",
+    "predist:win": "npm run vendor && npm run icon && npm run build:native",
     "dist:win": "electron-builder --win --publish never",
-    "predist:win:dir": "npm run vendor && npm run icon",
+    "predist:win:dir": "npm run vendor && npm run icon && npm run build:native",
     "dist:win:dir": "electron-builder --win --dir --publish never"
   },
   "dependencies": {
@@ -25,6 +26,8 @@
   },
   "devDependencies": {
     "electron": "^44.0.0",
+    "node-addon-api": "^8.0.0",
+    "node-gyp": "^11.0.0",
     "electron-builder": "^25.0.0",
     "png-to-ico": "^3.0.1"
   },
@@ -42,8 +45,12 @@
       "src/**/*",
       "renderer/**/*",
       "vendor/**/*",
+      "native/hello/build/Release/*.node",
       "build/icon.ico",
       "!**/*.test.js"
+    ],
+    "asarUnpack": [
+      "native/hello/build/Release/*.node"
     ],
     "win": {
       "target": [

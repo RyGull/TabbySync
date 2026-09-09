@@ -9,3 +9,9 @@
 
 # Regenerated from ../icons/icon-*.png by scripts/make-icon.mjs.
 /build/icon.ico
+
+# node-gyp's output for the Windows Hello addon (native/hello/). Rebuilt by
+# `npm run build:native`, which prestart/predist:win already run. A compiled
+# binary in the repository would be a binary nobody can review, tied to
+# whichever machine happened to produce it.
+/native/hello/build/

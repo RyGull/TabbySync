@@ -666,6 +666,12 @@ button, input, select { font: inherit; color: inherit; }
   color: var(--text-dim);
 }
 .lock-lede { margin: 0 0 4px; font-size: 13px; color: var(--text-dim); }
+/* Separates the Hello button from the PIN field beneath it, so the two read
+   as alternatives rather than as two steps of one thing. */
+.lock-or {
+  margin: 2px 0; text-align: center; font-size: 12px; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: .08em;
+}
 
 /* Wide letter-spacing and a centred, oversized field: a PIN box should not
    look like an ordinary text input you might type a URL into. */

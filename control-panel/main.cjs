@@ -83,6 +83,11 @@ const lockState = {
 };
 
 let pinStore = null;
+// The Windows Hello gate. A module-level handle for the same reason pinStore
+// is one: the lock screen's channels answer while locked, before most of the
+// app exists. It is created unconditionally and reports "unavailable" off
+// Windows or when the native addon was never built — see src/core/hello.js.
+let helloGate = null;
 
 /** Tells the renderer to draw (or drop) the lock screen. */
 function announceLockState() {
@@ -549,6 +554,7 @@ async function main() {
   });
   const settingsStore = core.createSettingsStore(userDataDir);
   pinStore = core.createPinStore(userDataDir);
+  helloGate = core.createHelloGate();
 
   // Decided before a window exists, so the very first frame the renderer
   // paints is already the right one — locked, or the app.
@@ -1189,7 +1195,7 @@ async function loadCore() {
   const [
     profileStoreMod, sessionsMod, providerShimMod, bmOpsMod, tabOpsMod,
     remoteBookmarksMod, remoteTabsMod, cfgMapMod, appSettingsMod,
-    pinLockMod, backupMod,
+    pinLockMod, backupMod, helloMod,
   ] = await Promise.all([
     import('./src/core/profile-store.js'),
     import('./src/core/sessions.js'),
@@ -1202,6 +1208,7 @@ async function loadCore() {
     import('./src/core/app-settings.js'),
     import('./src/core/pin-lock.js'),
     import('./src/core/backup.js'),
+    import('./src/core/hello.js'),
   ]);
   const bookmarksIoMod = await import('./vendor/bookmarks-lib/bookmarks-io.js');
   const treeMod = await import('./vendor/bookmarks-lib/tree.js');
@@ -1210,6 +1217,7 @@ async function loadCore() {
     createSettingsStore: appSettingsMod.createSettingsStore,
     createPinStore: pinLockMod.createPinStore,
     pinProblem: pinLockMod.pinProblem,
+    createHelloGate: helloMod.createHelloGate,
     buildBackup: backupMod.buildBackup,
     serializeBackup: backupMod.serializeBackup,
     parseBackup: backupMod.parseBackup,
@@ -1245,7 +1253,13 @@ function registerIpc(core, profileStore, sessions, settingsStore, appMeta) {
   // here echoes the PIN, its hash, or its salt back to the renderer.
   handle('pin:status', async () => {
     const status = await refreshLockRequirement();
-    const { pinIdleMinutes, pinSetupSeen } = await settingsStore.get();
+    const { pinIdleMinutes, pinSetupSeen, helloEnabled } = await settingsStore.get();
+    // Whether the lock screen should offer Hello is decided HERE, not in the
+    // renderer, and it is an AND of three things: the user turned it on, a PIN
+    // exists behind it, and this machine can actually do it right now. A
+    // fingerprint reader unplugged since the setting was saved drops the offer
+    // without any setting changing.
+    const hello = await helloGate.status();
     return {
       isSet: status.isSet,
       unrecoverable: status.unrecoverable,
@@ -1254,6 +1268,13 @@ function registerIpc(core, profileStore, sessions, settingsStore, appMeta) {
       idleMinutes: pinIdleMinutes,
       setupSeen: pinSetupSeen,
       securityFile: status.filePath,
+      hello: {
+        enabled: !!helloEnabled,
+        available: hello.usable,
+        offer: !!helloEnabled && hello.usable && status.isSet,
+        state: hello.state,
+        message: hello.message,
+      },
     };
   }, { allowWhileLocked: true });
 
@@ -1277,6 +1298,53 @@ function registerIpc(core, profileStore, sessions, settingsStore, appMeta) {
     return { ok, throttledForMs: await pinStore.throttleRemaining() };
   }, { allowWhileLocked: true });
 
+  // Unlocking with Hello. allowWhileLocked because it is an unlock path, and
+  // it is the ONLY Hello channel that is: everything else needs the app open.
+  //
+  // Three properties this must keep. It never bypasses the PIN requirement —
+  // if no PIN is set there is nothing to unlock and it refuses rather than
+  // opening an app that was never locked. Only verified === true reaches
+  // markUnlocked(). And it never throws at the lock screen, because the
+  // correct response to any Hello failure is the PIN box, which the renderer
+  // can only show if it gets an answer.
+  handle('hello:unlock', async () => {
+    const { helloEnabled } = await settingsStore.get();
+    const status = await refreshLockRequirement();
+    if (!helloEnabled || !status.isSet) {
+      return { ok: false, state: 'NotBuilt', message: 'Windows Hello is not set up for this app.' };
+    }
+    const handle_ = mainWindow && !mainWindow.isDestroyed() ? mainWindow.getNativeWindowHandle() : null;
+    const result = await helloGate.verify(handle_, 'Unlock TabbySync Control Panel');
+    if (result.verified) markUnlocked();
+    return { ok: result.verified, state: result.state, message: result.message, retryable: result.retryable };
+  }, { allowWhileLocked: true });
+
+  // Turning it on proves identity twice on purpose: the current PIN (you own
+  // this app) and a live Hello check (this machine will actually do it). The
+  // second is not ceremony — enabling Hello on a machine where it silently
+  // fails would mean discovering that at the next lock screen.
+  handle('hello:enable', async ({ currentPin }) => {
+    const ok = await pinStore.verify(currentPin);
+    if (!ok) throw new Error('That is not your current PIN.');
+    const allowed = await helloGate.canEnable({ pinIsSet: true });
+    if (!allowed.ok) throw new Error(allowed.reason);
+    const handle_ = mainWindow && !mainWindow.isDestroyed() ? mainWindow.getNativeWindowHandle() : null;
+    const proof = await helloGate.verify(handle_, 'Turn on Windows Hello for TabbySync Control Panel');
+    if (!proof.verified) {
+      return { ok: false, state: proof.state, message: proof.message || 'Windows Hello did not confirm it was you, so it has not been turned on.' };
+    }
+    await settingsStore.update({ helloEnabled: true });
+    markUnlocked();
+    return { ok: true, state: proof.state, message: '' };
+  });
+
+  // Turning it off needs no proof at all: it only ever removes a way in, and
+  // the PIN it falls back to is still there.
+  handle('hello:disable', async () => {
+    await settingsStore.update({ helloEnabled: false });
+    return { ok: true };
+  });
+
   // Answering the first-run prompt with "not now". Recorded so it is asked
   // once, not on every launch.
   handle('pin:skipSetup', async () => {
@@ -1295,6 +1363,11 @@ function registerIpc(core, profileStore, sessions, settingsStore, appMeta) {
 
   handle('pin:disable', async ({ currentPin }) => {
     await pinStore.clear(currentPin);
+    // Hello goes with it. It was only ever an alternative way through the PIN
+    // gate, and leaving it on with no PIN behind it would make a dead sensor
+    // into a locked-out user with nothing left to try — the exact thing
+    // src/core/hello.js exists to prevent.
+    await settingsStore.update({ helloEnabled: false });
     await refreshLockRequirement();
     return { ok: true };
   });

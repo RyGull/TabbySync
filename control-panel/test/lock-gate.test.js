@@ -23,12 +23,21 @@ const main = await readFile(path.join(CP_ROOT, 'main.cjs'), 'utf8');
  * The only channels allowed to answer while the app is locked. Between them
  * they can reveal exactly one thing: whether a PIN is set. None of them
  * touches a profile, a token, a bookmark or a saved tab.
+ *
+ * hello:unlock is the one addition, and it belongs here for the same reason
+ * pin:unlock does: it IS an unlock path, so refusing it while locked would
+ * mean it could never be used. It reveals no more than the PIN channels do —
+ * it answers "did Windows say this is you", and the decision to actually
+ * unlock is made in main.cjs from that answer, not by the renderer. The other
+ * two Hello channels (enable, disable) are deliberately NOT here: both need
+ * an app that is already open.
  */
 const ALLOWED_WHILE_LOCKED = new Set([
   'pin:status',
   'pin:setup',
   'pin:unlock',
   'pin:skipSetup',
+  'hello:unlock',
 ]);
 
 /** Every handle('channel', ...) in main.cjs, with the source of that call. */
@@ -44,6 +53,25 @@ function handlerCalls(src) {
   }
   return out;
 }
+
+test('Windows Hello can never be the only thing standing between you and the app', () => {
+  // The rule from src/core/hello.js, enforced where it actually matters. If
+  // hello:unlock stopped checking that a PIN exists, a machine where Hello
+  // was enabled and the PIN later cleared would unlock on a fingerprint with
+  // no fallback — and a dead sensor would then be a locked-out user.
+  const call = handlerCalls(main).find((c) => c.channel === 'hello:unlock');
+  assert.ok(call, 'hello:unlock is gone; the lock screen button has nothing to call');
+  assert.match(call.body, /if \(!helloEnabled \|\| !status\.isSet\)/,
+    'hello:unlock no longer refuses when no PIN is set behind it');
+  assert.match(call.body, /if \(result\.verified\) markUnlocked\(\)/,
+    'hello:unlock unlocks on something other than a positive verification');
+
+  // And clearing the PIN has to clear Hello with it.
+  const disable = handlerCalls(main).find((c) => c.channel === 'pin:disable');
+  assert.ok(disable, 'pin:disable is gone');
+  assert.match(disable.body, /helloEnabled: false/,
+    'turning the PIN off leaves Windows Hello on, with no PIN behind it');
+});
 
 test('main.cjs registers handlers we can actually see', () => {
   const calls = handlerCalls(main);
