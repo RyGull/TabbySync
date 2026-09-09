@@ -216,8 +216,16 @@ test('the only hosts the extension can reach are the ones the policy names', () 
     'https://github.com',          // token-setup help link in Options
     'https://jsonbin.io',          // account help link in Options
     'https://docs.github.com',     // link to GitHub's privacy statement
+    'https://rygull.github.io',    // the published privacy policy, click-gated
     'http://www.w3.org',           // SVG xmlns, not a network fetch
   ];
+
+  // On rygull.github.io specifically: it is where the policy is published for
+  // people to read (website/config.php's PRIVACY_URL points at the same file),
+  // and it is only ever reached because someone clicked the link — nothing
+  // fetches it. It is listed rather than the tabbysync.com copy on purpose:
+  // the test below refuses the developer's own domain outright, and a claim
+  // that holds except for one link is not the claim being made.
   const placeholders = /YOURDOMAIN|YOUR-DOMAIN|your-server\.example|example\.com|a\.example|b\.example|raw\.example/;
 
   for (const file of [...jsFiles, ...htmlFiles]) {

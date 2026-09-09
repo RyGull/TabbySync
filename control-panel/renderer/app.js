@@ -72,7 +72,7 @@ function showError(err, fallback) {
 
 let modalStack = [];
 
-/** onClose (optional): called exactly once, however the modal ends up closing — the ✕, the backdrop, Escape, or m.close() itself — not just one of those paths. Currently only the About modal uses it, to unsubscribe its onUpdateStatus listener. */
+/** onClose (optional): called exactly once, however the modal ends up closing — the ✕, the backdrop, Escape, or m.close() itself — not just one of those paths. So it means "this modal is gone", NOT "the user cancelled": a caller that closes the modal itself on a success path gets this call too, and must not treat it as a dismissal (see askBackupPassphrase, where doing exactly that silently swallowed every encrypted import). Used by the About modal to unsubscribe its onUpdateStatus listener, and by askBackupPassphrase as its one cancelled path. */
 function openModal({ title, body, footer, wide, onClose }) {
   const overlay = h('div', { class: 'modal-root' });
   const modal = h('div', { class: 'modal' }, [
@@ -2178,9 +2178,22 @@ async function openImportModal() {
   showImportChoices(picked);
 }
 
-/** A sealed backup needs its passphrase before we can even say what is in it. */
+/** A sealed backup needs its passphrase before we can even say what is in it.
+ *
+ * Resolves the read result on success, or null if the dialog was dismissed.
+ *
+ * The settle-once guard is load-bearing, not defensive padding. openModal's
+ * onClose fires however the modal ends up closing -- including the m.close()
+ * on the success path below, which is not a dismissal. Resolving straight
+ * from onClose therefore resolved null over the result attempt() had just
+ * obtained, and openImportModal's `if (!opened) return` turned that into
+ * "entered the right passphrase, dialog shut, nothing imported". Only
+ * encrypted backups went through here, which is why plaintext ones always
+ * worked. */
 function askBackupPassphrase(filePath) {
   return new Promise((resolve) => {
+    let settled = false;
+    const settle = (value) => { if (settled) return; settled = true; resolve(value); };
     const pass = h('input', { type: 'password', autocomplete: 'off', spellcheck: 'false' });
     const msg = h('p', { class: 'lock-msg' });
     const go = h('button', { class: 'btn btn-primary', type: 'button' }, 'Open');
@@ -2191,15 +2204,19 @@ function askBackupPassphrase(filePath) {
         h('div', { class: 'field' }, [h('label', {}, 'Passphrase'), pass]),
         msg,
       ]),
-      footer: [h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => { m.close(); resolve(null); } }, 'Cancel'), go],
-      onClose: () => resolve(null),
+      footer: [h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => m.close() }, 'Cancel'), go],
+      // Every way of dismissing this -- Cancel, the X, Escape, the backdrop --
+      // arrives here, so this is the single "no passphrase given" path.
+      onClose: () => settle(null),
     });
     async function attempt() {
       go.disabled = true; msg.textContent = '';
       try {
         const r = await api.backup.read({ filePath, passphrase: pass.value });
+        // Settle BEFORE closing: closing calls onClose above, and whichever
+        // of the two runs first is the one that wins.
+        settle({ ...r, passphrase: pass.value });
         m.close();
-        resolve({ ...r, passphrase: pass.value });
       } catch (e) {
         msg.textContent = e.message;
         pass.value = ''; pass.focus();
@@ -2275,6 +2292,28 @@ async function runImport(picked, mode) {
   }
 }
 
+/** The published copy of the BROWSER EXTENSION's privacy policy — a different
+ *  document from this app's own, which is built into openPrivacyModal below.
+ *
+ *  GitHub Pages, not tabbysync.com, and that is the point rather than a
+ *  preference: "TabbySync contacts no server operated by its developer" is
+ *  the strongest claim either policy makes, and test/privacy-policy.test.js
+ *  enforces it by refusing any reference to that domain in shipped code. This
+ *  is only ever opened in the user's own browser when they click it, but a
+ *  claim with a "well, except this one" attached is not worth making. */
+const EXTENSION_PRIVACY_URL = 'https://rygull.github.io/TabbySync/privacy.html';
+
+/** The contact address, assembled at runtime rather than written out.
+ *
+ *  Same reasoning as the extension's shared/contact.js: this ships as readable
+ *  JS in a public repository, and address harvesting is overwhelmingly regex
+ *  scrapers looking for name@domain in source. A split string defeats those
+ *  and nothing else — anyone reading this file has it in seconds. The address
+ *  is public and disposable; point it at an alias you can rotate. */
+function contactAddress() {
+  return 'contact' + String.fromCharCode(64) + 'tabbysync.com';
+}
+
 /** An inline text link that opens externally — this app never uses a raw <a href> (see the ↗ open-in-browser buttons), so this is a button styled to read like one. */
 function extLink(text, url) {
   return h('button', { class: 'link-btn', type: 'button', onclick: () => api.app.openExternal(url) }, text);
@@ -2288,7 +2327,7 @@ function openPrivacyModal() {
       'This covers the ', h('strong', {}, 'Control Panel desktop app'), ' specifically. If you also use the ',
       'TabbySync browser extension, it has its own, similar-but-not-identical policy — for one, this app can hold ',
       'several sync profiles side by side, where the extension has just one active provider at a time. See ',
-      extLink('tabbysync.com/privacy.html', 'https://tabbysync.com/privacy.html'), ' for the extension.',
+      extLink('the extension\u2019s privacy policy', EXTENSION_PRIVACY_URL), ' for the extension.',
     ]),
 
     h('p', {}, [
@@ -2375,7 +2414,7 @@ function openPrivacyModal() {
     h('p', {}, 'TabbySync Control Panel is developed and published by Ryan Gulliver, an individual developer, who is responsible for this policy. There is no company, no team, and no third party with access to anything it stores.'),
 
     h('h4', {}, 'Contact'),
-    h('p', {}, ['Questions about this policy or your data go to ', extLink('contact@tabbysync.com', 'mailto:contact@tabbysync.com'), '.']),
+    h('p', {}, ['Questions about this policy or your data go to ', extLink(contactAddress(), `mailto:${contactAddress()}`), '.']),
   ]);
 
   const m = openModal({
