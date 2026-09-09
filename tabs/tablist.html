@@ -49,6 +49,11 @@
           <button class="menu-item" id="export" type="button">Save a backup…</button>
           <button class="menu-item" id="import" type="button">Restore from a backup…</button>
           <button class="menu-item" id="options-link" type="button">Settings</button>
+          <!-- Windows only, and unhidden by tablist.js rather than rendered
+               here: this page is where managing a lot of saved lists starts to
+               hurt, which makes it the one place the desktop app is worth
+               mentioning unprompted. -->
+          <button class="menu-item" id="desktop-link" type="button" hidden></button>
           <hr>
           <button class="menu-item danger" id="delete-all" type="button">Delete all my lists…</button>
         </div>
@@ -105,6 +110,7 @@
   </div>
 
   <script src="../shared/config.js"></script>
+  <script src="../shared/desktop-app.js"></script>
   <script src="../shared/providers.js"></script>
   <script src="storage.js"></script>
   <script src="tablist.js"></script>

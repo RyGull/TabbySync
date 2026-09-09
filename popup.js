@@ -211,9 +211,32 @@ var PAYPAL_URL = "https://www.paypal.com/ncp/payment/B25W7V9VRGQG4";
 function showView(view) {
   $("mainView").hidden = view !== "main";
   $("donateView").hidden = view !== "donate";
+  $("deskView").hidden = view !== "desktop";
 }
 $("donateOpen").addEventListener("click", function () { showView("donate"); });
 $("donateBack").addEventListener("click", function () { showView("main"); });
+
+// ---- the Windows desktop app ------------------------------------------------
+//
+// Shown only on Windows, and only as one line in the main view: the pitch
+// itself lives in a slide-over, the same way Donate does, so mentioning a
+// companion app costs the popup no room it was using for sync status.
+//
+// The copy and the URL come from shared/desktop-app.js — three places in this
+// extension link to the app, and none of them owns the wording.
+(function () {
+  var app = self.TabbySyncDesktopApp;
+  if (!app || !app.isWindows()) return; // not Windows: never rendered at all
+
+  $("deskTitle").textContent = "🖥️ " + app.NAME;
+  $("deskPitch").textContent = app.PITCH;
+  $("deskWhich").textContent = app.WHICH_RELEASE;
+  $("deskOpen").hidden = false;
+
+  $("deskOpen").addEventListener("click", function () { showView("desktop"); });
+  $("deskBack").addEventListener("click", function () { showView("main"); });
+  $("deskBtn").addEventListener("click", function () { app.open(); });
+})();
 $("donateBtn").addEventListener("click", function () {
   try { chrome.tabs.create({ url: PAYPAL_URL }); }
   catch (e) { window.open(PAYPAL_URL, "_blank"); }

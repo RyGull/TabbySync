@@ -1057,4 +1057,23 @@ $('danger-wipe-all').addEventListener('click', async () => {
   setTimeout(() => location.reload(), 1200);
 });
 
+// ---- the Windows desktop app -------------------------------------------------
+//
+// An aside at the bottom of the page, on Windows only. It sits after the setup
+// steps and the danger card because it is not a step: someone here for the
+// first time is configuring sync, and a second thing to download in the middle
+// of that is an interruption, not a feature.
+//
+// Copy and URL come from shared/desktop-app.js, which the popup and the
+// saved-tabs page also read — one pitch, three places, no drift.
+(function () {
+  const app = self.TabbySyncDesktopApp;
+  if (!app || !app.isWindows()) return;
+  document.getElementById('desktopName').textContent = app.NAME;
+  document.getElementById('desktopPitch').textContent = app.PITCH;
+  document.getElementById('desktopWhich').textContent = app.WHICH_RELEASE;
+  document.getElementById('desktopCard').hidden = false;
+  document.getElementById('desktopBtn').addEventListener('click', () => app.open());
+})();
+
 load();

@@ -157,6 +157,15 @@
     .donate-bar + .donate-bar { border-left:1px solid var(--line); }
     .donate-bar:hover { background:var(--panel); }
     .donate-bar .chev { color:var(--muted); font-size:15px; }
+    /* The Windows app entry point. A full-width row of its own rather than a
+       third .donate-bar: at 320px, three bars side by side leaves each one too
+       narrow to read. Only ever shown on Windows — see shared/desktop-app.js. */
+    .desk-bar { width:100%; border:0; border-top:1px solid var(--line); border-radius:0;
+      background:transparent; color:var(--text); display:flex; align-items:center;
+      justify-content:center; gap:6px; padding:11px 10px; font-size:12.5px;
+      font-weight:700; cursor:pointer; }
+    .desk-bar:hover { background:var(--panel); }
+    .desk-bar .chev { color:var(--muted); font-size:15px; }
 
     /* dedicated donation screen (swaps in for the whole popup, so it never scrolls) */
     .dv-head { display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line); }
@@ -263,6 +272,10 @@
     </button>
   </div>
 
+  <button class="desk-bar" id="deskOpen" type="button" hidden>
+    <span>🖥️ Windows desktop app</span><span class="chev">›</span>
+  </button>
+
   <div class="priv-foot">
     <a id="privacyLink" class="priv-link">🔒 Privacy Policy</a>
     <span class="priv-right">
@@ -271,6 +284,18 @@
     </span>
   </div>
  </div><!-- /mainView -->
+
+ <div id="deskView" hidden>
+   <div class="dv-head">
+     <button class="dv-back" id="deskBack" aria-label="Back to TabbySync">←</button>
+     <span class="dv-title" id="deskTitle"></span>
+   </div>
+   <div class="dv-body">
+     <p class="dv-msg" id="deskPitch"></p>
+     <button class="donate-btn" id="deskBtn">Get it from GitHub Releases</button>
+     <p class="dv-any" id="deskWhich"></p>
+   </div>
+ </div>
 
  <div id="donateView" hidden>
    <div class="dv-head">
@@ -288,6 +313,7 @@
  </div>
 
   <script src="shared/contact.js"></script>
+  <script src="shared/desktop-app.js"></script>
   <script src="shared/config.js"></script>
   <script src="shared/providers.js"></script>
   <script src="popup.js"></script>

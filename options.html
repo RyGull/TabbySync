@@ -460,11 +460,23 @@
     </div>
   </dialog>
 
+    <!-- Windows only; options.js unhides it. Placed after the setup steps and
+         the danger card on purpose — it is an aside, not a step, and nobody
+         setting TabbySync up for the first time needs a second download in
+         front of them. -->
+    <section class="card desktop-app" id="desktopCard" hidden>
+      <h2><span class="ic">🖥️</span> <span id="desktopName"></span></h2>
+      <p class="say" id="desktopPitch"></p>
+      <p><button class="btn" id="desktopBtn" type="button">Get it from GitHub Releases</button></p>
+      <p class="hint" id="desktopWhich"></p>
+    </section>
+
     <p class="footnote">TabbySync collects no analytics and contacts no server of ours, ever.
       <a href="privacy.html" target="_blank" rel="noopener">Privacy policy</a></p>
   </div>
 
   <script src="shared/config.js"></script>
+  <script src="shared/desktop-app.js"></script>
   <script src="shared/providers.js"></script>
   <script src="shared/server-files.js"></script>
   <script src="tabs/storage.js"></script>
