@@ -1714,6 +1714,8 @@ const lockUi = {
   msg: null,
   started: false,        // has the app proper been booted once this document?
   helloOffered: false,   // is the Windows Hello button currently on screen?
+  helloAutoTried: false, // has Hello fired by itself for THIS lock, already?
+  helloBusy: false,      // a Hello prompt is on screen right now
 };
 
 function showLockMessage(text, ok) {
@@ -1738,6 +1740,8 @@ function setHelloOffer(offer) {
 function showLockScreen(mode) {
   $('#app').hidden = true;
   lockUi.screen.hidden = false;
+  // A new lock is a new chance to offer Hello without being asked.
+  lockUi.helloAutoTried = false;
   $('#lock-unlock').hidden = mode !== 'unlock';
   $('#lock-setup').hidden = mode !== 'setup';
   // Never on the first-run setup screen: there is no PIN yet, so there is
@@ -1799,6 +1803,8 @@ async function submitUnlock(e) {
  * stops offering something this PC will not do.
  */
 async function unlockWithHello() {
+  if (lockUi.helloBusy) return;
+  lockUi.helloBusy = true;
   const btn = $('#lock-hello');
   btn.disabled = true;
   showLockMessage('Waiting for Windows Hello…', true);
@@ -1813,9 +1819,42 @@ async function unlockWithHello() {
     showLockMessage('Windows Hello is not working. Enter your PIN.');
     console.error(err);
   } finally {
+    lockUi.helloBusy = false;
     btn.disabled = false;
+    // The PIN box gets the caret whatever happened, so a failed or dismissed
+    // prompt leaves you able to just type.
     $('#lock-pin').focus();
   }
+}
+
+/**
+ * Fires Hello without being asked — but only when the person is plausibly
+ * trying to get IN, which is not the same moment as the app locking.
+ *
+ * The rules, and each exists because the obvious version is wrong:
+ *
+ *   * only while the lock screen is up and Hello is actually on offer;
+ *   * only once per lock. A prompt that reappears the instant you dismiss it
+ *     is not a convenience, it is a trap with no way to reach the PIN box;
+ *   * only when this window has focus. The app can start minimized to the
+ *     tray or relock while you are in another program, and a Hello dialog
+ *     appearing out of nowhere over somebody else's work is worse than no
+ *     Hello at all;
+ *   * never twice at once.
+ *
+ * Note what is NOT here: any call from the relock path. Clicking "Lock now"
+ * and being asked to unlock half a second later would be absurd, and it needs
+ * no special case to avoid — locking deliberately involves no change of
+ * focus, so nothing below fires. Walk away, come back, and the focus handler
+ * picks it up. Launching straight into a locked app is the one case that
+ * fires immediately, which is the case that matters most.
+ */
+function maybeAutoUnlockWithHello() {
+  if (lockUi.screen.hidden || !lockUi.helloOffered) return;
+  if (lockUi.helloAutoTried || lockUi.helloBusy) return;
+  if (!document.hasFocus()) return;
+  lockUi.helloAutoTried = true;
+  unlockWithHello();
 }
 
 async function submitSetup(e) {
@@ -1864,6 +1903,11 @@ function wireLockScreen() {
   $('#lock-setup').addEventListener('submit', submitSetup);
   $('#setup-skip').addEventListener('click', skipSetup);
   $('#lock-hello').addEventListener('click', unlockWithHello);
+
+  // Coming back to a locked window is the other moment someone is trying to
+  // get in — returning from another program, or opening it from the tray.
+  // Launch is handled in init(); this covers every arrival after that.
+  window.addEventListener('focus', () => { maybeAutoUnlockWithHello(); });
 
   for (const evt of ['pointerdown', 'keydown', 'wheel']) {
     window.addEventListener(evt, () => { if (!lockUi.screen.hidden) return; noteActivity(); }, { passive: true });
@@ -1917,6 +1961,9 @@ async function init() {
   if (status.isSet && status.locked) {
     showLockScreen('unlock');
     setHelloOffer(status.hello && status.hello.offer);
+    // Opening the app is unambiguous: you want in. Ask Windows straight away
+    // rather than making the first thing you do a click.
+    maybeAutoUnlockWithHello();
     return;
   }
   if (!status.isSet && !status.setupSeen) { showLockScreen('setup'); return; }
