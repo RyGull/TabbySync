@@ -6,6 +6,13 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.6.0 — 2026-09-10
+
+- **Guided setup's "You're all set" screen throws confetti.** A brief burst
+  across the whole page when the last step finishes, in the same colors the
+  rest of the page already uses. Plain CSS and DOM, cleared out afterward —
+  nothing lingers, nothing pulled in from outside.
+
 ## 1.5.3 — 2026-09-10
 
 - **The guided setup hint arrows are bigger and bolder** — easier to notice

@@ -1226,6 +1226,36 @@ function initWizard() {
     });
   }
 
+  /** Fills #confettiBurst with a few dozen falling pieces, each with its own
+   *  randomized position/color/drift/spin/timing, then empties it back out
+   *  once they've all finished falling — nothing sticks around in the DOM. */
+  function launchConfetti() {
+    const host = $('confettiBurst');
+    const colors = ['var(--bm)', 'var(--tab)', 'var(--gold)', 'var(--host)', 'var(--ok)'];
+    const frag = document.createDocumentFragment();
+    const count = 110;
+    for (let i = 0; i < count; i++) {
+      const el = document.createElement('span');
+      el.className = 'confetti-piece';
+      const w = 6 + Math.random() * 7;
+      el.style.left = Math.random() * 100 + '%';
+      el.style.width = w + 'px';
+      el.style.height = (w * (0.4 + Math.random() * 0.7)) + 'px';
+      el.style.background = colors[i % colors.length];
+      el.style.setProperty('--dx', Math.round(Math.random() * 160 - 80) + 'px');
+      el.style.setProperty('--rot', Math.round(Math.random() * 720 - 360) + 'deg');
+      const duration = 2.4 + Math.random() * 1.8;
+      el.style.animationDuration = duration + 's';
+      el.style.animationDelay = (Math.random() * 0.6) + 's';
+      frag.appendChild(el);
+    }
+    host.appendChild(frag);
+    // Longest possible piece is duration(4.2s) + delay(0.6s); clear well
+    // after that rather than timing it exactly, so a slow tab never leaves
+    // a piece frozen mid-fall.
+    setTimeout(() => { host.textContent = ''; }, 5500);
+  }
+
   function render() {
     const steps = visibleSteps();
     if (stepIndex >= steps.length) stepIndex = steps.length - 1;
@@ -1244,6 +1274,7 @@ function initWizard() {
     $('wizardDoneCard').hidden = false;
     $('wizardNav').hidden = true;
     window.scrollTo({ top: 0, behavior: 'instant' });
+    launchConfetti();
   }
 
   async function goNext() {

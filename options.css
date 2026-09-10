@@ -323,4 +323,19 @@ body.wizard-mode { padding-bottom:64px; }
   stroke:var(--err); stroke-width:7; stroke-linecap:round; stroke-linejoin:round;
 }
 .card.wizard-done h2 .ic { background:var(--gold-glow); }
+
+/* The wizard's Finish moment: a brief confetti burst across the whole page.
+   options.js's launchConfetti() fills #confettiBurst with pieces (each
+   carrying its own --dx/--rot/left/background/animation-timing via inline
+   style for variety) and empties it again once the animation is done — this
+   file only defines the fall itself and the container that hosts it. */
+.confettiBurst { position:fixed; inset:0; z-index:60; pointer-events:none; overflow:hidden; }
+.confetti-piece {
+  position:absolute; top:-16px; border-radius:2px; opacity:0;
+  animation-name:confetti-fall; animation-timing-function:ease-in; animation-fill-mode:forwards;
+}
+@keyframes confetti-fall {
+  0% { transform:translate(0, 0) rotate(0deg); opacity:1; }
+  100% { transform:translate(var(--dx), 105vh) rotate(var(--rot)); opacity:.85; }
+}
 .callout.warn b, .callout.warn i { color:var(--err); }
