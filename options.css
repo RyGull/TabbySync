@@ -73,7 +73,7 @@ a:hover { text-decoration:underline; }
 /* The backup card has no aside — its text and full-width inputs fill the
    card on their own, so the 62ch cap every other card's .say uses would
    just leave the same empty strip this replaced. */
-.settings-io p.say { max-width:none; }
+.card.settings-io p.say { max-width:none; }
 
 /* desktop-app is short on text next to a wide card, so an actual screenshot
    of the app fills the space beside it instead of leaving it bare. */
