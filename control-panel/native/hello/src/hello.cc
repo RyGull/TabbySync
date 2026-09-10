@@ -42,37 +42,42 @@
 #include <cstring>   // std::memcpy, for reading the HWND out of the Buffer
 #include <string>
 
-using winrt::Windows::Security::Credentials::UI::UserConsentVerifier;
-using winrt::Windows::Security::Credentials::UI::UserConsentVerifierAvailability;
-using winrt::Windows::Security::Credentials::UI::UserConsentVerificationResult;
-using winrt::Windows::Foundation::IAsyncOperation;
-using winrt::Windows::Foundation::AsyncStatus;
+// Namespace ALIASES, not using-declarations, and that distinction is the whole
+// reason this compiles. UserConsentVerifierInterop.h is a classic COM header:
+// it pulls in the ABI projection (winrt/asyncinfo.h), which declares its own
+// ABI::Windows::Foundation::AsyncStatus. Pulling the C++/WinRT AsyncStatus into
+// the global namespace alongside it is ambiguous, and MSVC rejects it outright
+// with "C2874: using-declaration causes a multiple declaration". Aliasing the
+// namespaces instead introduces no names at global scope, so the two
+// projections coexist the way they were designed to.
+namespace creds = winrt::Windows::Security::Credentials::UI;
+namespace wfound = winrt::Windows::Foundation;
 
 namespace {
 
 // The names JavaScript sees. Strings rather than an enum because they cross an
 // IPC boundary and end up in a log line or an error message, where "2" tells
 // nobody anything. src/core/hello.js is the only place that interprets them.
-const char* AvailabilityName(UserConsentVerifierAvailability value) {
+const char* AvailabilityName(creds::UserConsentVerifierAvailability value) {
   switch (value) {
-    case UserConsentVerifierAvailability::Available:            return "Available";
-    case UserConsentVerifierAvailability::DeviceNotPresent:     return "DeviceNotPresent";
-    case UserConsentVerifierAvailability::NotConfiguredForUser: return "NotConfiguredForUser";
-    case UserConsentVerifierAvailability::DisabledByPolicy:     return "DisabledByPolicy";
-    case UserConsentVerifierAvailability::DeviceBusy:           return "DeviceBusy";
+    case creds::UserConsentVerifierAvailability::Available:            return "Available";
+    case creds::UserConsentVerifierAvailability::DeviceNotPresent:     return "DeviceNotPresent";
+    case creds::UserConsentVerifierAvailability::NotConfiguredForUser: return "NotConfiguredForUser";
+    case creds::UserConsentVerifierAvailability::DisabledByPolicy:     return "DisabledByPolicy";
+    case creds::UserConsentVerifierAvailability::DeviceBusy:           return "DeviceBusy";
     default:                                                    return "Unknown";
   }
 }
 
-const char* ResultName(UserConsentVerificationResult value) {
+const char* ResultName(creds::UserConsentVerificationResult value) {
   switch (value) {
-    case UserConsentVerificationResult::Verified:             return "Verified";
-    case UserConsentVerificationResult::DeviceNotPresent:     return "DeviceNotPresent";
-    case UserConsentVerificationResult::NotConfiguredForUser: return "NotConfiguredForUser";
-    case UserConsentVerificationResult::DisabledByPolicy:     return "DisabledByPolicy";
-    case UserConsentVerificationResult::DeviceBusy:           return "DeviceBusy";
-    case UserConsentVerificationResult::RetriesExhausted:     return "RetriesExhausted";
-    case UserConsentVerificationResult::Canceled:             return "Canceled";
+    case creds::UserConsentVerificationResult::Verified:             return "Verified";
+    case creds::UserConsentVerificationResult::DeviceNotPresent:     return "DeviceNotPresent";
+    case creds::UserConsentVerificationResult::NotConfiguredForUser: return "NotConfiguredForUser";
+    case creds::UserConsentVerificationResult::DisabledByPolicy:     return "DisabledByPolicy";
+    case creds::UserConsentVerificationResult::DeviceBusy:           return "DeviceBusy";
+    case creds::UserConsentVerificationResult::RetriesExhausted:     return "RetriesExhausted";
+    case creds::UserConsentVerificationResult::Canceled:             return "Canceled";
     default:                                                  return "Unknown";
   }
 }
@@ -123,7 +128,7 @@ Napi::Value CheckAvailability(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
   try {
     EnsureApartment();
-    const auto availability = UserConsentVerifier::CheckAvailabilityAsync().get();
+    const auto availability = creds::UserConsentVerifier::CheckAvailabilityAsync().get();
     return Napi::String::New(env, AvailabilityName(availability));
   } catch (const winrt::hresult_error& e) {
     // A machine with no Hello stack at all can throw rather than answer
@@ -155,10 +160,10 @@ Napi::Value RequestVerification(const Napi::CallbackInfo& info) {
     // fills those in correctly and hands back a real projected type. Doing it
     // by hand is a place to get a refcount or a GUID wrong for no benefit.
     //   https://learn.microsoft.com/en-us/windows/win32/api/userconsentverifierinterop/
-    auto factory = winrt::get_activation_factory<UserConsentVerifier, IUserConsentVerifierInterop>();
+    auto factory = winrt::get_activation_factory<creds::UserConsentVerifier, IUserConsentVerifierInterop>();
     const winrt::hstring text = winrt::to_hstring(message);
 
-    auto operation = winrt::capture<IAsyncOperation<UserConsentVerificationResult>>(
+    auto operation = winrt::capture<wfound::IAsyncOperation<creds::UserConsentVerificationResult>>(
         factory,
         &IUserConsentVerifierInterop::RequestVerificationForWindowAsync,
         hwnd,
@@ -171,13 +176,13 @@ Napi::Value RequestVerification(const Napi::CallbackInfo& info) {
                                               "tabbysync_hello", 0, 1);
     auto* box = new Napi::Promise::Deferred(deferred);
 
-    operation.Completed([tsfn, box](const IAsyncOperation<UserConsentVerificationResult>& op,
-                                    AsyncStatus status) mutable {
+    operation.Completed([tsfn, box](const wfound::IAsyncOperation<creds::UserConsentVerificationResult>& op,
+                                    wfound::AsyncStatus status) mutable {
       // Read the result on this thread; only plain data crosses over.
       std::string name = "Unknown";
-      if (status == AsyncStatus::Completed) {
+      if (status == wfound::AsyncStatus::Completed) {
         try { name = ResultName(op.GetResults()); } catch (...) { name = "Unknown"; }
-      } else if (status == AsyncStatus::Canceled) {
+      } else if (status == wfound::AsyncStatus::Canceled) {
         name = "Canceled";
       }
 
