@@ -1180,4 +1180,116 @@ $('set-file').addEventListener('change', async () => {
   document.getElementById('desktopBtn').addEventListener('click', () => app.open());
 })();
 
-load();
+// ---- guided setup (wizard mode) --------------------------------------------
+//
+// The popup's "Walk me through it" button (its "Set up manually" button just
+// opens this same page with no flag). Deliberately NOT a second settings
+// flow: every field, every save/validate/test call below is the exact same
+// one the normal page uses — #srv-save, #enc-save, the provider <select> —
+// this only decides which single step-card is visible and drives it via a
+// Back/Next bar instead of a scrollbar. Two places that both know how to
+// save a provider is how they quietly disagree later; one page that can be
+// looked at two ways does not have that problem.
+function initWizard() {
+  if (new URLSearchParams(location.search).get('wizard') !== '1') return;
+
+  const STEP_IDS = ['serverCard', 'selfhostCard', 'encCard', 'whatCard'];
+  // Real settings, not part of any step — out of the way until Finish so a
+  // first-time setup isn't nine cards deep before it needs to be.
+  const SIDELINED_IDS = ['statusBand', 'brakeCard', 'dangerCard', 'settingsIoCard', 'desktopCard'];
+  const priorHidden = {};
+  let stepIndex = 0;
+
+  // selfhostCard is only relevant for the "My own website" provider — but its
+  // own .hidden can't be read here to find that out, because render() below
+  // reuses that same attribute on every step card to mean "not the one
+  // currently shown", which isn't the same question. currentProvider() is
+  // the one fact updateProviderUI() itself decides selfhostCard's relevance
+  // from, so read that instead of the attribute it happens to also set.
+  function visibleSteps() {
+    return STEP_IDS.filter((id) => id !== 'selfhostCard' || currentProvider() === 'custom');
+  }
+
+  /** Resolves true/false once #<statusId> picks up the 'ok' or 'bad' class
+   *  status() sets — i.e. once the real save handler has actually finished. */
+  function waitForOutcome(statusId, timeoutMs) {
+    return new Promise((resolve) => {
+      const el = $(statusId);
+      let done = false;
+      const finish = (ok) => { if (done) return; done = true; obs.disconnect(); resolve(ok); };
+      const obs = new MutationObserver(() => {
+        if (el.classList.contains('ok')) finish(true);
+        else if (el.classList.contains('bad')) finish(false);
+      });
+      obs.observe(el, { attributes: true, attributeFilter: ['class'] });
+      setTimeout(() => finish(false), timeoutMs || 15000);
+    });
+  }
+
+  function render() {
+    const steps = visibleSteps();
+    if (stepIndex >= steps.length) stepIndex = steps.length - 1;
+    STEP_IDS.forEach((id) => { $(id).hidden = true; });
+    $(steps[stepIndex]).hidden = false;
+    $('wizardDoneCard').hidden = true;
+    $('wizardNav').hidden = false;
+    $('wizardBack').hidden = stepIndex === 0;
+    $('wizardNext').textContent = stepIndex === steps.length - 1 ? 'Finish' : 'Next →';
+    $('wizardStepLabel').textContent = `Step ${stepIndex + 1} of ${steps.length}`;
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+
+  function showDone() {
+    STEP_IDS.forEach((id) => { $(id).hidden = true; });
+    $('wizardDoneCard').hidden = false;
+    $('wizardNav').hidden = true;
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+
+  async function goNext() {
+    const id = visibleSteps()[stepIndex];
+    if (id === 'serverCard') {
+      $('srv-save').click();
+      if (!await waitForOutcome('srv-status')) return; // error is already shown in place
+    } else if (id === 'encCard' && $('enc-switch').checked && $('enc-pass').value && $('enc-clear').hidden) {
+      // A password was typed and the switch is on, but nothing turned it into
+      // the saved lock yet (enc-clear only unhides once one is) — save it
+      // rather than silently dropping it when the step changes.
+      $('enc-save').click();
+      if (!await waitForOutcome('enc-status')) return;
+    }
+    if (stepIndex >= visibleSteps().length - 1) { showDone(); return; }
+    stepIndex++;
+    render();
+  }
+
+  function goBack() {
+    if (stepIndex === 0) return;
+    stepIndex--;
+    render();
+  }
+
+  $('wizardNext').addEventListener('click', goNext);
+  $('wizardBack').addEventListener('click', goBack);
+  $('wizardFinish').addEventListener('click', () => {
+    SIDELINED_IDS.forEach((id) => { $(id).hidden = priorHidden[id]; });
+    STEP_IDS.forEach((id) => { $(id).hidden = false; });
+    $('wizardDoneCard').hidden = true;
+    $('wizardNav').hidden = true;
+    document.body.classList.remove('wizard-mode');
+    // The band was last drawn at page load, before any step was saved, and
+    // nothing in between repainted it while it sat hidden — without this it
+    // would surface reading "Not set up yet" right under a page that just
+    // finished setting it up.
+    refreshBand();
+  });
+  // Switching providers can add or drop step 2 — re-render so "Step X of N"
+  // and Back/Next still match what's actually left to click through.
+  $('sync-provider').addEventListener('change', () => { if (!$('wizardNav').hidden) render(); });
+
+  document.body.classList.add('wizard-mode');
+  SIDELINED_IDS.forEach((id) => { const el = $(id); priorHidden[id] = el.hidden; el.hidden = true; });
+  render();
+}
+
+load().then(initWizard);

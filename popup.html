@@ -59,10 +59,21 @@
       background:var(--panel); color:var(--text); border:1px solid var(--line); cursor:pointer; }
     .theme-btn:hover { border-color:var(--muted); }
     .theme-btn .ic { font-size:14px; }
-    .banner { margin:0 15px 8px; padding:8px 10px; border-radius:8px;
-      background:var(--panel); border:1px solid var(--line); color:var(--muted); font-size:12px; }
-    .banner a { color:var(--bm); cursor:pointer; text-decoration:underline; }
+    .cardsWrap { position:relative; }
     .cards { padding:2px 15px 6px; display:flex; flex-direction:column; gap:10px; }
+    /* Fresh-install state: the real cards blurred behind two setup buttons,
+       rather than a text banner above them — the blur itself says "not
+       ready yet" without a second sentence to that effect. */
+    .cards.blurred { filter:blur(5px); pointer-events:none; user-select:none; }
+    .setupOverlay { position:absolute; inset:2px 15px 6px; z-index:2;
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px;
+      padding:16px; border-radius:14px; text-align:center; }
+    .setupLede { margin:0; font-size:14px; font-weight:800; color:var(--text); }
+    .setupSub { margin:0 0 4px; font-size:12px; color:var(--muted); }
+    .setupBtn { width:200px; height:34px; border-radius:9px; font-size:12.5px; font-weight:700;
+      background:var(--bg); color:var(--text); border:1px solid var(--line); cursor:pointer; }
+    .setupBtn:hover { border-color:var(--muted); }
+    .setupBtn.primary { background:var(--bm); color:#fff; border-color:var(--bm); }
 
     .card { border:1px solid var(--line); border-radius:11px; overflow:hidden; background:var(--panel); }
     .card.bm { border-left:4px solid var(--bm); }
@@ -109,7 +120,6 @@
        of truncating, so a long name is never cut off), encryption status
        as a badge on the right that opens Options either way */
     .foot { padding:9px 15px; border-top:1px solid var(--line); }
-    .foot .note { display:block; font-size:11.5px; color:var(--muted); line-height:1.4; }
     .profileRow { display:flex; align-items:center; gap:8px; }
     .profileBox { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; align-items:center;
       justify-content:center; gap:1px; text-align:center; padding:4px 8px;
@@ -187,58 +197,66 @@
     <button class="opts" id="opts">Options</button>
   </div>
 
-  <div id="setup" class="banner" hidden>
-    Not set up yet — it takes about two minutes. <a id="setupLink">Open settings</a> to choose where your
-    bookmarks and tabs should live.
+  <!-- Fresh-install state: the cards behind are real (counts, toggles — not
+       a mockup), just not usable yet without a destination, so they're
+       blurred rather than replaced outright. Two ways in: a two-minute
+       guided setup for most people, or straight to the full settings page
+       for anyone who'd rather just fill it in themselves. -->
+  <div class="cardsWrap">
+    <div class="cards" id="cardsRow">
+      <!-- Bookmarks -->
+      <section class="card bm" id="bmCard">
+        <div class="card-h">
+          <span class="badge">📑</span>
+          <span class="title">Bookmarks<small id="bmSub">the same on every computer</small></span>
+          <span class="dot" id="bmDot"></span>
+          <label class="sw" title="Enable bookmark sync">
+            <input type="checkbox" id="bmEnable"><span class="track"></span>
+          </label>
+        </div>
+        <div class="rows" id="bmRows">
+          <div class="kv"><span>Saved</span><span class="v" id="bmCount">—</span></div>
+          <div class="kv"><span>Last sync</span><span class="v" id="bmLast">—</span></div>
+          <div class="kv" id="bmErrRow" hidden><span>Error</span><span class="v err" id="bmErr"></span></div>
+        </div>
+        <div class="acts">
+          <button class="primary grow" id="bmSync">Sync now</button>
+        </div>
+      </section>
+
+      <!-- Tabs -->
+      <section class="card tab" id="tabCard">
+        <div class="card-h">
+          <span class="badge">🗂️</span>
+          <span class="title">Tabs<small id="tabSub">save tabs, reopen anywhere</small></span>
+          <span class="dot" id="tabDot"></span>
+          <label class="sw" title="Enable tab sync">
+            <input type="checkbox" id="tabEnable"><span class="track"></span>
+          </label>
+        </div>
+        <div class="rows" id="tabRows">
+          <div class="kv"><span>Saved</span><span class="v" id="tabCount">—</span></div>
+          <div class="kv"><span>Last sync</span><span class="v" id="tabLast">—</span></div>
+          <div class="kv" id="tabErrRow" hidden><span>Error</span><span class="v err" id="tabErr"></span></div>
+        </div>
+        <div class="acts">
+          <button class="primary grow" id="stashAllTabs">Save my tabs</button>
+          <button class="accent" id="tabOpen">My lists</button>
+          <button id="tabSync">Sync</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="setupOverlay" id="setupOverlay" hidden>
+      <p class="setupLede">Not set up yet</p>
+      <p class="setupSub">Takes about two minutes.</p>
+      <button class="setupBtn primary" id="wizardOpen" type="button">Walk me through it</button>
+      <button class="setupBtn" id="manualOpen" type="button">Set up manually</button>
+    </div>
   </div>
 
-  <div class="cards">
-    <!-- Bookmarks -->
-    <section class="card bm" id="bmCard">
-      <div class="card-h">
-        <span class="badge">📑</span>
-        <span class="title">Bookmarks<small id="bmSub">the same on every computer</small></span>
-        <span class="dot" id="bmDot"></span>
-        <label class="sw" title="Enable bookmark sync">
-          <input type="checkbox" id="bmEnable"><span class="track"></span>
-        </label>
-      </div>
-      <div class="rows" id="bmRows">
-        <div class="kv"><span>Saved</span><span class="v" id="bmCount">—</span></div>
-        <div class="kv"><span>Last sync</span><span class="v" id="bmLast">—</span></div>
-        <div class="kv" id="bmErrRow" hidden><span>Error</span><span class="v err" id="bmErr"></span></div>
-      </div>
-      <div class="acts">
-        <button class="primary grow" id="bmSync">Sync now</button>
-      </div>
-    </section>
-
-    <!-- Tabs -->
-    <section class="card tab" id="tabCard">
-      <div class="card-h">
-        <span class="badge">🗂️</span>
-        <span class="title">Tabs<small id="tabSub">save tabs, reopen anywhere</small></span>
-        <span class="dot" id="tabDot"></span>
-        <label class="sw" title="Enable tab sync">
-          <input type="checkbox" id="tabEnable"><span class="track"></span>
-        </label>
-      </div>
-      <div class="rows" id="tabRows">
-        <div class="kv"><span>Saved</span><span class="v" id="tabCount">—</span></div>
-        <div class="kv"><span>Last sync</span><span class="v" id="tabLast">—</span></div>
-        <div class="kv" id="tabErrRow" hidden><span>Error</span><span class="v err" id="tabErr"></span></div>
-      </div>
-      <div class="acts">
-        <button class="primary grow" id="stashAllTabs">Save my tabs</button>
-        <button class="accent" id="tabOpen">My lists</button>
-        <button id="tabSync">Sync</button>
-      </div>
-    </section>
-  </div>
-
-  <div class="foot">
-    <span class="note" id="footNote" hidden>One server · one token · one sync name</span>
-    <div class="profileRow" id="profileRow" hidden>
+  <div class="foot" id="footEl" hidden>
+    <div class="profileRow" id="profileRow">
       <div class="profileBox">
         <span class="profileTag">Shared as</span>
         <span class="profileName" id="profileName"></span>

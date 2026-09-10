@@ -223,7 +223,7 @@
     </section>
 
     <!-- ================= 4. WHAT TO SYNC ================= -->
-    <section class="card what">
+    <section class="card what" id="whatCard">
       <h2><span class="step-n">4</span> What should it keep in sync?</h2>
       <p class="say">Use one, or both. They share everything you set above.</p>
 
@@ -524,8 +524,33 @@
       <div class="status" id="set-io-status"></div>
     </section>
 
+    <!-- Guided setup only: shown once the wizard's last step is done. The
+         normal page's own cards (backup, Control Panel, danger zone) are
+         real settings, not filler, so this points at them by name rather
+         than implying setup is fully "finished". -->
+    <section class="card wizard-done" id="wizardDoneCard" hidden>
+      <h2><span class="ic">🎉</span> You're all set</h2>
+      <p class="say">TabbySync is syncing. Take a look at the rest of this page whenever you like — a
+        password lock if you skipped it, backups, and (on Windows) the Control Panel app for juggling
+        more than one profile. None of it is required.</p>
+      <div class="row">
+        <button class="btn primary" id="wizardFinish" type="button">Show me the rest of the page</button>
+      </div>
+    </section>
+
     <p class="footnote">TabbySync collects no analytics and contacts no server of ours, ever.
       <a href="privacy.html" target="_blank" rel="noopener">Privacy policy</a></p>
+  </div>
+
+  <!-- Guided setup's Back/Next bar. Hidden outside wizard mode (see the
+       "guided setup" block in options.js) and fixed to the bottom so it's
+       reachable without scrolling past whichever step is showing. -->
+  <div class="wizardNav" id="wizardNav" hidden>
+    <span class="wizardStepLabel" id="wizardStepLabel">Step 1 of 4</span>
+    <div class="wizardBtns">
+      <button class="btn outline" id="wizardBack" type="button" hidden>Back</button>
+      <button class="btn primary" id="wizardNext" type="button">Next →</button>
+    </div>
   </div>
 
   <script src="shared/config.js"></script>

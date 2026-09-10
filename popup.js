@@ -88,17 +88,12 @@ async function refreshBanner() {
   var c = await self.TabbySyncConfig.getConfig();
   var configured = self.TabbySyncProviders.isConfigured(Object.assign({}, c, { baseUrl: c.serverUrl }));
 
-  $("setup").hidden = configured;
-  var note = $("footNote");
-  var row = $("profileRow");
-  if (!configured) {
-    note.hidden = false;
-    row.hidden = true;
-    note.textContent = "Not set up yet — open settings to choose where your data lives.";
-    return configured;
-  }
-  note.hidden = true;
-  row.hidden = false;
+  // Fresh install: blur the (real, live) cards behind two ways to fix that,
+  // rather than a text banner above them — see the overlay markup/CSS.
+  $("cardsRow").classList.toggle("blurred", !configured);
+  $("setupOverlay").hidden = configured;
+  $("footEl").hidden = !configured;
+  if (!configured) return configured;
 
   var label = c.syncName || c.profileLabel || self.TabbySyncProviders.providerMeta(c.provider).label;
   var nameEl = $("profileName");
@@ -130,7 +125,18 @@ async function refreshAll() {
 
 function openOptions() { chrome.runtime.openOptionsPage(); }
 $("opts").addEventListener("click", openOptions);
-$("setupLink").addEventListener("click", openOptions);
+$("manualOpen").addEventListener("click", openOptions);
+
+// "Walk me through it": the same options page, just told to start in guided
+// (one-step-at-a-time) mode instead of the full scroll-and-fill layout —
+// see the "guided setup" block at the end of options.js. openOptionsPage()
+// itself takes no arguments, so this opens the URL directly; open_in_tab is
+// on in manifest.json, so that's the same kind of tab either button gets.
+$("wizardOpen").addEventListener("click", function () {
+  var url = chrome.runtime.getURL("options.html?wizard=1");
+  try { chrome.tabs.create({ url: url }); }
+  catch (e) { window.open(url, "_blank"); }
+});
 
 $("privacyLink").addEventListener("click", function () {
   var url = chrome.runtime.getURL("privacy.html");

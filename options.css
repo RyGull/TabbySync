@@ -283,4 +283,20 @@ dialog.guide::backdrop { background:rgba(10,13,18,.55); }
 .guide-body .howto { padding-left:22px; }
 .guide-body ul.howto { list-style:disc; }
 .callout.warn { border-color:var(--err); color:var(--err); }
+
+/* ---- guided setup (wizard mode) ------------------------------------------
+   Turned on by options.js when the page loads with ?wizard=1 (the popup's
+   "Walk me through it" button). Same cards, same save/validate logic as the
+   normal page — this only controls which single step-card is visible and
+   adds the Back/Next bar below, so there is exactly one place that knows how
+   to save a provider or a password, not two. */
+body.wizard-mode { padding-bottom:64px; }
+.wizardNav {
+  position:fixed; left:0; right:0; bottom:0; z-index:40;
+  display:flex; align-items:center; gap:16px;
+  padding:12px 20px; background:var(--panel); border-top:1px solid var(--line);
+}
+.wizardStepLabel { font-size:12.5px; font-weight:700; color:var(--muted); }
+.wizardBtns { display:flex; gap:8px; margin-left:auto; }
+.card.wizard-done h2 .ic { background:var(--gold-glow); }
 .callout.warn b, .callout.warn i { color:var(--err); }
