@@ -22,7 +22,6 @@
           <span class="desktop-promo-text" id="desktop-link-text"></span>
           <button class="btn primary" id="desktop-link-btn" type="button">Download</button>
         </div>
-        <span class="tag">Settings</span>
         <span id="sl-theme"></span>
       </div>
     </div>
@@ -473,33 +472,40 @@
          card's neighbours because it is the opposite of dangerous: it is what
          makes the rest recoverable. -->
     <section class="card settings-io" id="settingsIoCard">
-      <h2><span class="ic">💾</span> Back up these settings</h2>
-      <p class="say">Where you sync, your sync name and every option on this page, as one
-        file on your computer. Settings live only in this browser — reinstalling TabbySync,
-        or moving from a hand-loaded copy to the store one, starts you empty even though
-        nothing on your server is touched. This is the fast way back, and the fast way to
-        set up a second computer.</p>
+      <div class="card-cols">
+        <div class="card-main">
+          <h2><span class="ic">💾</span> Back up these settings</h2>
+          <p class="say">Where you sync, your sync name and every option on this page, as one
+            file on your computer. Settings live only in this browser — reinstalling TabbySync,
+            or moving from a hand-loaded copy to the store one, starts you empty even though
+            nothing on your server is touched. This is the fast way back, and the fast way to
+            set up a second computer.</p>
 
-      <div class="row">
-        <button class="btn outline" id="set-exp">Save settings</button>
-        <button class="btn outline" id="set-exp-enc">Save settings and credentials…</button>
+          <div class="row">
+            <button class="btn outline" id="set-exp">Save settings</button>
+            <button class="btn outline" id="set-exp-enc">Save settings and credentials…</button>
+          </div>
+          <p class="hint"><b>Save settings</b> leaves out your access code and your password lock
+            entirely — safe to email yourself or keep in cloud storage, and you re-enter those two
+            after restoring. <b>Save settings and credentials</b> restores as a working setup with
+            nothing to retype, so it is always encrypted with a passphrase you choose. There is no
+            option that writes a working access code to a file in the clear.</p>
+
+          <label class="field" for="set-backup-pass">Passphrase <span class="opt">for the credentials backup</span></label>
+          <input type="password" id="set-backup-pass" placeholder="at least 8 characters" spellcheck="false" autocomplete="new-password">
+          <p class="hint">Used for both saving and restoring a credentials backup. If you forget it
+            the file cannot be opened — there is no reset, by design.</p>
+
+          <div class="row">
+            <button class="btn outline" id="set-imp">Restore from a file…</button>
+          </div>
+          <input type="file" id="set-file" accept=".json,application/json">
+          <div class="status" id="set-io-status"></div>
+        </div>
+        <div class="card-aside" aria-hidden="true">
+          <span class="card-aside-ic">💾</span>
+        </div>
       </div>
-      <p class="hint"><b>Save settings</b> leaves out your access code and your password lock
-        entirely — safe to email yourself or keep in cloud storage, and you re-enter those two
-        after restoring. <b>Save settings and credentials</b> restores as a working setup with
-        nothing to retype, so it is always encrypted with a passphrase you choose. There is no
-        option that writes a working access code to a file in the clear.</p>
-
-      <label class="field" for="set-backup-pass">Passphrase <span class="opt">for the credentials backup</span></label>
-      <input type="password" id="set-backup-pass" placeholder="at least 8 characters" spellcheck="false" autocomplete="new-password">
-      <p class="hint">Used for both saving and restoring a credentials backup. If you forget it
-        the file cannot be opened — there is no reset, by design.</p>
-
-      <div class="row">
-        <button class="btn outline" id="set-imp">Restore from a file…</button>
-      </div>
-      <input type="file" id="set-file" accept=".json,application/json">
-      <div class="status" id="set-io-status"></div>
     </section>
 
     <!-- Windows only; options.js unhides it. Placed after the setup steps and
@@ -507,10 +513,18 @@
          setting TabbySync up for the first time needs a second download in
          front of them. -->
     <section class="card desktop-app" id="desktopCard" hidden>
-      <h2><span class="ic">🖥️</span> <span id="desktopName"></span></h2>
-      <p class="say" id="desktopPitch"></p>
-      <p><button class="btn" id="desktopBtn" type="button">Get it from GitHub Releases</button></p>
-      <p class="hint" id="desktopWhich"></p>
+      <div class="card-cols">
+        <div class="card-main">
+          <h2><span class="ic">🖥️</span> <span id="desktopName"></span></h2>
+          <p class="say" id="desktopPitch"></p>
+          <p><button class="btn" id="desktopBtn" type="button">Get it from GitHub Releases</button></p>
+          <p class="hint" id="desktopWhich"></p>
+        </div>
+        <div class="card-aside">
+          <img class="card-aside-shot" src="icons/control-panel-preview.png"
+            alt="TabbySync Control Panel, showing a profile's bookmarks">
+        </div>
+      </div>
     </section>
 
     <p class="footnote">TabbySync collects no analytics and contacts no server of ours, ever.

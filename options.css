@@ -42,10 +42,7 @@ a:hover { text-decoration:underline; }
 .top { display:flex; align-items:center; gap:11px; margin-bottom:6px; }
 .top .lock { font-size:24px; }
 .top h1 { font-size:20px; margin:0; }
-.top .tag { color:var(--muted); font-size:13px; }
-/* Settings tag, the Windows promo and the theme picker as one right-aligned
-   group, so the auto margin lives here rather than on .tag — that leaves
-   room for the promo to sit ahead of it without a second gap opening up. */
+/* The Windows promo and the theme picker as one right-aligned group. */
 .top-actions { display:flex; align-items:center; gap:11px; margin-left:auto; }
 /* header logo (swaps with the effective theme) */
 .olo { height:46px; width:auto; display:none; }
@@ -72,6 +69,29 @@ a:hover { text-decoration:underline; }
 
 .card h2 { font-size:16px; margin:0 0 4px; display:flex; align-items:center; gap:9px; }
 .card h2 .ic { width:28px; height:28px; border-radius:8px; display:grid; place-items:center; font-size:16px; }
+
+/* Backup and desktop-app are the two shortest cards on the page, so their
+   text (capped at 62ch, like every other card's) leaves real space beside
+   it rather than under it. An aside fills that instead of leaving it bare —
+   a plain accent icon for backup, an actual screenshot for the Windows app,
+   since "get this app" earns a look at it that "back up a settings file"
+   doesn't. */
+.card-cols { display:flex; gap:24px; align-items:center; }
+.card-main { flex:1 1 auto; min-width:0; }
+.card-aside { flex:0 0 200px; display:flex; align-items:center; justify-content:center; }
+.card-aside-ic {
+  width:84px; height:84px; border-radius:20px; background:var(--bm-soft);
+  display:grid; place-items:center; font-size:40px; flex:0 0 auto;
+}
+.card-aside-shot {
+  width:100%; display:block; border-radius:10px; border:1px solid var(--line);
+  box-shadow:0 10px 26px rgba(0,0,0,.18);
+}
+@media (max-width:640px) {
+  .card-cols { flex-direction:column; }
+  .card-aside { flex-basis:auto; width:100%; }
+  .card-aside-shot { max-width:260px; }
+}
 .card h3 { font-size:13.5px; margin:18px 0 6px; text-transform:uppercase;
   letter-spacing:.4px; color:var(--muted); }
 .card p { color:var(--muted); margin:6px 0; font-size:13px; }
