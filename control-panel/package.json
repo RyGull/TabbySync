@@ -27,7 +27,7 @@
   "devDependencies": {
     "electron": "^44.0.0",
     "node-addon-api": "^8.0.0",
-    "node-gyp": "^11.0.0",
+    "node-gyp": "^13.0.2",
     "electron-builder": "^25.0.0",
     "png-to-ico": "^3.0.1"
   },
