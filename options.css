@@ -81,9 +81,21 @@ a:hover { text-decoration:underline; }
 .card-main { flex:1 1 auto; min-width:0; }
 .card-aside { flex:0 0 200px; display:flex; align-items:center; justify-content:center; }
 .card-aside-shot {
-  width:100%; display:block; border-radius:10px; border:1px solid var(--line);
+  width:100%; display:none; border-radius:10px; border:1px solid var(--line);
   box-shadow:0 10px 26px rgba(0,0,0,.18);
 }
+/* Real screenshots of the app in each theme — swapped the same way the
+   header logo is (.olo-light/.olo-dark), not filtered or recolored, so the
+   picture always matches how the app actually looks in light or dark. */
+.card-aside-shot.cp-light { display:block; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .card-aside-shot.cp-light { display:none; }
+  :root:not([data-theme="light"]) .card-aside-shot.cp-dark { display:block; }
+}
+:root[data-theme="dark"]  .card-aside-shot.cp-light { display:none; }
+:root[data-theme="dark"]  .card-aside-shot.cp-dark  { display:block; }
+:root[data-theme="light"] .card-aside-shot.cp-light { display:block; }
+:root[data-theme="light"] .card-aside-shot.cp-dark  { display:none; }
 @media (max-width:640px) {
   .card-cols { flex-direction:column; }
   .card-aside { flex-basis:auto; width:100%; }
