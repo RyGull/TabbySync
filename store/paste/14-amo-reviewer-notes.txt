@@ -5,8 +5,8 @@ No bundler, minifier or transpiler. Every .js, .html and .css file in the zip is
 
 The source upload is that repository, whole, and is public at https://github.com/RyGull/TabbySync. To rebuild this upload from its root (node 22, bash, zip; no npm install needed):
 
-  npm test                          # 187 tests, no dependencies
-  bash scripts/package.sh firefox   # -> dist/tabbysync-1.3.15-firefox.zip
+  npm test                          # 223 tests, no dependencies
+  bash scripts/package.sh firefox   # -> dist/tabbysync-1.6.1-firefox.zip
 
 addons-linter on the result: 0 errors, 0 warnings, 0 notices.
 

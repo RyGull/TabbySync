@@ -6,6 +6,12 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.6.2 — 2026-09-10
+
+- Updated the stale test count and zip filename in
+  `store/paste/14-amo-reviewer-notes.txt`'s rebuild instructions (187 → 223
+  tests, `-1.3.15-` → `-1.6.1-`) ahead of an AMO source-code submission.
+
 ## 1.6.1 — 2026-09-10
 
 **Docs and marketing catch up to guided setup.**
