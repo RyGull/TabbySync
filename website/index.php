@@ -131,10 +131,27 @@ require __DIR__ . '/includes/header.php';
         <p class="shot-note">Shown: syncing to your own website, with the password lock on.</p>
       </div>
       <figure class="shot-figure shot-figure-narrow">
-        <img class="shot-light" src="/assets/img/screenshots/popup-light.png" width="480" height="897"
+        <img class="shot-light" src="/assets/img/screenshots/popup-light.png" width="480" height="788"
              alt="TabbySync popup in light mode, showing the Bookmarks and Tabs cards with their sync status." loading="lazy" decoding="async">
-        <img class="shot-dark" src="/assets/img/screenshots/popup-dark.png" width="480" height="897"
+        <img class="shot-dark" src="/assets/img/screenshots/popup-dark.png" width="480" height="788"
              alt="The same TabbySync popup in dark mode." loading="lazy" decoding="async">
+      </figure>
+    </div>
+
+    <div class="shot-block">
+      <div class="shot-copy">
+        <h3>Never set it up before? There's a wizard for that</h3>
+        <p>On a fresh install, the popup shows the same two cards blurred behind two buttons:
+          <strong>Walk me through it</strong>, or set it up yourself. The guided path is the same
+          four questions below, one at a time, with Back and Next — not a second, simplified setup
+          to keep in step with the real one.</p>
+        <p class="shot-note">Shown: step 1, before anything has been chosen yet.</p>
+      </div>
+      <figure class="shot-figure">
+        <img class="shot-light" src="/assets/img/screenshots/wizard-light.png" width="1280" height="800"
+             alt="TabbySync's guided setup wizard in light mode, showing step 1 of 4 with a Back and Next bar." loading="lazy" decoding="async">
+        <img class="shot-dark" src="/assets/img/screenshots/wizard-dark.png" width="1280" height="800"
+             alt="The same guided setup wizard in dark mode." loading="lazy" decoding="async">
       </figure>
     </div>
 
@@ -191,6 +208,8 @@ require __DIR__ . '/includes/header.php';
 <section class="how" id="how-it-works">
   <div class="wrap">
     <h2 class="section-title">Set up once, sync everywhere</h2>
+    <p class="section-lede">The four steps below, in order — or open the popup on a fresh install
+      and click <strong>Walk me through it</strong> for the same four, one at a time.</p>
     <ol class="steps">
       <li>
         <span class="step-num">1</span>
@@ -267,8 +286,11 @@ require __DIR__ . '/includes/header.php';
     <?php require __DIR__ . '/includes/downloads.php'; ?>
     <ol class="install-steps">
       <li>Add the extension from the store your browser uses.</li>
-      <li>Click the <?= e(SITE_NAME) ?> icon, choose Bookmarks, Tabs, or both, and open Settings.</li>
-      <li>Point it at a destination — your own server, a private GitHub Gist, or JSONBin.io.</li>
+      <li>Click the <?= e(SITE_NAME) ?> icon. On a fresh install it offers two ways in:
+        <strong>Walk me through it</strong> for a step-by-step guided setup, or set it up
+        yourself from Settings.</li>
+      <li>Either way, you're choosing the same thing: a destination — your own server, a
+        private GitHub Gist, or JSONBin.io.</li>
     </ol>
     <div class="hero-actions">
       <a class="btn btn-ghost" href="<?= e(GITHUB_URL) ?>" target="_blank" rel="noopener">Get the source on GitHub</a>

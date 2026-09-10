@@ -6,6 +6,19 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.6.1 — 2026-09-10
+
+**Docs and marketing catch up to guided setup.**
+
+- The marketing site, README and Chrome Web Store copy now mention guided
+  setup as an install option, alongside a new screenshot of it
+  (`scripts/screenshots.mjs` gained a `wizard` page, captured with storage
+  cleared so it shows a fresh install rather than an already-configured one).
+- Every other screenshot on the site and in the README was regenerated —
+  they had gone stale across this session's popup, tab-list and Options
+  layout changes (the header reorganizations, the popup's two-column header,
+  the Control Panel card moving to the top of Options, and more).
+
 ## 1.6.0 — 2026-09-10
 
 - **Guided setup's "You're all set" screen throws confetti.** A brief burst

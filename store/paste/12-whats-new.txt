@@ -1,7 +1,3 @@
-TabbySync now runs on Firefox, from the same source as the Chrome version.
+New install? The popup now offers a guided setup: click "Walk me through it" for a step-by-step wizard through the same four setup questions, one at a time, with Back and Next. "Set up manually" opens Settings exactly as before — both end up in the same place.
 
-Fixes a Firefox bug where synced bookmarks arrived in the Bookmarks Menu (hidden by default) instead of the toolbar, and one where "Save and connect" reported that access wasn't granted without ever asking for it.
-
-The settings page no longer builds any part of itself out of text you typed, closing an injection in the server address preview.
-
-Reopening a large list of saved tabs asks first and opens them in batches you can stop, instead of opening hundreds at once. A sync that would delete most of the bookmarks in your browser stops and asks which copy is right.
+The popup and Settings pages are also tidier: the popup fits without scrolling, and Settings puts the Windows Control Panel app front and center for anyone who has it, with a real screenshot instead of one fixed picture.

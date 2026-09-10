@@ -53,6 +53,11 @@ below for how that works. Light mode shown; the dark files sit beside each one i
 | --- | --- |
 | <img src="docs/screenshots/web/options-light.png" alt="TabbySync options, server and sync" width="420"> | <img src="docs/screenshots/web/options-engines-light.png" alt="TabbySync options, bookmarks and tabs cards" width="420"> |
 
+Guided setup — the same options page, one step at a time, opened by the
+popup's **Walk me through it** button on a fresh install:
+
+<img src="docs/screenshots/web/wizard-light.png" alt="TabbySync's guided setup wizard, step 1 of 4" width="420">
+
 ## Install
 
 One click from whichever store your browser uses, and it auto-updates:
@@ -63,8 +68,11 @@ One click from whichever store your browser uses, and it auto-updates:
   built-in data-collection consent screen landed; see
   [Firefox](#firefox) for why that is the floor.)
 
-Then click the TabbySync icon → the popup lets you enable Bookmarks, Tabs, or
-both, and open **Options**.
+Then click the TabbySync icon. On a fresh install the popup offers two ways
+in: **Walk me through it**, a guided setup that asks the same four Options
+questions one at a time with Back/Next, or **Set up manually** to open
+**Options** and fill it in yourself. Either way you end up choosing the same
+thing — enable Bookmarks, Tabs, or both, and a destination.
 
 The same extension, the same file format, the same server: a bookmark saved
 from Firefox and one saved from Chrome land in the same file under the same
@@ -288,9 +296,9 @@ four sizes (Chrome requires PNG for toolbar icons — it doesn't accept SVG).
 
 `scripts/screenshots.mjs` loads this working tree as an unpacked extension in a
 throwaway Chromium profile, seeds a demo profile into `chrome.storage.local`,
-and photographs the real popup, tab list and options pages in both light and
-dark mode. Nothing is mocked up, so a UI change is one command away from being
-reflected everywhere the screenshots appear:
+and photographs the real popup, tab list, options and guided-setup-wizard
+pages in both light and dark mode. Nothing is mocked up, so a UI change is one
+command away from being reflected everywhere the screenshots appear:
 
 ```
 npm install          # playwright is the only dev dependency

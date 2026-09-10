@@ -155,6 +155,10 @@ const PAGES = [
   { name: 'options', page: 'options.html', viewport: { width: 1280, height: 800 } },
   // The bookmarks/tabs cards are below the fold on a 800px-tall options page.
   { name: 'options-engines', page: 'options.html', viewport: { width: 1280, height: 800 }, scrollTo: '#bmCard' },
+  // Guided setup only makes sense to show unconfigured — see capture()'s
+  // handling of `unconfigured`, which clears storage for this one page and
+  // restores it afterward so the pages after it in the loop stay seeded.
+  { name: 'wizard', page: 'options.html?wizard=1', viewport: { width: 1280, height: 800 }, unconfigured: true },
 ];
 
 // ---- 1. capture ------------------------------------------------------------
@@ -198,9 +202,14 @@ async function capture() {
       // set it there rather than relying on the OS preference alone.
       await page.goto(url('popup.html'));
       await page.evaluate((t) => localStorage.setItem('sl.theme', t), theme);
+      // Guided setup only makes sense to show fresh — cleared here, right
+      // before navigating, restored right after this page's screenshot so
+      // every page after it in the loop (including the next theme's first
+      // page) still sees the normal seeded/settled state.
+      if (s.unconfigured) await page.evaluate(async () => { await chrome.storage.local.clear(); });
       await page.goto(url(s.page));
       await page.waitForLoadState('networkidle').catch(() => {});
-      await page.evaluate(async (d) => { await chrome.storage.local.set(d); }, settled);
+      if (!s.unconfigured) await page.evaluate(async (d) => { await chrome.storage.local.set(d); }, settled);
       await page.waitForTimeout(1200);
 
       if (s.scrollTo) {
@@ -222,6 +231,10 @@ async function capture() {
       const file = path.join(RAW, `${s.name}-${theme}.png`);
       await page.screenshot({ path: file });
       console.log('raw   ', path.relative(ROOT, file));
+      if (s.unconfigured) {
+        await page.evaluate(async (d) => { await chrome.storage.local.set(d); }, seed);
+        await page.evaluate(async (d) => { await chrome.storage.local.set(d); }, settled);
+      }
       await page.close();
     }
   }
@@ -242,7 +255,7 @@ function pngSize(file) {
   return { width: b.readUInt32BE(16), height: b.readUInt32BE(20) };
 }
 
-const WEB_WIDTHS = { popup: 480, tablist: 1280, options: 1280, 'options-engines': 1280 };
+const WEB_WIDTHS = { popup: 480, tablist: 1280, options: 1280, 'options-engines': 1280, wizard: 1280 };
 
 async function downscale(browser) {
   for (const theme of THEMES) {
@@ -281,6 +294,10 @@ const COPY = {
   'options-engines': {
     title: 'Everything else, one click away',
     body: 'Bookmarks and tabs each get a switch and a sentence. Intervals, duplicate handling, restore behaviour and backups are all still there, folded behind “More options”.',
+  },
+  wizard: {
+    title: 'Or let it walk you through it',
+    body: 'The same four questions, one at a time, with Back and Next — for anyone who’d rather be guided than scroll. Opens straight from the popup on a fresh install.',
   },
 };
 

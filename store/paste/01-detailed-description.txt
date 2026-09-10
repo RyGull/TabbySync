@@ -13,6 +13,8 @@ Most sync tools ask you to trust a company with your browsing. TabbySync has no 
 
 Whichever you choose, there is no account with us, because there is no us to have an account with.
 
+New install? Click "Walk me through it" in the popup for a step-by-step guided setup — the same questions above, one at a time, with Back and Next. Or skip straight to Settings and fill it in yourself; either way ends up in the same place.
+
 
 🔒 LOCK IT WITH A PASSWORD
 
