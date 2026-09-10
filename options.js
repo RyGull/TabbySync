@@ -1154,9 +1154,9 @@ $('set-file').addEventListener('change', async () => {
 // ---- the Windows desktop app -------------------------------------------------
 //
 // Mentioned twice on this page, on Windows only: a compact label + download
-// button in the header (fills the space next to Settings that would
-// otherwise sit empty), and the fuller pitch below (see the second IIFE),
-// which stays out of the setup steps rather than interrupting them.
+// button in the header, and the fuller pitch card right under the status
+// band (see the second IIFE and its comment in options.html) — seen before
+// step 1, without being a step itself.
 //
 // Copy and URL come from shared/desktop-app.js, which the popup and the
 // saved-tabs page also read — one pitch, no drift between the two mentions.

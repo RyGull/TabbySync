@@ -38,6 +38,25 @@
       </span>
     </div>
 
+    <!-- Windows only; options.js unhides it. Right under the status band so
+         it is seen before anyone reaches step 1, without being a step
+         itself — it never blocks or asks for anything, it is just visible
+         early rather than found only after scrolling past the danger card. -->
+    <section class="card desktop-app" id="desktopCard" hidden>
+      <div class="card-cols">
+        <div class="card-main">
+          <h2><span class="ic">🖥️</span> <span id="desktopName"></span></h2>
+          <p class="say" id="desktopPitch"></p>
+          <p><button class="btn" id="desktopBtn" type="button">Get it from GitHub Releases</button></p>
+          <p class="hint" id="desktopWhich"></p>
+        </div>
+        <div class="card-aside">
+          <img class="card-aside-shot" src="icons/control-panel-preview.png"
+            alt="TabbySync Control Panel, showing a profile's bookmarks">
+        </div>
+      </div>
+    </section>
+
     <!-- ================= SAFETY BRAKE =================
          Only ever visible when a sync was stopped because it would have
          deleted most of the bookmarks in this browser. It asks the one
@@ -499,25 +518,6 @@
       </div>
       <input type="file" id="set-file" accept=".json,application/json">
       <div class="status" id="set-io-status"></div>
-    </section>
-
-    <!-- Windows only; options.js unhides it. Placed after the setup steps and
-         the danger card on purpose — it is an aside, not a step, and nobody
-         setting TabbySync up for the first time needs a second download in
-         front of them. -->
-    <section class="card desktop-app" id="desktopCard" hidden>
-      <div class="card-cols">
-        <div class="card-main">
-          <h2><span class="ic">🖥️</span> <span id="desktopName"></span></h2>
-          <p class="say" id="desktopPitch"></p>
-          <p><button class="btn" id="desktopBtn" type="button">Get it from GitHub Releases</button></p>
-          <p class="hint" id="desktopWhich"></p>
-        </div>
-        <div class="card-aside">
-          <img class="card-aside-shot" src="icons/control-panel-preview.png"
-            alt="TabbySync Control Panel, showing a profile's bookmarks">
-        </div>
-      </div>
     </section>
 
     <p class="footnote">TabbySync collects no analytics and contacts no server of ours, ever.
