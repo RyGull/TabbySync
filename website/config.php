@@ -76,7 +76,7 @@ const FIREFOX_MIN_VERSION = '140';
 // build.nsis.artifactName = TabbySync-Control-Panel-Setup-${version}.exe, so
 // the version below is the only variable in it.
 const CONTROL_PANEL_LIVE    = true;
-const CONTROL_PANEL_VERSION = '1.7.0'; // keep in step with control-panel/package.json
+const CONTROL_PANEL_VERSION = '1.7.1'; // keep in step with control-panel/package.json
 const CONTROL_PANEL_TAG     = 'control-panel-v' . CONTROL_PANEL_VERSION;
 // Straight at the installer, so the button downloads rather than landing the
 // visitor on a release page to hunt through the assets list.

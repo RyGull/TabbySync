@@ -50,7 +50,17 @@ Versions before 1.3.0 predate this changelog; their history is in the git log.
   **More** menu, behind one row in the popup, and as a card at the bottom of
   Options — shown only on Windows, since that is the only place it runs.
 
-**Control Panel 1.7.0.**
+**Control Panel 1.7.1.**
+
+- **1.7.0 broke the lock, and 1.7.1 is mostly here to undo that.** If you had
+  set a PIN, 1.7.0 stopped telling the app you were still using it, so it
+  locked itself after the idle time whatever you were doing — and then failed
+  to draw the lock screen, leaving a window that looked open and answered
+  every click with "TabbySync Control Panel is locked". Restarting and
+  entering the PIN was the only way on. Nothing was lost and nothing on your
+  sync destination was touched; it was a wiring mistake in the layer between
+  the window and the app, added while Windows Hello was being built. Installs
+  with no PIN set were never affected. Update to 1.7.1.
 
 - **Importing an encrypted backup did nothing.** Exporting worked, and so did
   importing an unencrypted backup. But a backup exported *with* credentials
@@ -61,7 +71,10 @@ Versions before 1.3.0 predate this changelog; their history is in the git log.
   dialog, which is why the plain ones kept working and hid it. Fixed, with a
   test that fails if the two steps are ever put back in the wrong order.
 - **Windows Hello.** Unlock with a fingerprint, face or Hello PIN instead of
-  typing the app's PIN. Turn it on in **Options → Security**.
+  typing the app's PIN. Turn it on in **Options → Security**. Once it is on it
+  asks by itself — at launch, and when you come back to a locked window. Not
+  when you press **Lock now**, which you meant, and not again after you
+  dismiss it, because a prompt you cannot get past is worse than a click.
 
   Be clear about what this is: a faster way through the same lock, not a
   stronger one. Windows Hello confirms it is you; it does not encrypt
@@ -74,6 +87,10 @@ Versions before 1.3.0 predate this changelog; their history is in the git log.
   PIN box underneath. A fingerprint reader that dies, a driver update, or a
   policy change must never be the thing that locks you out of every profile
   you have — so it never can be.
+- **Test builds, if you want them.** **Options → Updates → Which builds to
+  accept** can be set to include pre-releases, so a fix can be tried before it
+  goes out to everyone. Off by default, and switching back to stable never
+  rolls you backwards.
 
 ## 1.3.16 — 2026-09-08
 
