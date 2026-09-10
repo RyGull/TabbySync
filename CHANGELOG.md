@@ -6,6 +6,15 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.5.1 — 2026-09-10
+
+- **Fixed low-contrast text on the popup's "Not set up yet" prompt.** "Takes
+  about two minutes" sat directly on the blurred cards behind it with no
+  backing of its own, so its color depended on whatever happened to be
+  blurred at that spot — sometimes a card's own accent color, sometimes a
+  toggle track — and was hard to read either way. Both lines now sit on a
+  small solid card instead.
+
 ## 1.5.0 — 2026-09-10
 
 **Guided setup, and a tidier popup and Options page.**

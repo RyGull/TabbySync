@@ -68,8 +68,14 @@
     .setupOverlay { position:absolute; inset:2px 15px 6px; z-index:2;
       display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px;
       padding:16px; border-radius:14px; text-align:center; }
+    /* A solid card behind the two lines of text, not the bare blur — text
+       color alone can't promise contrast against whatever card colors
+       happen to be blurred at that spot (a card's blue/orange accent, a
+       toggle track, plain background all land here depending on layout). */
+    .setupText { background:var(--bg); border:1px solid var(--line); border-radius:12px;
+      padding:9px 16px; margin-bottom:2px; box-shadow:0 4px 14px rgba(0,0,0,.14); }
     .setupLede { margin:0; font-size:14px; font-weight:800; color:var(--text); }
-    .setupSub { margin:0 0 4px; font-size:12px; color:var(--muted); }
+    .setupSub { margin:2px 0 0; font-size:12px; color:var(--muted); }
     .setupBtn { width:200px; height:34px; border-radius:9px; font-size:12.5px; font-weight:700;
       background:var(--bg); color:var(--text); border:1px solid var(--line); cursor:pointer; }
     .setupBtn:hover { border-color:var(--muted); }
@@ -248,8 +254,10 @@
     </div>
 
     <div class="setupOverlay" id="setupOverlay" hidden>
-      <p class="setupLede">Not set up yet</p>
-      <p class="setupSub">Takes about two minutes.</p>
+      <div class="setupText">
+        <p class="setupLede">Not set up yet</p>
+        <p class="setupSub">Takes about two minutes.</p>
+      </div>
       <button class="setupBtn primary" id="wizardOpen" type="button">Walk me through it</button>
       <button class="setupBtn" id="manualOpen" type="button">Set up manually</button>
     </div>
