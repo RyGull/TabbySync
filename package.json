@@ -1,6 +1,6 @@
 {
   "name": "tabbysync",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "private": true,
   "type": "module",
   "description": "Dev tooling for the TabbySync extension: the test harness and the screenshot generator. The extension itself reads none of this and ships with no dependencies.",

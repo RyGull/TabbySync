@@ -316,11 +316,11 @@ body.wizard-mode { padding-bottom:64px; }
    and at Next — the two things worth noticing here on a first visit. One
    shape, mirrored for the right side rather than a second path to keep in
    sync with it. */
-.wizardHint { position:absolute; bottom:100%; width:34px; height:40px; pointer-events:none; }
-.wizardHint-step { left:18px; }
-.wizardHint-next { right:18px; transform:scaleX(-1); }
+.wizardHint { position:absolute; bottom:100%; width:52px; height:60px; pointer-events:none; }
+.wizardHint-step { left:14px; }
+.wizardHint-next { right:14px; transform:scaleX(-1); }
 .wizardHint .hint-arc, .wizardHint .hint-head {
-  stroke:var(--err); stroke-width:4.5; stroke-linecap:round; stroke-linejoin:round;
+  stroke:var(--err); stroke-width:7; stroke-linecap:round; stroke-linejoin:round;
 }
 .card.wizard-done h2 .ic { background:var(--gold-glow); }
 .callout.warn b, .callout.warn i { color:var(--err); }

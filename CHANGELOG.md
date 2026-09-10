@@ -6,6 +6,11 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.5.3 — 2026-09-10
+
+- **The guided setup hint arrows are bigger and bolder** — easier to notice
+  on a first visit.
+
 ## 1.5.2 — 2026-09-10
 
 - **Guided setup's Back/Next bar points at itself.** Two small curved red
