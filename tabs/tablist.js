@@ -1040,13 +1040,11 @@
   (function () {
     var app = self.TabbySyncDesktopApp;
     if (!app || !app.isWindows()) return;
-    var link = document.getElementById("desktop-link");
-    // app.NAME leads with the TabbySync brand, which up here would just
-    // repeat the logo right next to it — so drop that part and keep the rest.
-    link.textContent = "🖥️ " + app.NAME.replace(/^TabbySync\s+/, "") + "…";
-    link.title = app.TAGLINE;
-    link.hidden = false;
-    link.addEventListener("click", function () { app.open(); });
+    var text = document.getElementById("desktop-link-text");
+    text.textContent = "🖥️ " + app.NAME;
+    text.title = app.TAGLINE;
+    document.getElementById("desktop-link-btn").addEventListener("click", function () { app.open(); });
+    document.getElementById("desktop-link").hidden = false;
   })();
   document.getElementById("sync-now").addEventListener("click", function () {
     setSyncBusy(true);

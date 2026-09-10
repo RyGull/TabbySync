@@ -42,7 +42,11 @@ a:hover { text-decoration:underline; }
 .top { display:flex; align-items:center; gap:11px; margin-bottom:6px; }
 .top .lock { font-size:24px; }
 .top h1 { font-size:20px; margin:0; }
-.top .tag { color:var(--muted); font-size:13px; margin-left:auto; }
+.top .tag { color:var(--muted); font-size:13px; }
+/* Settings tag, the Windows promo and the theme picker as one right-aligned
+   group, so the auto margin lives here rather than on .tag — that leaves
+   room for the promo to sit ahead of it without a second gap opening up. */
+.top-actions { display:flex; align-items:center; gap:11px; margin-left:auto; }
 /* header logo (swaps with the effective theme) */
 .olo { height:46px; width:auto; display:none; }
 .olo-light { display:block; }
@@ -55,6 +59,11 @@ a:hover { text-decoration:underline; }
 :root[data-theme="light"] .olo-light { display:block; }
 :root[data-theme="light"] .olo-dark  { display:none; }
 #sl-theme { margin-left:8px; }
+
+/* The Windows app mention: a label plus its own download button — see
+   tabs/tablist.css for why this isn't one button carrying both. */
+.desktop-promo { display:flex; align-items:center; gap:8px; }
+.desktop-promo-text { font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; }
 
 .card { background:var(--panel); border:1px solid var(--line); border-radius:12px;
   padding:16px 18px; margin-bottom:16px; }

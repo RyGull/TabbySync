@@ -15,8 +15,16 @@
     <div class="top">
       <img class="olo olo-light" src="icons/logo-light.png" alt="TabbySync">
       <img class="olo olo-dark" src="icons/logo-dark.png" alt="TabbySync">
-      <span class="tag">Settings</span>
-      <span id="sl-theme"></span>
+      <div class="top-actions">
+        <!-- Windows only, and unhidden by options.js rather than rendered
+             here. Wording and URL: shared/desktop-app.js. -->
+        <div class="desktop-promo" id="desktop-link" hidden>
+          <span class="desktop-promo-text" id="desktop-link-text"></span>
+          <button class="btn primary" id="desktop-link-btn" type="button">Download</button>
+        </div>
+        <span class="tag">Settings</span>
+        <span id="sl-theme"></span>
+      </div>
     </div>
 
     <!-- ================= STATUS BAND =================

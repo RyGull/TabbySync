@@ -87,6 +87,22 @@ header.top {
   gap: 8px;
   margin-left: auto;
 }
+
+/* The Windows app mention: a label plus its own download button, rather than
+   one button that is both — filling the header takes more than the compact
+   link this replaced, and a plain sentence next to a call-to-action reads
+   better than a single button carrying the whole pitch as its label. */
+.desktop-promo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.desktop-promo-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+}
 .tlogo { height: 40px; width: auto; display: none; }
 .tlogo-light { display: block; }
 @media (prefers-color-scheme: dark) {

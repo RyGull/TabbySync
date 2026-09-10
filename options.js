@@ -1153,13 +1153,23 @@ $('set-file').addEventListener('change', async () => {
 
 // ---- the Windows desktop app -------------------------------------------------
 //
-// An aside at the bottom of the page, on Windows only. It sits after the setup
-// steps and the danger card because it is not a step: someone here for the
-// first time is configuring sync, and a second thing to download in the middle
-// of that is an interruption, not a feature.
+// Mentioned twice on this page, on Windows only: a compact label + download
+// button in the header (fills the space next to Settings that would
+// otherwise sit empty), and the fuller pitch below (see the second IIFE),
+// which stays out of the setup steps rather than interrupting them.
 //
 // Copy and URL come from shared/desktop-app.js, which the popup and the
-// saved-tabs page also read — one pitch, three places, no drift.
+// saved-tabs page also read — one pitch, no drift between the two mentions.
+(function () {
+  const app = self.TabbySyncDesktopApp;
+  if (!app || !app.isWindows()) return;
+  const text = document.getElementById('desktop-link-text');
+  text.textContent = '🖥️ ' + app.NAME;
+  text.title = app.TAGLINE;
+  document.getElementById('desktop-link-btn').addEventListener('click', () => app.open());
+  document.getElementById('desktop-link').hidden = false;
+})();
+
 (function () {
   const app = self.TabbySyncDesktopApp;
   if (!app || !app.isWindows()) return;
