@@ -100,7 +100,20 @@ a:hover { text-decoration:underline; }
   .card-cols { flex-direction:column; }
   .card-aside { flex-basis:auto; width:100%; }
   .card-aside-shot { max-width:260px; }
+  .congrats-svg { max-width:200px; }
 }
+
+/* The wizard's "You're all set" card: confetti and a checkmark badge, drawn
+   in the page's own palette (same variables the setup steps already use for
+   their accents) rather than a stock image, so it never clashes with the
+   theme and needs no asset file. */
+.congrats-svg { width:100%; max-width:220px; height:auto; }
+.congrats-svg .c1 { fill:var(--bm); }
+.congrats-svg .c2 { fill:var(--tab); }
+.congrats-svg .c3 { fill:var(--gold); }
+.congrats-svg .c4 { fill:var(--host); }
+.congrats-svg .badge-ring { fill:var(--ok); opacity:.16; }
+.congrats-svg .badge-check { stroke:var(--ok); }
 .card h3 { font-size:13.5px; margin:18px 0 6px; text-transform:uppercase;
   letter-spacing:.4px; color:var(--muted); }
 .card p { color:var(--muted); margin:6px 0; font-size:13px; }

@@ -529,12 +529,34 @@
          real settings, not filler, so this points at them by name rather
          than implying setup is fully "finished". -->
     <section class="card wizard-done" id="wizardDoneCard" hidden>
-      <h2><span class="ic">🎉</span> You're all set</h2>
-      <p class="say">TabbySync is syncing. Take a look at the rest of this page whenever you like — a
-        password lock if you skipped it, backups, and (on Windows) the Control Panel app for juggling
-        more than one profile. None of it is required.</p>
-      <div class="row">
-        <button class="btn primary" id="wizardFinish" type="button">Show me the rest of the page</button>
+      <div class="card-cols">
+        <div class="card-main">
+          <h2><span class="ic">🎉</span> You're all set</h2>
+          <p class="say">TabbySync is syncing. Take a look at the rest of this page whenever you like — a
+            password lock if you skipped it, backups, and (on Windows) the Control Panel app for juggling
+            more than one profile. None of it is required.</p>
+          <div class="row">
+            <button class="btn primary" id="wizardFinish" type="button">Show me the rest of the page</button>
+          </div>
+        </div>
+        <div class="card-aside" aria-hidden="true">
+          <!-- Confetti + a checkmark badge, drawn in the page's own palette
+               rather than a stock image, so it always matches the theme. -->
+          <svg class="congrats-svg" viewBox="0 0 220 170">
+            <rect class="c c1" x="18" y="28" width="10" height="10" rx="2" transform="rotate(18 23 33)"/>
+            <rect class="c c2" x="182" y="20" width="9" height="9" rx="2" transform="rotate(-24 186 24)"/>
+            <circle class="c c3" cx="40" cy="122" r="6"/>
+            <circle class="c c4" cx="188" cy="118" r="5.5"/>
+            <rect class="c c1" x="60" y="14" width="8" height="8" rx="2" transform="rotate(40 64 18)"/>
+            <rect class="c c2" x="150" y="132" width="9" height="9" rx="2" transform="rotate(12 154 136)"/>
+            <circle class="c c4" cx="28" cy="72" r="4.5"/>
+            <circle class="c c3" cx="196" cy="70" r="4.5"/>
+            <rect class="c c3" x="100" y="8" width="7" height="7" rx="2" transform="rotate(-14 103 11)"/>
+            <circle class="badge-ring" cx="110" cy="86" r="46"/>
+            <path class="badge-check" d="M90 87 L104 101 L133 70" fill="none" stroke-width="9"
+              stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
       </div>
     </section>
 

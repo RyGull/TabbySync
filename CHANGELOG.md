@@ -6,6 +6,37 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.5.0 — 2026-09-10
+
+**Guided setup, and a tidier popup and Options page.**
+
+- **Guided setup.** A fresh install's popup now shows the bookmarks/tabs
+  cards blurred behind two buttons instead of a text banner: **Walk me
+  through it**, or **Set up manually**. Manual opens Options exactly as
+  before. Guided opens the same page in a step-by-step mode that shows one
+  of the existing four setup steps at a time behind a Back/Next bar — same
+  fields, same save and test buttons underneath, so there is exactly one
+  place that knows how to save a destination, not a second simplified copy
+  of it. It skips the self-hosting step for anyone who didn't pick "My own
+  website", and ends on a "You're all set" screen that points at the rest
+  of the page (password lock, backups, the Control Panel app on Windows)
+  rather than implying that's finished too.
+- **The saved-tabs page and Options both make more of their header.** Sync
+  now and the Windows Control Panel mention moved out of the saved-tabs
+  page's **More** menu and into the header next to the theme picker, the
+  Control Panel one now a label plus its own Download button (and, on
+  Options, moved up to sit right under the sync status). The Options header
+  also drops its redundant "Settings" label.
+- **The popup's header is two columns** — the logo on the left, **Options**
+  on the right — instead of a logo row on top of a second row for the same
+  two things, and drops the sync-method line between them, so the whole
+  popup fits without scrolling. The bookmarks card's duplicate **Options**
+  button by its own Sync button is gone; the one in the header was always
+  the same page.
+- **The Control Panel card shows a real screenshot of the app**, swapped
+  for light or dark to match the page's own theme, instead of one fixed
+  picture.
+
 ## 1.4.0 — 2026-09-10
 
 **TabbySync is on Firefox, and your settings can finally be backed up.**
