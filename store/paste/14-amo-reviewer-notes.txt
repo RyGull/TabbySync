@@ -5,8 +5,13 @@ No bundler, minifier or transpiler. Every .js, .html and .css file in the zip is
 
 The source upload is that repository, whole, and is public at https://github.com/RyGull/TabbySync. To rebuild this upload from its root (node 22, bash, zip; no npm install needed):
 
-  npm test                          # 223 tests, no dependencies
-  bash scripts/package.sh firefox   # -> dist/tabbysync-1.6.1-firefox.zip
+  npm test                          # 223 tests, no dependencies (222 pass + 1 skip here — see below)
+  bash scripts/package.sh firefox   # -> dist/tabbysync-1.6.3-firefox.zip
+
+One test skips in this source upload specifically: it shells out to `git
+ls-files` to check no secret key was ever committed, which needs a .git
+directory this archive (built with `git archive`, deliberately) doesn't
+have. It runs and passes normally from a real clone of the repository.
 
 addons-linter on the result: 0 errors, 0 warnings, 0 notices.
 

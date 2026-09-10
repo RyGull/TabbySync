@@ -188,7 +188,7 @@ test('the CSP allows no inline code, and only the two documented Google origins'
 // reCAPTCHA: the keys, and the promises the pages make about it
 // ---------------------------------------------------------------------------
 
-test('no reCAPTCHA key is committed anywhere in the repository', () => {
+test('no reCAPTCHA key is committed anywhere in the repository', (t) => {
   // The one rule that matters here. A key in a public commit is public
   // permanently: deleting it later leaves it in the history, in every clone
   // and in every fork. Site keys are public by design and secret keys are
@@ -208,10 +208,20 @@ test('no reCAPTCHA key is committed anywhere in the repository', () => {
   // in. Confirmed false positive, not a loosened check — verified by hand
   // against control-panel/package-lock.json's actual integrity hashes; not
   // quoted here, since doing so would itself match this very regex.
-  const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' })
-    .split('\0')
-    .filter((f) => f && /\.(php|js|html|css|txt|md|json|yml|sh|mjs)$/.test(f))
-    .filter((f) => !/(^|\/)package-lock\.json$/.test(f));
+  let tracked;
+  try {
+    tracked = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' })
+      .split('\0')
+      .filter((f) => f && /\.(php|js|html|css|txt|md|json|yml|sh|mjs)$/.test(f))
+      .filter((f) => !/(^|\/)package-lock\.json$/.test(f));
+  } catch {
+    // No .git here — e.g. run from the AMO source-code upload, which
+    // scripts/package.sh builds with `git archive` and so never has one.
+    // "Tracked by git" has nothing to ask in that case; skip rather than
+    // fail a check the tree simply cannot answer.
+    t.skip('not a git checkout — no .git directory for `git ls-files` to read');
+    return;
+  }
   assert.ok(tracked.length > 20, 'the tracked-file listing came back suspiciously short');
 
   for (const file of tracked) {

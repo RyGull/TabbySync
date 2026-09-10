@@ -6,6 +6,16 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.6.3 — 2026-09-10
+
+- **The reCAPTCHA-key test now runs from a source-code archive, not just a
+  git checkout.** It shells out to `git ls-files` to know which files are
+  actually committed — `scripts/package.sh source` builds AMO's source
+  upload with `git archive`, which has no `.git` directory, so that call
+  had nothing to read and failed the test outright (caught while verifying
+  this exact upload works before submitting it). It now skips there instead
+  of failing, since "tracked by git" has no meaningful answer without one.
+
 ## 1.6.2 — 2026-09-10
 
 - Updated the stale test count and zip filename in
