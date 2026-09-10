@@ -6,6 +6,75 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.4.0 — 2026-09-10
+
+**TabbySync is on Firefox, and your settings can finally be backed up.**
+
+- **The Firefox add-on is published.** Same extension, same file format, same
+  server: a bookmark saved from Firefox and one saved from Chrome land in the
+  same file under the same sync name. One codebase builds both — only the
+  manifest differs. Firefox 140 or newer, which is where Mozilla's built-in
+  data-collection consent screen landed.
+- **Back up your settings.** Options grows a **Back up these settings**
+  section. Until now the saved-tabs page could export your tab *lists*, but
+  every setting — the server address, the access code, the sync name, the
+  password lock — lived only in this browser's storage and nowhere else. That
+  survives a store update, but it does not survive the extension's identity
+  changing: a browser treats a hand-loaded copy and the store copy as two
+  different extensions with separate storage, so replacing one with the other
+  reads as a fresh install and every credential has to be retyped. Nothing was
+  ever lost from your sync destination when that happened — a first sync with
+  no merge base merges rather than deletes — but retyping a bearer token is
+  not a recovery plan.
+
+  Two shapes, and the difference matters. **Save settings** leaves your access
+  code and password lock out of the file entirely: safe to email yourself, and
+  you re-enter those two afterwards. **Save settings and credentials** carries
+  everything and is therefore *always* encrypted with a passphrase you choose
+  (AES-256-GCM, the same scheme used for your synced data). There is no third
+  option, and no way to write a working access code to a file in the clear.
+
+  Saved tab lists are deliberately not included — they have their own backup
+  on the saved-tabs page, they are already synced, and restoring a stale copy
+  over a live sync could resurrect lists you deleted on another machine.
+  Restoring is a partial write: anything the file does not mention is left
+  alone, so a credential-free backup restored onto a working install never
+  blanks a credential that install already has.
+
+  **On privacy:** this is the first thing in TabbySync that can write your
+  credentials to a file. It happens only when you ask for it, the file goes
+  where you choose on your own computer, nothing is uploaded, and the
+  credential-carrying shape cannot be written unencrypted.
+- **The Windows Control Panel is mentioned in the extension.** It has existed
+  for a while and the extension never said so. It is now in the saved-tabs
+  **More** menu, behind one row in the popup, and as a card at the bottom of
+  Options — shown only on Windows, since that is the only place it runs.
+
+**Control Panel 1.7.0.**
+
+- **Importing an encrypted backup did nothing.** Exporting worked, and so did
+  importing an unencrypted backup. But a backup exported *with* credentials
+  asked for its passphrase, accepted it, closed the dialog — and then imported
+  nothing at all. No error, no message, nothing in the log. The dialog's
+  "cancelled" signal also fired on the way out of the success path, and it won
+  the race against the result. Only encrypted backups went through that
+  dialog, which is why the plain ones kept working and hid it. Fixed, with a
+  test that fails if the two steps are ever put back in the wrong order.
+- **Windows Hello.** Unlock with a fingerprint, face or Hello PIN instead of
+  typing the app's PIN. Turn it on in **Options → Security**.
+
+  Be clear about what this is: a faster way through the same lock, not a
+  stronger one. Windows Hello confirms it is you; it does not encrypt
+  anything, and your profiles are protected at rest exactly as before, by
+  Windows itself, tied to your Windows account. What it buys is not typing
+  four digits.
+
+  Your PIN stays set, always. Hello cannot be turned on without one, turning
+  the PIN off turns Hello off with it, and the lock screen always shows the
+  PIN box underneath. A fingerprint reader that dies, a driver update, or a
+  policy change must never be the thing that locks you out of every profile
+  you have — so it never can be.
+
 ## 1.3.16 — 2026-09-08
 
 **Recently deleted is back on the toolbar, and long pages fold up.**
