@@ -217,6 +217,30 @@ out, or included and always encrypted with a passphrase. See
 [`control-panel/README.md`](control-panel/README.md) for what it does, how
 it stays wire-compatible with the extension, and how to build or install it.
 
+### Test builds
+
+The app can update itself to a build that is not a public release, so a fix
+can be tried before it goes out to everyone. In the app: **Options → Updates →
+Which builds to accept → Also test builds**.
+
+Those are ordinary GitHub Releases marked **pre-release**, which is the one
+mechanism electron-updater supports for this (`allowPrerelease`, GitHub
+provider only). Cut one by giving the version a semver prerelease part —
+`control-panel/package.json` at `1.7.1-beta.1`, tagged
+`control-panel-v1.7.1-beta.1`. The workflow marks any version containing a
+`-` as a pre-release, so GitHub keeps it out of "Latest", the website's
+download button never points at it, and only installs that opted in will take
+it.
+
+**Not** workflow artifacts, which is the obvious idea and does not work:
+downloading one needs an authenticated GitHub token even on a public
+repository, they arrive as a zip rather than the `latest.yml` + installer the
+updater reads, and they expire. A token shipped inside a desktop app is a
+published token.
+
+Coming off the beta channel does not roll anything back — an install sitting
+on `1.7.1-beta.1` stays there until the stable line passes it.
+
 **[Download the installer](https://github.com/RyGull/TabbySync/releases)** — pick the newest
 `control-panel-v*` release (Windows 10/11, 64-bit). Not `/releases/latest`:
 the extension (`v*`) and the app (`control-panel-v*`) both cut releases in

@@ -17,6 +17,9 @@ const THEMES = new Set(['system', 'light', 'dark']);
 const CLOSE_BEHAVIORS = new Set(['ask', 'minimize', 'quit']);
 const UPDATE_CHECK_FREQUENCIES = new Set(['startup', 'daily', 'weekly', 'monthly', 'never']);
 
+/** Which GitHub releases this install is willing to be updated to. */
+export const UPDATE_CHANNELS = new Set(['stable', 'beta']);
+
 export const DEFAULTS = Object.freeze({
   theme: 'system',
   startWithWindows: false,
@@ -33,6 +36,20 @@ export const DEFAULTS = Object.freeze({
   // 'startup' means every launch (the original, still-default behavior);
   // 'never' means only the manual "Check for updates" button does anything.
   updateCheckFrequency: 'startup',
+  // Which releases count as an update for this install.
+  //
+  // 'stable' is every normal GitHub Release. 'beta' additionally accepts ones
+  // marked pre-release, which is how a build can be handed out for testing
+  // without it becoming the version the website and the update prompt push at
+  // everybody. electron-updater calls this allowPrerelease and only supports
+  // it on the GitHub provider, which is the provider this app uses.
+  //
+  // Deliberately NOT a way to install workflow artifacts. Those need an
+  // authenticated GitHub token even on a public repository, arrive as a zip
+  // rather than the latest.yml + installer the updater reads, and expire — a
+  // token shipped inside a desktop app is a published token, so there is no
+  // version of that idea worth having.
+  updateChannel: 'stable',
   // When a check last actually ran (startup or manual) — main.cjs compares
   // this against updateCheckFrequency to decide whether today's launch
   // should check again. Not meant to be hand-edited; null means "never".
@@ -104,6 +121,13 @@ function sanitize(patch) {
   if ('reopenLastProfile' in patch) out.reopenLastProfile = !!patch.reopenLastProfile;
   if ('lastActiveProfileId' in patch) out.lastActiveProfileId = patch.lastActiveProfileId || null;
   if ('updateCheckFrequency' in patch && UPDATE_CHECK_FREQUENCIES.has(patch.updateCheckFrequency)) out.updateCheckFrequency = patch.updateCheckFrequency;
+  // An unrecognised channel falls back to stable rather than being ignored:
+  // the safe direction for "which builds may install themselves here" is the
+  // conservative one, and a silently-dropped patch would leave Options showing
+  // a channel the app is not actually on.
+  if ('updateChannel' in patch) {
+    out.updateChannel = UPDATE_CHANNELS.has(patch.updateChannel) ? patch.updateChannel : DEFAULTS.updateChannel;
+  }
   if ('lastUpdateCheckAt' in patch) out.lastUpdateCheckAt = (typeof patch.lastUpdateCheckAt === 'number' && patch.lastUpdateCheckAt > 0) ? patch.lastUpdateCheckAt : null;
   if ('expandedTabGroups' in patch) out.expandedTabGroups = sanitizeExpandedTabGroups(patch.expandedTabGroups);
   if ('pinIdleMinutes' in patch) {

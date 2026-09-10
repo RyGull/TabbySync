@@ -427,7 +427,36 @@ function updateCheckDue(frequency, lastCheckAt) {
  * release process, not anything they did — not indefinite retrying, so a
  * genuine, lasting problem (network down, no such release) still surfaces.
  */
+/**
+ * Points the updater at the releases this install has opted into, immediately
+ * before every check — scheduled or manual, since both come through
+ * runUpdateCheck().
+ *
+ * Read fresh each time rather than set once at startup: turning the beta
+ * channel on in Options should take effect on the next check, not the next
+ * launch.
+ *
+ * A note on allowDowngrade, which electron-updater forces to true whenever
+ * allowPrerelease is: on the beta channel that is the behaviour you want,
+ * because a pulled beta should be able to put you back. Coming OFF beta is
+ * the case worth knowing about — allowPrerelease goes false, allowDowngrade
+ * with it, so an install sitting on 1.7.1-beta.2 stays there until the stable
+ * line passes it rather than being quietly rolled back to 1.7.0. Options says
+ * so; a silent downgrade nobody asked for is the worse of the two.
+ */
+async function applyUpdateChannel(settingsStore) {
+  let channel = 'stable';
+  try {
+    ({ updateChannel: channel } = await settingsStore.get());
+  } catch (e) {
+    // Unreadable settings must not turn a stable install into a beta one.
+    console.error('[TabbySync Control Panel] could not read the update channel, staying on stable:', e && e.message);
+  }
+  autoUpdater.allowPrerelease = channel === 'beta';
+}
+
 async function runUpdateCheck(settingsStore) {
+  await applyUpdateChannel(settingsStore);
   settingsStore.update({ lastUpdateCheckAt: Date.now() }).catch((e) => console.error(e));
   try {
     await autoUpdater.checkForUpdates();

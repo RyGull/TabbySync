@@ -558,8 +558,20 @@ test('the Windows version and filename match what the app actually builds', () =
   assert.ok(shown, 'CONTROL_PANEL_VERSION not found in website/config.php');
 
   const pkg = JSON.parse(read('control-panel/package.json'));
-  assert.equal(shown, pkg.version,
-    'the site advertises a Control Panel version that control-panel/package.json does not build');
+  // A prerelease version in package.json (1.7.1-beta.1) means a test build is
+  // being cut. Those are published as GitHub pre-releases and are only ever
+  // installed by someone who opted into the beta channel in the app's own
+  // Options — so the SITE must keep pointing at the last stable version, and
+  // demanding the two match here would force the download button onto a beta
+  // installer. What must hold in that case is the weaker, still-useful claim:
+  // the site never advertises a prerelease.
+  if (pkg.version.includes('-')) {
+    assert.ok(!shown.includes('-'),
+      'the website is advertising a prerelease build — the download button should stay on the last stable version');
+  } else {
+    assert.equal(shown, pkg.version,
+      'the site advertises a Control Panel version that control-panel/package.json does not build');
+  }
 
   // The installer filename is not a guess — electron-builder is told exactly
   // what to call it, and the download URL is built from that same shape.

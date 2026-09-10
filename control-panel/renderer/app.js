@@ -2028,6 +2028,12 @@ async function openOptionsModal() {
   const openUpdatePopupBtn = h('button', { class: 'btn', type: 'button' }, 'Check for updates…');
   openUpdatePopupBtn.addEventListener('click', () => openUpdateModal(true));
 
+  const updateChannel = h('select', { id: 'opt-update-channel' }, [
+    h('option', { value: 'stable' }, 'Stable releases only'),
+    h('option', { value: 'beta' }, 'Also test builds (pre-releases)'),
+  ]);
+  updateChannel.value = settings.updateChannel || 'stable';
+
   function bindCheckbox(input, key) {
     input.addEventListener('change', () => {
       api.settings.update({ [key]: input.checked }).catch((e) => showError(e, 'Could not save that option.'));
@@ -2041,6 +2047,13 @@ async function openOptionsModal() {
   });
   updateFrequency.addEventListener('change', () => {
     api.settings.update({ updateCheckFrequency: updateFrequency.value }).catch((e) => showError(e, 'Could not save that option.'));
+  });
+  updateChannel.addEventListener('change', () => {
+    api.settings.update({ updateChannel: updateChannel.value })
+      .then(() => showToast(updateChannel.value === 'beta'
+        ? 'Test builds are on. The next check will offer them.'
+        : 'Back to stable releases only.', 'success'))
+      .catch((e) => showError(e, 'Could not save that option.'));
   });
 
   const m = openModal({
@@ -2059,6 +2072,12 @@ async function openOptionsModal() {
           lastCheckedHint,
         ]),
         h('p', { class: 'hint' }, 'A found update always downloads in the background and asks before installing, regardless of how often it looks for one — this only controls how often it looks.'),
+        h('div', { class: 'field' }, [
+          h('label', { for: 'opt-update-channel' }, 'Which builds to accept'),
+          updateChannel,
+          h('div', { class: 'hint' }, 'Test builds are releases marked pre-release on GitHub — a way to try a fix before it goes out to everyone. They are not separately tested, and the whole point is that something in them may be wrong.'),
+          h('div', { class: 'hint' }, 'Switching back to stable does not undo a test build you already have: it stays until the stable line passes it. Nothing is rolled back behind your back.'),
+        ]),
         openUpdatePopupBtn,
       ]),
       securitySection(settings),
