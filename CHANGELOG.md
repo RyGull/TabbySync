@@ -6,6 +6,12 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.5.2 — 2026-09-10
+
+- **Guided setup's Back/Next bar points at itself.** Two small curved red
+  arrows above the bar, pointing down at the step count and at Next — the
+  two things worth noticing there on a first visit.
+
 ## 1.5.1 — 2026-09-10
 
 - **Fixed low-contrast text on the popup's "Not set up yet" prompt.** "Takes

@@ -568,11 +568,22 @@
        "guided setup" block in options.js) and fixed to the bottom so it's
        reachable without scrolling past whichever step is showing. -->
   <div class="wizardNav" id="wizardNav" hidden>
+    <!-- Pointing at the step counter and the way forward — the two things a
+         first-time visitor most needs to notice about this bar. Same curved
+         arrow both sides, the right one just mirrored. -->
+    <svg class="wizardHint wizardHint-step" viewBox="0 0 60 70" aria-hidden="true">
+      <path class="hint-arc" d="M42 8 C 20 12, 10 32, 19 55" fill="none"/>
+      <path class="hint-head" d="M19 55 L10 45 M19 55 L29 47" fill="none"/>
+    </svg>
     <span class="wizardStepLabel" id="wizardStepLabel">Step 1 of 4</span>
     <div class="wizardBtns">
       <button class="btn outline" id="wizardBack" type="button" hidden>Back</button>
       <button class="btn primary" id="wizardNext" type="button">Next →</button>
     </div>
+    <svg class="wizardHint wizardHint-next" viewBox="0 0 60 70" aria-hidden="true">
+      <path class="hint-arc" d="M42 8 C 20 12, 10 32, 19 55" fill="none"/>
+      <path class="hint-head" d="M19 55 L10 45 M19 55 L29 47" fill="none"/>
+    </svg>
   </div>
 
   <script src="shared/config.js"></script>
