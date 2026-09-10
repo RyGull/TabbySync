@@ -58,6 +58,15 @@ contextBridge.exposeInMainWorld('tabbysync', {
     change: (args) => call('pin:change', args),
     disable: (args) => call('pin:disable', args),
     lock: () => call('pin:lock'),
+    activity: () => call('pin:activity'),
+    // Main tells the renderer when the lock closes on its own — the idle
+    // timeout, "Lock now" from the tray or the File menu. Returns an
+    // unsubscribe function for the same reason app.onUpdateStatus does.
+    onChanged: (cb) => {
+      const listener = (_event, state) => cb(state);
+      ipcRenderer.on('lock:changed', listener);
+      return () => ipcRenderer.removeListener('lock:changed', listener);
+    },
   },
 
   // Windows Hello, which is an alternative way through the PIN gate above and
@@ -68,15 +77,6 @@ contextBridge.exposeInMainWorld('tabbysync', {
     unlock: () => call('hello:unlock'),
     enable: (args) => call('hello:enable', args),
     disable: () => call('hello:disable'),
-    activity: () => call('pin:activity'),
-    // Main tells the renderer when the lock closes on its own — the idle
-    // timeout, "Lock now" from the tray or the File menu. Returns an
-    // unsubscribe function for the same reason app.onUpdateStatus does.
-    onChanged: (cb) => {
-      const listener = (_event, state) => cb(state);
-      ipcRenderer.on('lock:changed', listener);
-      return () => ipcRenderer.removeListener('lock:changed', listener);
-    },
   },
 
   backup: {

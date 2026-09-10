@@ -2565,4 +2565,22 @@ function openPrivacyModal() {
   });
 }
 
-init();
+// Failing loudly, because the alternative was this bug. When wireLockScreen()
+// threw partway through, init() rejected with nobody listening: the unlock
+// form was already wired so a PIN still started the app, and the only symptom
+// was that "Lock now" silently drew nothing. An app that half-starts and says
+// nothing is worse than one that refuses to start and says why.
+//
+// Fails CLOSED: the lock screen is what index.html shows before any of this
+// runs, so leaving it up is both the safe direction and the honest one — the
+// app behind it is not wired.
+init().catch((e) => {
+  console.error('[TabbySync] startup failed:', e);
+  try {
+    document.getElementById('app').hidden = true;
+    document.getElementById('lock-screen').hidden = false;
+    const msg = document.getElementById('lock-msg');
+    msg.textContent = 'Something went wrong starting the app. Close it and open it again.';
+    msg.classList.remove('ok');
+  } catch { /* the document is not what we thought; the console line stands */ }
+});
