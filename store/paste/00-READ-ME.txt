@@ -22,9 +22,9 @@ Firefox (addons.mozilla.org) asks for two of its own:
 AMO's limits, read out of its own source (addons-server) after "Notes to
 Reviewer" silently swallowed everything past character 3000:
 
-  Notes to Reviewer (approval_notes)      3000   file 14 is 2933
+  Notes to Reviewer (approval_notes)      3000   file 14 is 2912
   Developer Comments                      3000   file 15 is 1807
-  Release notes                           3000   file 12 is 645
+  Release notes                           3000   file 12 is 483
   Summary (no URLs allowed in it)          250   file 02 is 125
   Description                            15000
   Privacy policy                        150000   file 13 is ~6500

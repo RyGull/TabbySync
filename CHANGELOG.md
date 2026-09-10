@@ -6,6 +6,17 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.6.4 — 2026-09-10
+
+- **Fixed `store/paste/14-amo-reviewer-notes.txt` going over AMO's 3000-
+  character cap on Notes to Reviewer.** The previous update added a
+  paragraph explaining the one skipped test without checking the length —
+  it landed at 3258 characters and AMO silently truncated it mid-sentence
+  on submission. Trimmed back to 2912 (compressed the explanation to one
+  line, tightened the test-sync paragraph without dropping either method
+  it describes) and corrected `00-READ-ME.txt`'s character counts for the
+  files that changed this session.
+
 ## 1.6.3 — 2026-09-10
 
 - **The reCAPTCHA-key test now runs from a source-code archive, not just a

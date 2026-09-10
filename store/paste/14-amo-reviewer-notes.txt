@@ -5,13 +5,8 @@ No bundler, minifier or transpiler. Every .js, .html and .css file in the zip is
 
 The source upload is that repository, whole, and is public at https://github.com/RyGull/TabbySync. To rebuild this upload from its root (node 22, bash, zip; no npm install needed):
 
-  npm test                          # 223 tests, no dependencies (222 pass + 1 skip here — see below)
-  bash scripts/package.sh firefox   # -> dist/tabbysync-1.6.3-firefox.zip
-
-One test skips in this source upload specifically: it shells out to `git
-ls-files` to check no secret key was ever committed, which needs a .git
-directory this archive (built with `git archive`, deliberately) doesn't
-have. It runs and passes normally from a real clone of the repository.
+  npm test                          # 223 tests, 1 skip (no .git in this archive)
+  bash scripts/package.sh firefox   # -> dist/tabbysync-1.6.4-firefox.zip
 
 addons-linter on the result: 0 errors, 0 warnings, 0 notices.
 
@@ -29,7 +24,7 @@ strict_min_version is 140 (desktop) and 142 (Android): that is where the built-i
 tabs/tablist.js calls chrome.tabs.group behind a feature check, so on Firefox a saved list reopens as plain tabs. tabGroups is not requested in this build.
 
 TO TEST SYNC
-Quickest: a free JSONBin.io account — copy the X-MASTER-KEY, choose "Just get me going" in Settings, paste, Save and connect; the bins are created on first save. Or a GitHub token with the "gists" scope. Then Sync now, change a bookmark, sync again. If you would rather not create an account, ask and I will supply a temporary endpoint and token.
+Quickest: a free JSONBin.io account (or a GitHub token scoped to gists) — copy the key, choose the matching option in Settings, paste, Save and connect; storage is created on first save. Then Sync now, change a bookmark, sync again. Rather not create an account? Ask and I'll supply a test endpoint and token.
 
 LICENCE
 Proprietary and source-available: LICENSE section 1 explicitly permits anyone to read, study and audit the code, so nothing in it restricts review.
