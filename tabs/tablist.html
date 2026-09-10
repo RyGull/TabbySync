@@ -18,7 +18,15 @@
         <img class="tlogo tlogo-dark" src="../icons/logo-dark.png" alt="TabbySync">
         <span class="brand-sub">· Tabs</span>
       </div>
-      <span id="sl-theme"></span>
+      <div class="top-actions">
+        <!-- Windows only, and unhidden by tablist.js rather than rendered
+             here: this page is where managing a lot of saved lists starts to
+             hurt, which makes it the one place the desktop app is worth
+             mentioning unprompted. -->
+        <button class="tbtn" id="desktop-link" type="button" hidden></button>
+        <button class="tbtn" id="sync-now" type="button">Sync now</button>
+        <span id="sl-theme"></span>
+      </div>
     </header>
 
     <!-- Same status band as the settings page and the popup: what is
@@ -40,20 +48,13 @@
       <details class="menu" id="more-menu">
         <summary class="tbtn">More</summary>
         <div class="menu-body">
-          <button class="menu-item" id="sync-now" type="button">Sync now</button>
-          <hr>
           <label class="menu-check" title="When on, reopening a link (or everything) also removes it from the list. Off keeps it.">
-            <input type="checkbox" id="remove-on-restore"> Remove links after I reopen them
+            <input type="checkbox" id="remove-on-restore"> Remove links after opening
           </label>
           <hr>
           <button class="menu-item" id="export" type="button">Save a backup…</button>
           <button class="menu-item" id="import" type="button">Restore from a backup…</button>
           <button class="menu-item" id="options-link" type="button">Settings</button>
-          <!-- Windows only, and unhidden by tablist.js rather than rendered
-               here: this page is where managing a lot of saved lists starts to
-               hurt, which makes it the one place the desktop app is worth
-               mentioning unprompted. -->
-          <button class="menu-item" id="desktop-link" type="button" hidden></button>
           <hr>
           <button class="menu-item danger" id="delete-all" type="button">Delete all my lists…</button>
         </div>

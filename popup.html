@@ -33,24 +33,16 @@
     [hidden] { display:none !important; }
     body { width:320px; margin:0; background:var(--bg); color:var(--text);
       font:13px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
-    /* logo and theme/Options each get their own bordered section, so the
-       popup reads as distinct blocks rather than one crowded header */
-    .head { display:flex; align-items:center; justify-content:center; padding:10px 15px; border-bottom:1px solid var(--line); }
-    .logo { height:44px; width:auto; flex:0 0 auto; display:none; }
+    /* logo on the left, Options on the right — two columns in one bordered
+       header section instead of stacking logo and actions in separate rows */
+    .head { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; border-bottom:1px solid var(--line); }
+    /* Shorter than before (was 44px) — this row now shares its width with the
+       Options button, and the logo's own aspect ratio (~6.2:1) means 44px
+       left no room for it in a 320px popup. */
+    .logo { height:32px; width:auto; flex:0 0 auto; display:none; }
+    .head .opts { flex:0 0 auto; }
     .ver { font-size:11px; font-weight:600; color:var(--muted); align-self:flex-end; margin:0 0 6px 1px; }
     .head .sub { color:var(--muted); font-size:11px; margin-left:auto; }
-    /* theme/Options on the left, the active sync method on the right —
-       same two-box pattern as the profile/encryption row below */
-    .headActions { display:flex; align-items:stretch; gap:8px; padding:8px 15px; border-bottom:1px solid var(--line); }
-    .headBox { flex:1 1 50%; min-width:0; display:flex; align-items:center; justify-content:center; gap:8px;
-      padding:5px 8px; border-radius:9px; background:var(--panel); border:1px solid var(--line); }
-    .syncBox { font-size:12px; font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    /* one dot, same meaning as the band at the top of the settings page:
-       green = syncing, amber = nothing set up yet, red = the last try failed */
-    .syncDot { width:7px; height:7px; border-radius:50%; background:var(--muted); flex:0 0 auto; }
-    .syncDot.ok { background:var(--ok); }
-    .syncDot.setup { background:var(--busy); }
-    .syncDot.err { background:var(--err); }
     /* logo swaps with the effective theme */
     :root .logo-light { display:block; }
     @media (prefers-color-scheme: dark) {
@@ -192,14 +184,7 @@
   <div class="head">
     <img class="logo logo-light" src="icons/logo-light.png" alt="TabbySync">
     <img class="logo logo-dark" src="icons/logo-dark.png" alt="TabbySync">
-  </div>
-  <div class="headActions">
-    <div class="headBox">
-      <button class="opts" id="opts">Options</button>
-    </div>
-    <div class="headBox syncBox" id="syncBox">
-      <span class="syncDot" id="syncDot"></span><span id="syncLabel">—</span>
-    </div>
+    <button class="opts" id="opts">Options</button>
   </div>
 
   <div id="setup" class="banner" hidden>
@@ -225,7 +210,6 @@
       </div>
       <div class="acts">
         <button class="primary grow" id="bmSync">Sync now</button>
-        <button id="bmOpts">Options</button>
       </div>
     </section>
 

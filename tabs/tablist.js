@@ -1035,15 +1035,15 @@
   document.getElementById("options-link").addEventListener("click", function () {
     chrome.runtime.openOptionsPage();
   });
-  // The Windows desktop app. Only rendered on Windows, and only as a menu
-  // item — this page's toolbar is deliberately three controls wide (see the
-  // comment above it in tablist.html), and an unasked-for promotion does not
-  // get to be the fourth. Wording and URL: shared/desktop-app.js.
+  // The Windows desktop app. Only rendered on Windows, next to Sync now in
+  // the header. Wording and URL: shared/desktop-app.js.
   (function () {
     var app = self.TabbySyncDesktopApp;
     if (!app || !app.isWindows()) return;
     var link = document.getElementById("desktop-link");
-    link.textContent = "🖥️ " + app.NAME + "…";
+    // app.NAME leads with the TabbySync brand, which up here would just
+    // repeat the logo right next to it — so drop that part and keep the rest.
+    link.textContent = "🖥️ " + app.NAME.replace(/^TabbySync\s+/, "") + "…";
     link.title = app.TAGLINE;
     link.hidden = false;
     link.addEventListener("click", function () { app.open(); });
