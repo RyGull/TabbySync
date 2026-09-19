@@ -52,6 +52,7 @@ async function refreshBookmarks() {
   $("bmLast").textContent = s.enabled ? fmtStamp(s.lastSync) : "off";
   var kind = !s.enabled ? "" : s.lastStatus === "ok" ? "ok" : s.lastStatus === "error" ? "err" : "";
   setDot($("bmDot"), kind);
+  setDot($("menuBmDot"), kind);
   if (s.enabled && s.lastError) { $("bmErrRow").hidden = false; $("bmErr").textContent = s.lastError; }
   else $("bmErrRow").hidden = true;
   $("bmSync").disabled = !s.enabled || !s.configured;
@@ -73,6 +74,7 @@ async function refreshTabs() {
   var kind = !s.enabled || !s.configured ? ""
     : s.lastStatus === "error" ? "err" : "ok";
   setDot($("tabDot"), kind);
+  setDot($("menuTabDot"), kind);
   if (s.enabled && s.lastStatus === "error" && s.lastError) {
     $("tabErrRow").hidden = false; $("tabErr").textContent = s.lastError;
   } else $("tabErrRow").hidden = true;
@@ -158,7 +160,7 @@ $("tabEnable").addEventListener("change", async function () {
 
 $("bmSync").addEventListener("click", async function () {
   $("bmSync").disabled = true; $("menuSyncBm").disabled = true;
-  $("bmSync").textContent = "Syncing…"; setDot($("bmDot"), "busy");
+  $("bmSync").textContent = "Syncing…"; setDot($("bmDot"), "busy"); setDot($("menuBmDot"), "busy");
   await send({ type: "syncNow" });
   $("bmSync").textContent = "Sync Bookmarks";
   await refreshBookmarks();
@@ -175,7 +177,7 @@ $("tabOpen").addEventListener("click", async function () {
 });
 $("tabSync").addEventListener("click", async function () {
   $("tabSync").disabled = true; $("menuSyncTabs").disabled = true;
-  $("tabSync").textContent = "…"; setDot($("tabDot"), "busy");
+  $("tabSync").textContent = "…"; setDot($("tabDot"), "busy"); setDot($("menuTabDot"), "busy");
   await send({ type: "tabbysync-sync" });
   $("tabSync").textContent = "Sync Tabs";
   await refreshTabs();

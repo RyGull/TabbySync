@@ -91,7 +91,7 @@
     .menuItem { display:flex; align-items:center; gap:9px; width:100%; text-align:left; border:0;
       background:transparent; border-radius:8px; padding:8px 8px; font-size:12.5px; font-weight:600;
       color:var(--text); cursor:pointer; }
-    .menuItem:hover:not(:disabled) { background:var(--panel); }
+    .menuItem:hover:not(:disabled) { background:var(--tab-soft); }
     .menuItem:disabled { opacity:.5; cursor:default; }
     .menuItem .ic { width:18px; text-align:center; font-size:13px; }
 
@@ -148,7 +148,7 @@
     .tab .badge { background:var(--tab-soft); }
     .card-h .title { font-weight:700; font-size:13.5px; }
     .card-h .title small { display:block; font-weight:500; color:var(--muted); font-size:11px; }
-    .dot { width:8px; height:8px; border-radius:50%; background:#9ca3af; margin-left:auto; }
+    .dot { width:8px; height:8px; border-radius:50%; background:#9ca3af; margin-left:auto; display:inline-block; }
     .dot.ok{background:var(--ok);} .dot.err{background:var(--err);} .dot.busy{background:var(--busy);}
 
     /* toggle */
@@ -271,13 +271,13 @@
   <div class="menuPanel" id="logoMenu" role="menu" hidden>
     <div class="menuGroup">
       <div class="menuLabel">📑 Bookmarks</div>
-      <button class="menuItem" id="menuSyncBm" type="button" role="menuitem"><span class="ic">🔁</span>Sync Bookmarks</button>
+      <button class="menuItem" id="menuSyncBm" type="button" role="menuitem"><span class="ic"><span class="dot" id="menuBmDot"></span></span>Sync Bookmarks</button>
     </div>
     <div class="menuGroup">
       <div class="menuLabel">🗂️ Tabs</div>
       <button class="menuItem" id="menuSaveTabs" type="button" role="menuitem"><span class="ic">💾</span>Save Tabs</button>
       <button class="menuItem" id="menuMyTabs" type="button" role="menuitem"><span class="ic">📂</span>My Tabs</button>
-      <button class="menuItem" id="menuSyncTabs" type="button" role="menuitem"><span class="ic">🔁</span>Sync Tabs</button>
+      <button class="menuItem" id="menuSyncTabs" type="button" role="menuitem"><span class="ic"><span class="dot" id="menuTabDot"></span></span>Sync Tabs</button>
     </div>
   </div>
 
