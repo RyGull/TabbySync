@@ -6,6 +6,18 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.6.7 — 2026-09-19
+
+- **The "save and close a lot of tabs at once?" prompt is now its own small
+  popup window, on by default (15+ tabs).** It used to be a desktop
+  notification only; answering it now never means leaving the browser for
+  the OS notification tray — a real extension window opens with the same
+  Save & close / Cancel choice, works from the popup, the keyboard
+  shortcut, and the right-click menu alike, and falls back to the
+  notification only if the window itself can't open. It carries its own
+  "Don't ask me again" checkbox, which turns the prompt off (same as
+  setting it to 0 in Options) without having to leave the dialog.
+
 ## 1.6.6 — 2026-09-19
 
 - **Fixed two Options fields silently saving something other than what was

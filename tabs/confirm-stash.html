@@ -1,0 +1,65 @@
+<!doctype html>
+<!-- TabbySync — Copyright (c) 2026 Ryan Gulliver. All rights reserved.
+     Personal, non-commercial use only. No redistribution. See LICENSE. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Save and close tabs?</title>
+  <script src="../shared/browser-compat.js"></script>
+  <script src="../shared/theme.js"></script>
+  <style>
+    :root {
+      --bg:#ffffff; --panel:#f7f8fa; --line:#e3e6ea; --text:#1c2330; --muted:#6b7280;
+      --tab:#0d9488; --tab-soft:#d7f4ef;
+    }
+    :root[data-theme="dark"], :root:not([data-theme="light"]) { color-scheme: light dark; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg:#171a20; --panel:#1e222a; --line:#333a45; --text:#e8eaed; --muted:#9aa2af;
+        --tab:#2dd4bf; --tab-soft:#123b37;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg:#171a20; --panel:#1e222a; --line:#333a45; --text:#e8eaed; --muted:#9aa2af;
+      --tab:#2dd4bf; --tab-soft:#123b37;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text);
+      font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      padding:20px 22px 18px; display:flex; flex-direction:column; gap:14px;
+      height:100vh; }
+    .head { display:flex; align-items:flex-start; gap:12px; }
+    .badge { width:36px; height:36px; border-radius:10px; flex:0 0 auto; background:var(--tab-soft);
+      display:grid; place-items:center; font-size:18px; }
+    h1 { font-size:16px; margin:0 0 4px; line-height:1.35; }
+    p { margin:0; color:var(--muted); font-size:13.5px; line-height:1.5; }
+    .remember { display:flex; align-items:flex-start; gap:8px; font-size:13px; color:var(--muted);
+      cursor:pointer; margin-top:auto; }
+    .remember input { margin-top:2px; flex:0 0 auto; width:15px; height:15px; }
+    .row { display:flex; gap:8px; justify-content:flex-end; }
+    button { border:1px solid var(--line); background:var(--panel); color:var(--text);
+      border-radius:8px; padding:9px 14px; font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit; }
+    button:hover { border-color:var(--muted); }
+    button.primary { background:var(--tab); border-color:var(--tab); color:#04201c; }
+    button.primary:hover { filter:brightness(1.06); }
+  </style>
+</head>
+<body>
+  <div class="head">
+    <span class="badge">🗂️</span>
+    <div>
+      <h1 id="title">Save and close tabs?</h1>
+      <p id="body"></p>
+    </div>
+  </div>
+  <label class="remember">
+    <input type="checkbox" id="remember">
+    <span>Don't ask me again — change this anytime in Options &gt; Tabs &gt; More options.</span>
+  </label>
+  <div class="row">
+    <button id="cancel" type="button">Cancel</button>
+    <button id="confirm" class="primary" type="button">Save &amp; close</button>
+  </div>
+  <script src="confirm-stash.js"></script>
+</body>
+</html>

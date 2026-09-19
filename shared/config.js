@@ -171,7 +171,11 @@
           pinList: s[K.tabPinList] === true,                 // default off
           notifyErrors: s[K.tabNotifyErrors] === true,       // default off
           blocklist: s[K.tabBlocklist] || "",
-          stashWarnAt: Math.max(0, num(s[K.tabStashWarnAt], 0)), // default 0 = never ask
+          // Default on (15, matching the existing "Reopen everything" bulk
+          // warning's own threshold) rather than off — 0 still means "never
+          // ask" once someone turns it off, in Options or via the confirm
+          // popup's "Don't ask me again".
+          stashWarnAt: Math.max(0, num(s[K.tabStashWarnAt], 15)),
           trashDays: Math.max(1, num(s[K.tabTrashDays], 30)),
         },
       };

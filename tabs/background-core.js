@@ -66,16 +66,51 @@
     });
   }
 
-  // Pending "save & close N tabs?" confirmations, keyed by the notification
-  // id that's asking — see confirmBulkStash(). A background service worker
-  // has no window to run a blocking confirm() in, and this needs to work the
-  // same way whether stash() was triggered by the popup, the keyboard
-  // command, or the context menu (none of which is guaranteed to have a
-  // live page to show a dialog in), so it uses chrome.notifications' own
-  // buttons instead — one mechanism, every trigger.
+  // Pending "save & close N tabs?" confirmations, keyed by a confirmId —
+  // see confirmBulkStash(). A background service worker has no window to
+  // run a blocking confirm() in, and this needs to work the same way
+  // whether stash() was triggered by the popup, the keyboard command, or
+  // the context menu (none of which is guaranteed to have a live page to
+  // show a dialog in already open), so the prompt is its own small
+  // chrome.windows.create() popup window — one mechanism, every trigger,
+  // and answering it never means leaving the browser for the OS
+  // notification tray. Falls back to a chrome.notifications prompt only if
+  // window creation itself isn't available.
   var pendingStashConfirms = {};
+  var stashConfirmWindows = {}; // confirmId -> windowId, so onRemoved can find it back
 
-  function confirmBulkStash(count) {
+  function resolveStashConfirm(confirmId, proceed, remember) {
+    var resolve = pendingStashConfirms[confirmId];
+    if (!resolve) return;
+    delete pendingStashConfirms[confirmId];
+    delete stashConfirmWindows[confirmId];
+    // "Don't ask me again" — 0 is the existing, documented "never ask"
+    // value for this same setting (Options already explains "0 to never
+    // ask"), so this reaches for exactly that rather than a second flag.
+    // Turning it off applies regardless of which button was clicked; only
+    // THIS action still depends on proceed.
+    if (remember) self.TabbySyncConfig.setConfig({ tabs: { stashWarnAt: 0 } });
+    resolve(proceed);
+  }
+
+  function confirmBulkStashWindow(count) {
+    var confirmId = "sl-stash-confirm-" + Date.now();
+    return new Promise(function (resolve) {
+      pendingStashConfirms[confirmId] = resolve;
+      var url = chrome.runtime.getURL("tabs/confirm-stash.html") +
+        "?confirmId=" + encodeURIComponent(confirmId) + "&count=" + encodeURIComponent(count);
+      chrome.windows.create({ url: url, type: "popup", width: 400, height: 210, focused: true })
+        .then(function (win) { stashConfirmWindows[confirmId] = win.id; })
+        .catch(function () {
+          // Couldn't even open the window — fall back to a notification
+          // rather than silently doing nothing or silently proceeding.
+          delete pendingStashConfirms[confirmId];
+          confirmBulkStashNotification(count).then(resolve);
+        });
+    });
+  }
+
+  function confirmBulkStashNotification(count) {
     if (!(chrome.notifications && chrome.notifications.create)) return Promise.resolve(true);
     return new Promise(function (resolve) {
       var id = "sl-stash-confirm-" + Date.now();
@@ -90,22 +125,33 @@
       }, function () { void chrome.runtime.lastError; });
     });
   }
+
+  function confirmBulkStash(count) {
+    if (chrome.windows && chrome.windows.create) return confirmBulkStashWindow(count);
+    return confirmBulkStashNotification(count);
+  }
+
+  if (chrome.windows && chrome.windows.onRemoved) {
+    // The window's own 'x', or the OS closing it — same as dismissing the
+    // notification without a button: when in doubt, don't close tabs
+    // nobody confirmed closing.
+    chrome.windows.onRemoved.addListener(function (windowId) {
+      for (var id in stashConfirmWindows) {
+        if (stashConfirmWindows[id] === windowId) { resolveStashConfirm(id, false, false); break; }
+      }
+    });
+  }
   if (chrome.notifications) {
     chrome.notifications.onButtonClicked.addListener(function (id, btnIdx) {
-      var resolve = pendingStashConfirms[id];
-      if (!resolve) return;
-      delete pendingStashConfirms[id];
+      if (!(id in pendingStashConfirms)) return;
       chrome.notifications.clear(id);
-      resolve(btnIdx === 0); // 0 = "Save & close", 1 = "Cancel"
+      resolveStashConfirm(id, btnIdx === 0, false); // 0 = "Save & close", 1 = "Cancel"
     });
     // Dismissed without a choice (the OS 'x', or it timed out despite
-    // requireInteraction on a platform that doesn't honor it) — when in
-    // doubt, don't close tabs nobody confirmed closing.
+    // requireInteraction on a platform that doesn't honor it).
     chrome.notifications.onClosed.addListener(function (id) {
-      var resolve = pendingStashConfirms[id];
-      if (!resolve) return;
-      delete pendingStashConfirms[id];
-      resolve(false);
+      if (!(id in pendingStashConfirms)) return;
+      resolveStashConfirm(id, false, false);
     });
   }
 
@@ -253,6 +299,10 @@
       stash(msg.mode || "all").then(function () { sendResponse({ ok: true }); })
         .catch(function (e) { sendResponse({ ok: false, error: e && e.message }); });
       return true;
+    }
+    if (msg.type === "sl-stash-confirm-result") {
+      resolveStashConfirm(msg.confirmId, !!msg.proceed, !!msg.remember);
+      return false;
     }
     if (msg.type === "sl-open-list") {
       openOrFocusList().then(function () { sendResponse({ ok: true }); });

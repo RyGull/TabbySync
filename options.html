@@ -323,10 +323,12 @@
               subdomains. These tabs are left exactly as they are — not saved, not closed.</p>
             <div class="mini">
               <label for="tab-stash-warn">Ask before saving &amp; closing more than</label>
-              <input type="number" id="tab-stash-warn" min="0" max="9999" step="1" value="0"> tabs at once
+              <input type="number" id="tab-stash-warn" min="0" max="9999" step="1" value="15"> tabs at once
             </div>
-            <p class="hint">0 to never ask. Shows as a notification with a Save &amp; close / Cancel
-              choice, so it works the same from the popup, the keyboard shortcut and the right-click menu.</p>
+            <p class="hint">On by default (15). 0 to never ask. Shows as its own small popup window
+              with a Save &amp; close / Cancel choice — never the OS notification tray — so it works the
+              same from the popup, the keyboard shortcut and the right-click menu. Its own "Don't ask me
+              again" checkbox turns this off from there too.</p>
 
             <h3>Reopening</h3>
             <label class="check"><input type="checkbox" id="tab-restore-group">
