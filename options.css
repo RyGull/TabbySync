@@ -169,15 +169,18 @@ input[type=file] { display:none; }
 .card.brake h2 .ic { background: rgba(220,38,38,.14); }
 
 /* danger zone — a closed disclosure, so the most destructive thing on the
-   page isn't sitting open while someone is still setting up */
-.card.danger { border:1px solid var(--line); background:transparent; padding:0; }
+   page isn't sitting open while someone is still setting up. The border and
+   summary text stay red even collapsed so it still reads as the one section
+   on this page that can permanently delete data. */
+.card.danger { border:2px solid var(--err); background:transparent; padding:0;
+  box-shadow: 0 0 0 4px rgba(220,38,38,.10); }
 .card.danger > summary { list-style:none; cursor:pointer; padding:14px 18px;
-  font-size:14px; font-weight:600; color:var(--muted); display:flex; align-items:center; gap:9px; }
+  font-size:14px; font-weight:700; color:var(--err); display:flex; align-items:center; gap:9px; }
 .card.danger > summary::-webkit-details-marker { display:none; }
 .card.danger > summary::after { content:"›"; margin-left:auto; font-size:17px; transition:transform .15s; }
-.card.danger[open] > summary { color:var(--err); border-bottom:1px solid var(--line); }
+.card.danger[open] > summary { border-bottom:1px solid var(--err); }
 .card.danger[open] > summary::after { transform:rotate(90deg); }
-.card.danger > summary:hover { color:var(--err); }
+.card.danger > summary:hover { color:#b91c1c; }
 .danger-inner { padding:4px 18px 18px; }
 .danger-inner p { color:var(--muted); }
 .card.danger h3 { color:var(--err); }

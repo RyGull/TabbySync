@@ -156,7 +156,7 @@ $("tabEnable").addEventListener("change", async function () {
 $("bmSync").addEventListener("click", async function () {
   $("bmSync").disabled = true; $("bmSync").textContent = "Syncing…"; setDot($("bmDot"), "busy");
   await send({ type: "syncNow" });
-  $("bmSync").textContent = "Sync now";
+  $("bmSync").textContent = "Sync Bookmarks";
   await refreshBookmarks();
 });
 
@@ -172,7 +172,7 @@ $("tabOpen").addEventListener("click", async function () {
 $("tabSync").addEventListener("click", async function () {
   $("tabSync").disabled = true; $("tabSync").textContent = "…"; setDot($("tabDot"), "busy");
   await send({ type: "tabbysync-sync" });
-  $("tabSync").textContent = "Sync";
+  $("tabSync").textContent = "Sync Tabs";
   await refreshTabs();
 });
 
@@ -241,7 +241,7 @@ chrome.runtime.onMessage.addListener(function (msg) {
 });
 
 // On open: just render the last-known status for whatever is enabled +
-// configured. Syncing itself stays on the manual "Sync now" buttons and the
+// configured. Syncing itself stays on the manual sync buttons and the
 // background timer — opening the popup shouldn't kick off its own sync.
 (async function init() {
   await refreshAll();

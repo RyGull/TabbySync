@@ -569,7 +569,7 @@
       // Name the button as it actually reads in the popup — an instruction
       // that names a button nobody can find is worse than no instruction.
       p.innerHTML =
-        "Click the TabbySync icon in your toolbar and choose <b>Save my tabs</b>, or press " +
+        "Click the TabbySync icon in your toolbar and choose <b>Save Tabs</b>, or press " +
         "<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd>. The tabs in that window close and land here, " +
         "ready to reopen on any of your computers.";
       empty.appendChild(p);
@@ -1035,7 +1035,7 @@
   document.getElementById("options-link").addEventListener("click", function () {
     chrome.runtime.openOptionsPage();
   });
-  // The Windows desktop app. Only rendered on Windows, next to Sync now in
+  // The Windows desktop app. Only rendered on Windows, next to Sync Tabs in
   // the header. Wording and URL: shared/desktop-app.js.
   (function () {
     var app = self.TabbySyncDesktopApp;
@@ -1090,7 +1090,7 @@
     if (msg && msg.type === "tabbysync-refresh") reload();
   });
 
-  // Just render what's already stored — syncing stays on the "Sync now"
+  // Just render what's already stored — syncing stays on the "Sync Tabs"
   // button and the background timer, not on opening this page.
   reload();
 })();

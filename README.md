@@ -200,8 +200,8 @@ and TabbySync's own local settings.
 ## Everyday use
 
 - **Toolbar popup** — where both tools are syncing, per-tool on/off switches,
-  **Sync now**, **Save my tabs**, **My lists**.
-- **Saving tabs** — the popup's **Save my tabs**, `Alt`+`Shift`+`O`, or
+  **Sync Bookmarks**, **Sync Tabs**, **Save Tabs**, **My Tabs**.
+- **Saving tabs** — the popup's **Save Tabs**, `Alt`+`Shift`+`O`, or
   right-click the toolbar icon (this tab / others / left / right).
 - **The saved-tabs page** — name, pin, lock, search and reorder your lists;
   **Reopen** one or **Reopen everything**. Fold a list up with its ▾, or use
