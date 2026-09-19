@@ -6,6 +6,20 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.6.11 — 2026-09-19
+
+- **Fixed "Save Tabs" landing on a broken `…tablist.html[object Object]`
+  URL** — a regression from 1.6.10's in-page modal change, and not
+  limited to the confirmation prompt: it broke the saved-tabs page for
+  every stash, confirmed or not. `openOrFocusList()` learned an optional
+  query-string argument in 1.6.10, and `saved.then(openOrFocusList)`
+  — a pre-existing line, written back when the function took no
+  arguments — started forwarding whatever `saveState()` resolves with
+  (the whole tab-state object) as that argument; `LIST_URL + object`
+  stringifies to `...[object Object]`. Fixed by wrapping it in a plain
+  function that calls `openOrFocusList()` with no arguments, which is
+  what that line always meant to do.
+
 ## 1.6.10 — 2026-09-19
 
 - **The "save and close many tabs?" prompt is now a modal on the saved-tabs

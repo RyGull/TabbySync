@@ -166,7 +166,12 @@
     var saved = toStash.length
       ? (TabbySync.addGroup(state, toStash, ""), TabbySync.saveState(state))
       : Promise.resolve();
-    return saved.then(openOrFocusList).then(function () {
+    // NOT saved.then(openOrFocusList) — that forwards whatever saveState()
+    // resolves with (the whole state object) as openOrFocusList's query
+    // argument, and LIST_URL + <object> stringifies to "...[object Object]",
+    // corrupting the URL. openOrFocusList's own no-arg call is what's wanted
+    // here; the query-carrying call is confirmBulkStashTab's alone.
+    return saved.then(function () { return openOrFocusList(); }).then(function () {
       var ids = tabs.map(function (t) { return t.id; })
         .filter(function (id) { return typeof id === "number"; });
       return chrome.tabs.remove(ids).catch(function (e) {
