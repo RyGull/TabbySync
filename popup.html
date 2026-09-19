@@ -81,9 +81,20 @@
     @media (prefers-reduced-motion: reduce) { .logoBtn::before { animation:none; } }
 
     .menuScrim { position:absolute; inset:0; z-index:5; }
-    .menuPanel { position:absolute; top:54px; left:12px; width:216px; background:var(--bg);
-      border:1px solid var(--line); border-radius:12px; box-shadow:0 14px 32px rgba(20,20,25,.22);
-      z-index:10; overflow:hidden; }
+    /* The ring lives on .menuPanel itself (via ::before, same technique as
+       .logoBtn above); .menuInner carries the background/border/clipping so
+       the ring — which sits outside the box via a negative inset — never
+       gets cut off by the corner-rounding overflow:hidden needs. */
+    .menuPanel { position:absolute; top:54px; left:12px; width:216px; z-index:10; }
+    .menuPanel::before { content:""; position:absolute; inset:-4px; z-index:-1; border-radius:16px;
+      padding:2.5px; --ring-angle:0deg;
+      background:conic-gradient(from var(--ring-angle), var(--bm), var(--tab), var(--bm), var(--tab), var(--bm));
+      -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite:xor; mask-composite:exclude;
+      opacity:.9; animation:logoSwirl 2.6s linear infinite; }
+    @media (prefers-reduced-motion: reduce) { .menuPanel::before { animation:none; } }
+    .menuInner { background:var(--bg); border:1px solid var(--line); border-radius:12px;
+      box-shadow:0 14px 32px rgba(20,20,25,.22); overflow:hidden; }
     .menuGroup { padding:6px; }
     .menuGroup + .menuGroup { border-top:1px solid var(--line); }
     .menuLabel { font-size:9.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
@@ -269,15 +280,17 @@
 
   <div class="menuScrim" id="menuScrim" hidden></div>
   <div class="menuPanel" id="logoMenu" role="menu" hidden>
-    <div class="menuGroup">
-      <div class="menuLabel">📑 Bookmarks</div>
-      <button class="menuItem" id="menuSyncBm" type="button" role="menuitem"><span class="ic"><span class="dot" id="menuBmDot"></span></span>Sync Bookmarks</button>
-    </div>
-    <div class="menuGroup">
-      <div class="menuLabel">🗂️ Tabs</div>
-      <button class="menuItem" id="menuSaveTabs" type="button" role="menuitem"><span class="ic">💾</span>Save Tabs</button>
-      <button class="menuItem" id="menuMyTabs" type="button" role="menuitem"><span class="ic">📂</span>My Tabs</button>
-      <button class="menuItem" id="menuSyncTabs" type="button" role="menuitem"><span class="ic"><span class="dot" id="menuTabDot"></span></span>Sync Tabs</button>
+    <div class="menuInner">
+      <div class="menuGroup">
+        <div class="menuLabel">📑 Bookmarks</div>
+        <button class="menuItem" id="menuSyncBm" type="button" role="menuitem"><span class="ic"><span class="dot" id="menuBmDot"></span></span>Sync Bookmarks</button>
+      </div>
+      <div class="menuGroup">
+        <div class="menuLabel">🗂️ Tabs</div>
+        <button class="menuItem" id="menuSaveTabs" type="button" role="menuitem"><span class="ic">💾</span>Save Tabs</button>
+        <button class="menuItem" id="menuMyTabs" type="button" role="menuitem"><span class="ic">📂</span>My Tabs</button>
+        <button class="menuItem" id="menuSyncTabs" type="button" role="menuitem"><span class="ic"><span class="dot" id="menuTabDot"></span></span>Sync Tabs</button>
+      </div>
     </div>
   </div>
 
