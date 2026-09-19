@@ -1217,6 +1217,12 @@ $('set-file').addEventListener('change', async () => {
 // looked at two ways does not have that problem.
 function initWizard() {
   if (new URLSearchParams(location.search).get('wizard') !== '1') return;
+  // ?wizard=1 has done its job (picked this branch); drop it from the visible
+  // URL now so this tab settles back to the same address chrome.runtime.
+  // openOptionsPage() opens. Otherwise this tab's URL never matches a plain
+  // "options.html" tab — Save Tabs treats them as two different pages, so
+  // dedup ("don't save it twice") and "Clean up duplicates" never catch it.
+  history.replaceState(null, '', location.pathname);
 
   const STEP_IDS = ['serverCard', 'selfhostCard', 'encCard', 'whatCard'];
   // Real settings, not part of any step — out of the way until Finish so a

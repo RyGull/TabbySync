@@ -6,6 +6,26 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.6.13 — 2026-09-19
+
+- **Duplicate detection missed the extension's own Options page** — two tabs
+  both titled "TabbySync — Options" could end up saved as two separate
+  entries even with duplicate checking on. Root cause: the popup's "Walk me
+  through it" button opens `options.html?wizard=1`, and nothing ever
+  dropped that query string from the tab's address afterward, so that tab's
+  URL stayed `options.html?wizard=1` for its whole life — permanently
+  different, character for character, from the plain `options.html` that
+  `chrome.runtime.openOptionsPage()` (the gear icon, "Settings," etc.)
+  opens. Every URL-exact-match check (Save Tabs' "don't save it twice,"
+  "Clean up duplicates I already saved") is blind to two URLs that only
+  differ by a query string, however identical the pages look. Fixed by
+  clearing `?wizard=1` from the visible URL once it's done its job
+  (`history.replaceState`, the same pattern already used for the saved-tabs
+  page's own transient `?confirmId=` query) — a wizard tab now settles back
+  to the exact same URL as any other Options tab. Verified against a real
+  loaded copy of the extension in Chromium: the tab's URL cleans up to
+  `options.html` and the wizard still renders and works.
+
 ## 1.6.12 — 2026-09-19
 
 - **"Don't save it twice" only checked the tabs in the save you were doing
