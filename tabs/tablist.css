@@ -497,6 +497,22 @@ button.btn.ghost { background: transparent; color: var(--link); }
 button.btn.ghost:hover { text-decoration: underline; }
 .tabs-modal-btns { margin-left: auto; }
 
+/* "save and close N tabs?" — same overlay/modal shell as the others above,
+   with its own small entrance animation (a fade + scale-up on the card, the
+   backdrop shows instantly like every other overlay here) since it's the
+   one modal that interrupts something already in motion — closing tabs —
+   rather than answering a question someone asked for. */
+.stash-confirm-modal { width: min(420px, 92vw); animation: stashConfirmIn .16s cubic-bezier(.2,.8,.2,1); }
+@keyframes stashConfirmIn { from { opacity: 0; transform: scale(.95) translateY(4px); } to { opacity: 1; transform: none; } }
+.stash-confirm-head { display: flex; align-items: flex-start; gap: 12px; }
+.stash-confirm-badge { width: 34px; height: 34px; border-radius: 9px; flex: 0 0 auto;
+  background: var(--drop); display: grid; place-items: center; font-size: 17px; }
+.stash-confirm-head h3 { margin: 0 0 3px; }
+.stash-confirm-head .stats { margin: 0; }
+.stash-confirm-remember { display: flex; align-items: flex-start; gap: 8px; margin: 14px 0 0;
+  font-size: 12.5px; color: var(--muted); cursor: pointer; }
+.stash-confirm-remember input { margin-top: 2px; flex: 0 0 auto; width: 15px; height: 15px; }
+
 /* trash panel */
 #trash-list { margin: 6px 0 4px; }
 .trash-entry {

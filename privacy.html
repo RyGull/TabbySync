@@ -92,7 +92,7 @@
       <tr><td><code>storage</code> / <code>unlimitedStorage</code></td><td>Save your bookmarks/tab-list data, settings, and sync state locally in the browser (<code>chrome.storage.local</code>).</td></tr>
       <tr><td><code>contextMenus</code></td><td>Add right-click menu shortcuts (e.g. "Send tabs to TabbySync").</td></tr>
       <tr><td><code>alarms</code></td><td>Run the periodic background sync on the schedule you set.</td></tr>
-      <tr><td><code>notifications</code></td><td>Show a desktop notification if a sync fails and you've turned that on in Options. Also the fallback for the "save and close many tabs at once?" prompt (on by default) if its own popup window can't open for some reason — normally that prompt is its own small extension window, not a notification.</td></tr>
+      <tr><td><code>notifications</code></td><td>Show a desktop notification if a sync fails and you've turned that on in Options. Also the fallback for the "save and close many tabs at once?" prompt (on by default) if the saved-tabs page itself can't be reached for some reason — normally that prompt is a modal on that page, not a notification.</td></tr>
       <tr><td>Host access (<code>http(s)://*/*</code>, requested per-site)</td><td>Only requested for the specific server/API host you configure as your sync destination (e.g. your own domain, <code>api.github.com</code>, or <code>api.jsonbin.io</code>) — used solely to read and write your synced data there.</td></tr>
     </table>
     <p>TabbySync does not read your browsing history, passwords, form data, or the

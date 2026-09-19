@@ -256,6 +256,48 @@
     });
   }
 
+  // ---- "save and close N tabs?" ---------------------------------------------
+  //
+  // Shown when the background worker's stash() is about to save+close more
+  // tabs than the configured threshold (Options > Tabs > More options,
+  // "Ask before saving & closing more than ___ tabs"). Triggered by the URL
+  // this page was opened/updated with (?confirmId=...&count=...) rather than
+  // a live runtime message — a freshly created tab's script hasn't
+  // necessarily run yet by the time the background worker would want to
+  // send one, so reading it from the page's own URL on load has no such
+  // race. The answer goes back as a runtime message the background worker
+  // is already listening for (tabs/background-core.js's resolveStashConfirm()).
+  var stashConfirmOverlay = document.getElementById("stash-confirm-overlay");
+
+  function maybeShowStashConfirm() {
+    var params = new URLSearchParams(location.search);
+    var confirmId = params.get("confirmId");
+    if (!confirmId) return;
+    var count = parseInt(params.get("count"), 10) || 0;
+
+    // Clear it immediately so a manual reload of this tab doesn't re-ask a
+    // question that's already been answered.
+    history.replaceState(null, "", location.pathname);
+
+    document.getElementById("stash-confirm-title").textContent = "Save and close " + count + " tabs?";
+    document.getElementById("stash-confirm-msg").textContent =
+      "This saves " + count + " tabs from that window as a new list, then closes them.";
+    document.getElementById("stash-confirm-remember").checked = false;
+    stashConfirmOverlay.classList.add("show");
+
+    function respond(proceed) {
+      stashConfirmOverlay.classList.remove("show");
+      var remember = document.getElementById("stash-confirm-remember").checked;
+      document.getElementById("stash-confirm-save").onclick = null;
+      document.getElementById("stash-confirm-cancel").onclick = null;
+      Promise.resolve(chrome.runtime.sendMessage({
+        type: "sl-stash-confirm-result", confirmId: confirmId, proceed: proceed, remember: remember
+      })).catch(function () {});
+    }
+    document.getElementById("stash-confirm-save").onclick = function () { respond(true); };
+    document.getElementById("stash-confirm-cancel").onclick = function () { respond(false); };
+  }
+
   function openTabs(urls, active) {
     urls.forEach(function (url, i) {
       try { chrome.tabs.create({ url: url, active: !!active && i === 0 }); } catch (e) {}
@@ -1013,6 +1055,17 @@
       if (cancel && cancel.onclick) cancel.onclick();
       bulkOverlay.classList.remove("show");
     }
+    // Escape out of "save and close N tabs?" the same way Cancel does —
+    // when in doubt, don't close tabs nobody confirmed closing.
+    if (stashConfirmOverlay.classList.contains("show")) {
+      var stashCancel = document.getElementById("stash-confirm-cancel");
+      if (stashCancel && stashCancel.onclick) stashCancel.onclick();
+    }
+  });
+  stashConfirmOverlay.addEventListener("click", function (e) {
+    if (e.target !== stashConfirmOverlay) return;
+    var stashCancel = document.getElementById("stash-confirm-cancel");
+    if (stashCancel && stashCancel.onclick) stashCancel.onclick();
   });
   bulkOverlay.addEventListener("click", function (e) {
     if (e.target !== bulkOverlay) return;
@@ -1100,4 +1153,5 @@
   // Just render what's already stored — syncing stays on the "Sync Tabs"
   // button and the background timer, not on opening this page.
   reload();
+  maybeShowStashConfirm();
 })();

@@ -101,6 +101,30 @@
     </div>
   </div>
 
+  <!-- "Save and close N tabs?" — shown here (not a separate OS window) when
+       Save Tabs is about to save+close more than the configured threshold.
+       This page is already where every stash lands once it's done, so it's
+       always available to show it in, whatever triggered the stash. -->
+  <div class="overlay" id="stash-confirm-overlay">
+    <div class="modal stash-confirm-modal">
+      <div class="stash-confirm-head">
+        <span class="stash-confirm-badge">🗂️</span>
+        <div>
+          <h3 id="stash-confirm-title">Save and close tabs?</h3>
+          <p class="stats" id="stash-confirm-msg"></p>
+        </div>
+      </div>
+      <label class="stash-confirm-remember">
+        <input type="checkbox" id="stash-confirm-remember">
+        <span>Don't ask me again — change this anytime in Options &gt; Tabs &gt; More options.</span>
+      </label>
+      <div class="row">
+        <button class="btn ghost" id="stash-confirm-cancel">Cancel</button>
+        <button class="btn tabs-modal-btns" id="stash-confirm-save">Save &amp; close</button>
+      </div>
+    </div>
+  </div>
+
   <div class="overlay" id="trash-overlay">
     <div class="modal">
       <h3>Recently deleted</h3>

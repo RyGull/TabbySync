@@ -6,6 +6,23 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.6.10 — 2026-09-19
+
+- **The "save and close many tabs?" prompt is now a modal on the saved-tabs
+  page, not a separate OS window.** The window version always carried the
+  browser's own plain title bar (no way to remove it via the extension
+  APIs) and needed manual centering/sizing math that still left blank
+  space depending on the platform. Replaced it with the same
+  overlay/modal pattern this page already uses for its "Reopen 15+ tabs?"
+  warning — a proper backdrop, a centered card with a short entrance
+  animation, no native chrome, no empty space. Works from every trigger
+  (popup, keyboard shortcut, right-click menu) the same way the window
+  did: the saved-tabs page is already where every stash lands once it's
+  done, so it's always available to ask in — the background worker opens/
+  focuses it with the question encoded in its URL rather than messaging a
+  possibly-not-yet-loaded tab, and the page shows the modal on load. Still
+  falls back to a notification if the page itself can't be reached.
+
 ## 1.6.9 — 2026-09-19
 
 - **Fixed the "save and close many tabs?" popup window scrolling and

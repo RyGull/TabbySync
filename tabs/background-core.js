@@ -47,43 +47,50 @@
     });
   }
 
-  function openOrFocusList() {
+  // `query` is an optional "?confirmId=...&count=..." string (see
+  // confirmBulkStashTab below) — when present, it's carried into the list
+  // tab's own URL so that page can read it back on load, rather than the
+  // background trying to message a tab that may not have finished loading
+  // yet (see maybeShowStashConfirm() in tablist.js for why that race
+  // matters). The reuse-an-existing-tab path already always navigates it
+  // (it used to be a plain reload; carrying a query is the same idea).
+  function openOrFocusList(query) {
+    var url = LIST_URL + (query || "");
     return TabbySync.getSettings().then(function (settings) {
       var pin = !!settings.pinList;
       return chrome.tabs.query({ url: LIST_URL + "*" }).then(function (existing) {
         if (existing && existing.length) {
           var t = existing[0];
-          var props = { active: true };
+          var props = { active: true, url: url };
           if (pin && !t.pinned) props.pinned = true; // pin it if requested, never force-unpin
           return chrome.tabs.update(t.id, props).then(function () {
             return chrome.windows.update(t.windowId, { focused: true });
-          }).then(function () {
-            return chrome.tabs.reload(t.id).catch(function () {});
           }).then(function () { return t; });
         }
-        return chrome.tabs.create({ url: LIST_URL, pinned: pin });
+        return chrome.tabs.create({ url: url, pinned: pin });
       });
     });
   }
 
   // Pending "save & close N tabs?" confirmations, keyed by a confirmId —
-  // see confirmBulkStash(). A background service worker has no window to
-  // run a blocking confirm() in, and this needs to work the same way
+  // see confirmBulkStash(). A background service worker has no window of
+  // its own to show a dialog in, and this needs to work the same way
   // whether stash() was triggered by the popup, the keyboard command, or
-  // the context menu (none of which is guaranteed to have a live page to
-  // show a dialog in already open), so the prompt is its own small
-  // chrome.windows.create() popup window — one mechanism, every trigger,
-  // and answering it never means leaving the browser for the OS
-  // notification tray. Falls back to a chrome.notifications prompt only if
-  // window creation itself isn't available.
+  // the context menu — so rather than a separate OS window (which always
+  // carries the browser's own plain title-bar chrome, and needs its own
+  // sizing/centering math to not look broken), the prompt is a modal on the
+  // saved-tabs page itself: that page is already where every stash lands
+  // once it's done, for every trigger, so it's always available to ask in.
+  // Falls back to a chrome.notifications prompt only if the page itself
+  // can't be reached.
   var pendingStashConfirms = {};
-  var stashConfirmWindows = {}; // confirmId -> windowId, so onRemoved can find it back
+  var stashConfirmTabs = {}; // confirmId -> tabId, so onRemoved can find it back
 
   function resolveStashConfirm(confirmId, proceed, remember) {
     var resolve = pendingStashConfirms[confirmId];
     if (!resolve) return;
     delete pendingStashConfirms[confirmId];
-    delete stashConfirmWindows[confirmId];
+    delete stashConfirmTabs[confirmId];
     // "Don't ask me again" — 0 is the existing, documented "never ask"
     // value for this same setting (Options already explains "0 to never
     // ask"), so this reaches for exactly that rather than a second flag.
@@ -93,42 +100,15 @@
     resolve(proceed);
   }
 
-  // The popup's own content is ~210px tall (measured); chrome.windows.create's
-  // width/height are the OUTER window size, title bar included, so asking for
-  // exactly that leaves no room for the title bar and the page scrolls —
-  // which is the bug this constant exists to not repeat. The extra height
-  // is slack for that chrome across platforms, not content.
-  var CONFIRM_W = 400, CONFIRM_H = 300;
-
-  // Chrome has no "center the window" option, so this centers it manually
-  // against the last-focused browser window — the same computation any
-  // "centered dialog" library does, just against the browser window rather
-  // than the screen, which is what actually reads as centered while the
-  // browser doesn't fill the display.
-  function centeredPopupBounds(w, h) {
-    return chrome.windows.getLastFocused().then(function (parent) {
-      if (!(parent && typeof parent.left === "number" && typeof parent.width === "number")) return {};
-      return {
-        left: Math.round(parent.left + (parent.width - w) / 2),
-        top: Math.round(parent.top + (parent.height - h) / 2),
-      };
-    }).catch(function () { return {}; });
-  }
-
-  function confirmBulkStashWindow(count) {
+  function confirmBulkStashTab(count) {
     var confirmId = "sl-stash-confirm-" + Date.now();
+    var query = "?confirmId=" + encodeURIComponent(confirmId) + "&count=" + encodeURIComponent(count);
     return new Promise(function (resolve) {
       pendingStashConfirms[confirmId] = resolve;
-      var url = chrome.runtime.getURL("tabs/confirm-stash.html") +
-        "?confirmId=" + encodeURIComponent(confirmId) + "&count=" + encodeURIComponent(count);
-      centeredPopupBounds(CONFIRM_W, CONFIRM_H).then(function (pos) {
-        var opts = { url: url, type: "popup", width: CONFIRM_W, height: CONFIRM_H, focused: true };
-        if ("left" in pos) { opts.left = pos.left; opts.top = pos.top; }
-        return chrome.windows.create(opts);
-      })
-        .then(function (win) { stashConfirmWindows[confirmId] = win.id; })
+      openOrFocusList(query)
+        .then(function (tab) { stashConfirmTabs[confirmId] = tab.id; })
         .catch(function () {
-          // Couldn't even open the window — fall back to a notification
+          // Couldn't even open the list page — fall back to a notification
           // rather than silently doing nothing or silently proceeding.
           delete pendingStashConfirms[confirmId];
           confirmBulkStashNotification(count).then(resolve);
@@ -153,17 +133,17 @@
   }
 
   function confirmBulkStash(count) {
-    if (chrome.windows && chrome.windows.create) return confirmBulkStashWindow(count);
+    if (chrome.tabs && chrome.tabs.query) return confirmBulkStashTab(count);
     return confirmBulkStashNotification(count);
   }
 
-  if (chrome.windows && chrome.windows.onRemoved) {
-    // The window's own 'x', or the OS closing it — same as dismissing the
+  if (chrome.tabs && chrome.tabs.onRemoved) {
+    // The list tab closed before it was answered — same as dismissing the
     // notification without a button: when in doubt, don't close tabs
     // nobody confirmed closing.
-    chrome.windows.onRemoved.addListener(function (windowId) {
-      for (var id in stashConfirmWindows) {
-        if (stashConfirmWindows[id] === windowId) { resolveStashConfirm(id, false, false); break; }
+    chrome.tabs.onRemoved.addListener(function (tabId) {
+      for (var id in stashConfirmTabs) {
+        if (stashConfirmTabs[id] === tabId) { resolveStashConfirm(id, false, false); break; }
       }
     });
   }
