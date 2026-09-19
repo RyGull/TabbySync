@@ -29,7 +29,7 @@
 * { box-sizing:border-box; }
 [hidden] { display:none !important; }
 body { margin:0; background:var(--bg); color:var(--text);
-  font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  font:15px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
 /* Links had no rule at all here, so they fell back to the browser's default
    blue/purple — poor contrast on the dark palette, and jarring in general.
    Gold matches the accents already used on this page (the server card's
@@ -37,7 +37,7 @@ body { margin:0; background:var(--bg); color:var(--text);
    pinned to the same color so a clicked link doesn't revert to default purple. */
 a, a:visited { color:var(--gold); text-decoration:none; }
 a:hover { text-decoration:underline; }
-.wrap { max-width:720px; margin:0 auto; padding:26px 20px 60px; }
+.wrap { max-width:920px; margin:0 auto; padding:26px 20px 60px; }
 
 .top { display:flex; align-items:center; gap:11px; margin-bottom:6px; }
 .top .lock { font-size:24px; }
@@ -60,15 +60,15 @@ a:hover { text-decoration:underline; }
 /* The Windows app mention: a label plus its own download button — see
    tabs/tablist.css for why this isn't one button carrying both. */
 .desktop-promo { display:flex; align-items:center; gap:8px; }
-.desktop-promo-text { font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; }
+.desktop-promo-text { font-size:14px; font-weight:600; color:var(--text); white-space:nowrap; }
 
 .card { background:var(--panel); border:1px solid var(--line); border-radius:12px;
   padding:16px 18px; margin-bottom:16px; }
 .card.selfhost { border-top:3px solid var(--host); }
 .selfhost h2 .ic { background:var(--host-soft); }
 
-.card h2 { font-size:16px; margin:0 0 4px; display:flex; align-items:center; gap:9px; }
-.card h2 .ic { width:28px; height:28px; border-radius:8px; display:grid; place-items:center; font-size:16px; }
+.card h2 { font-size:17px; margin:0 0 4px; display:flex; align-items:center; gap:9px; }
+.card h2 .ic { width:28px; height:28px; border-radius:8px; display:grid; place-items:center; font-size:17px; }
 
 /* The backup card has no aside — its text and full-width inputs fill the
    card on their own, so the 62ch cap every other card's .say uses would
@@ -114,31 +114,31 @@ a:hover { text-decoration:underline; }
 .congrats-svg .c4 { fill:var(--host); }
 .congrats-svg .badge-ring { fill:var(--ok); opacity:.16; }
 .congrats-svg .badge-check { stroke:var(--ok); }
-.card h3 { font-size:13.5px; margin:18px 0 6px; text-transform:uppercase;
+.card h3 { font-size:14.5px; margin:18px 0 6px; text-transform:uppercase;
   letter-spacing:.4px; color:var(--muted); }
-.card p { color:var(--muted); margin:6px 0; font-size:13px; }
+.card p { color:var(--muted); margin:6px 0; font-size:14px; }
 .engine.off .engine-what, .engine.off details.more { opacity:.5; }
 .engine.off details.more { pointer-events:none; }
 
-label.field { display:block; margin:14px 0 4px; font-weight:600; font-size:13px; }
-.hint { color:var(--muted); font-size:12px; margin:3px 0 0; font-weight:400; }
+label.field { display:block; margin:14px 0 4px; font-weight:600; font-size:14px; }
+.hint { color:var(--muted); font-size:13px; margin:3px 0 0; font-weight:400; }
 input[type=text], input[type=password], input[type=number], input[type=url], select, textarea {
   width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:7px;
-  background:var(--field); color:var(--text); font-size:13px; font-family:inherit; }
+  background:var(--field); color:var(--text); font-size:14px; font-family:inherit; }
 input[type=number] { width:110px; }
 textarea { resize:vertical; min-height:72px; line-height:1.5; }
 .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; align-items:center; }
 .switchline { display:flex; align-items:center; gap:11px; margin:6px 0; }
-.check { display:flex; align-items:center; gap:9px; margin:10px 0; font-size:13px; cursor:pointer; }
+.check { display:flex; align-items:center; gap:9px; margin:10px 0; font-size:14px; cursor:pointer; }
 .check input { width:17px; height:17px; }
-code { background:var(--field); padding:1px 5px; border-radius:4px; font-size:12px; }
-.preview { font-size:12px; color:var(--muted); word-break:break-all; margin-top:10px;
+code { background:var(--field); padding:1px 5px; border-radius:4px; font-size:13px; }
+.preview { font-size:13px; color:var(--muted); word-break:break-all; margin-top:10px;
   background:var(--field); border:1px solid var(--line); border-radius:7px; padding:9px 11px; }
 .preview b { color:var(--text); }
 .callout { background:var(--field); border:1px solid var(--line); border-radius:8px;
-  padding:11px 13px; margin-top:10px; font-size:13px; }
-details summary { cursor:pointer; color:var(--accent); font-size:13px; margin-top:8px; }
-.status { font-size:13px; margin-top:11px; min-height:18px; }
+  padding:11px 13px; margin-top:10px; font-size:14px; }
+details summary { cursor:pointer; color:var(--accent); font-size:14px; margin-top:8px; }
+.status { font-size:14px; margin-top:11px; min-height:18px; }
 .status.ok { color:var(--ok); } .status.bad { color:var(--err); }
 
 /* header toggle switch */
@@ -152,10 +152,10 @@ details summary { cursor:pointer; color:var(--accent); font-size:13px; margin-to
 .sw .track::before { content:""; position:absolute; width:19px; height:19px; left:2px; top:2px;
   background:#fff; border-radius:50%; transition:.15s; }
 .sw input:checked + .track::before { transform:translateX(17px); }
-.sw-label { font-size:12px; color:var(--muted); }
+.sw-label { font-size:13px; color:var(--muted); }
 
 button.btn { border:1px solid var(--line); background:var(--field); color:var(--text);
-  border-radius:8px; padding:9px 13px; font-size:13px; font-weight:600; cursor:pointer; }
+  border-radius:8px; padding:9px 13px; font-size:14px; font-weight:600; cursor:pointer; }
 button.btn:hover { border-color:var(--muted); }
 .btn.primary.bmc { background:var(--bm); color:#fff; border-color:var(--bm); }
 .btn.primary.tabc { background:var(--tab); color:#fff; border-color:var(--tab); }
@@ -176,7 +176,7 @@ input[type=file] { display:none; }
 .card.danger { border:2px solid var(--err); background:transparent; padding:0;
   box-shadow: 0 0 0 4px rgba(220,38,38,.10); }
 .card.danger > summary { list-style:none; cursor:pointer; padding:14px 18px;
-  font-size:14px; font-weight:700; color:var(--err); display:flex; align-items:center; gap:9px; }
+  font-size:15px; font-weight:700; color:var(--err); display:flex; align-items:center; gap:9px; }
 .card.danger > summary::-webkit-details-marker { display:none; }
 .card.danger > summary::after { content:"›"; margin-left:auto; font-size:17px; transition:transform .15s; }
 .card.danger[open] > summary { border-bottom:1px solid var(--err); }
@@ -206,8 +206,8 @@ input[type=file] { display:none; }
 .band-mark { width:26px; height:26px; border-radius:50%; display:grid; place-items:center;
   flex:0 0 auto; font-size:14px; font-weight:700; color:#fff; background:var(--muted); }
 .band-text { display:flex; flex-direction:column; gap:1px; min-width:0; }
-.band-line1 { font-weight:650; font-size:13.5px; }
-.band-line2 { color:var(--muted); font-size:12.5px; }
+.band-line1 { font-weight:650; font-size:14.5px; }
+.band-line2 { color:var(--muted); font-size:13px; }
 .band.ok { background:color-mix(in srgb, var(--ok) 10%, var(--panel));
   border-color:color-mix(in srgb, var(--ok) 34%, var(--line)); }
 .band.ok .band-mark { background:var(--ok); }
@@ -222,7 +222,7 @@ input[type=file] { display:none; }
   display:grid; place-items:center; font-size:12.5px; font-weight:700;
   background:var(--field); border:1px solid var(--line); color:var(--muted); }
 .card h2 { align-items:center; }
-.card p.say { color:var(--muted); font-size:13px; margin:2px 0 14px; max-width:62ch; }
+.card p.say { color:var(--muted); font-size:14px; margin:2px 0 14px; max-width:62ch; }
 
 /* ---- the three destinations, as outcomes -------------------------------- */
 .choices { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-bottom:12px; }
@@ -233,12 +233,12 @@ input[type=file] { display:none; }
 .choice:hover { border-color:var(--muted); }
 .choice[aria-pressed="true"] { border-color:var(--pick);
   background:color-mix(in srgb, var(--pick) 9%, var(--field)); }
-.choice .t { font-weight:700; font-size:13px; display:flex; align-items:center; gap:7px; }
+.choice .t { font-weight:700; font-size:14px; display:flex; align-items:center; gap:7px; }
 .choice .t .tick { width:15px; height:15px; border-radius:50%; border:1.5px solid var(--line);
   display:grid; place-items:center; font-size:9px; color:transparent; flex:0 0 auto; background:var(--bg); }
 .choice[aria-pressed="true"] .t .tick { background:var(--pick); border-color:var(--pick); color:#fff; }
-.choice .d { color:var(--muted); font-size:12.5px; line-height:1.45; }
-.choice .tagline { font-size:11.5px; font-weight:650; color:var(--pick); }
+.choice .d { color:var(--muted); font-size:13px; line-height:1.5; }
+.choice .tagline { font-size:12.5px; font-weight:650; color:var(--pick); }
 .choice.own { --pick:var(--host); }
 .choice.gh { --pick:var(--bm); }
 .choice.easy { --pick:var(--tab); }
@@ -246,7 +246,7 @@ input[type=file] { display:none; }
 .fields { margin-top:4px; }
 
 /* ---- self-hosting, as a numbered walk-through --------------------------- */
-.howto { margin:6px 0 0; padding-left:20px; color:var(--muted); font-size:13px; line-height:1.6; }
+.howto { margin:6px 0 0; padding-left:20px; color:var(--muted); font-size:14px; line-height:1.6; }
 .howto li { margin:10px 0; }
 .howto b { color:var(--text); }
 .howto .row { margin-top:8px; }
@@ -259,13 +259,13 @@ input[type=file] { display:none; }
 .engine.tab { --edge:var(--tab); }
 .enc-row { --edge:var(--gold); }
 .engine-top { display:flex; align-items:center; gap:11px; }
-.engine-name { font-weight:700; font-size:14px; }
-.engine-count { margin-left:auto; font-size:12.5px; color:var(--muted); white-space:nowrap; }
-.engine-what { color:var(--muted); font-size:13px; margin:7px 0 0; max-width:60ch; }
+.engine-name { font-weight:700; font-size:15px; }
+.engine-count { margin-left:auto; font-size:13px; color:var(--muted); white-space:nowrap; }
+.engine-what { color:var(--muted); font-size:14px; margin:7px 0 0; max-width:60ch; }
 .engine .field { margin-top:12px; }
 
 details.more { margin-top:10px; }
-details.more > summary { list-style:none; cursor:pointer; font-size:13px; font-weight:600;
+details.more > summary { list-style:none; cursor:pointer; font-size:14px; font-weight:600;
   color:var(--accent); padding:7px 0; margin:0; display:flex; align-items:center; gap:6px; }
 details.more > summary::-webkit-details-marker { display:none; }
 details.more > summary::before { content:"›"; font-size:15px; transition:transform .15s; display:inline-block; }
@@ -273,16 +273,16 @@ details.more[open] > summary::before { transform:rotate(90deg); }
 details.more .inner { border-top:1px solid var(--line); padding-top:10px; }
 details.more .inner h3:first-child { margin-top:6px; }
 
-.mini { display:flex; align-items:center; gap:8px; font-size:13px; flex-wrap:wrap; margin:10px 0; }
+.mini { display:flex; align-items:center; gap:8px; font-size:14px; flex-wrap:wrap; margin:10px 0; }
 .mini label { font-weight:600; }
-.mini input[type=number] { width:78px; }
+.mini input[type=number] { width:82px; }
 .mini select { width:auto; min-width:220px; }
-.check .sub { display:block; color:var(--muted); font-size:12px; font-weight:400; margin-top:2px; }
+.check .sub { display:block; color:var(--muted); font-size:13px; font-weight:400; margin-top:2px; }
 .check { align-items:flex-start; }
 .check input { margin-top:1px; flex:0 0 auto; }
-label.field .opt { font-weight:400; color:var(--muted); font-size:12px; margin-left:4px; }
+label.field .opt { font-weight:400; color:var(--muted); font-size:13px; margin-left:4px; }
 
-.footnote { color:var(--muted); font-size:12px; text-align:center; margin:22px 0 0; }
+.footnote { color:var(--muted); font-size:13px; text-align:center; margin:22px 0 0; }
 
 /* ---- the step-by-step setup guide dialog -------------------------------- */
 dialog.guide { width:min(680px, calc(100vw - 32px)); max-height:calc(100vh - 60px);
@@ -291,10 +291,10 @@ dialog.guide { width:min(680px, calc(100vw - 32px)); max-height:calc(100vh - 60p
 dialog.guide::backdrop { background:rgba(10,13,18,.55); }
 .guide-head { display:flex; align-items:center; gap:12px; padding:14px 18px;
   border-bottom:1px solid var(--line); background:var(--bg); }
-.guide-head h2 { margin:0; font-size:16px; }
+.guide-head h2 { margin:0; font-size:17px; }
 .guide-head .btn { margin-left:auto; }
 .guide-body { padding:16px 18px 22px; overflow-y:auto; max-height:calc(100vh - 130px); }
-.guide-body h3 { font-size:13px; margin:20px 0 6px; text-transform:uppercase;
+.guide-body h3 { font-size:14px; margin:20px 0 6px; text-transform:uppercase;
   letter-spacing:.4px; color:var(--muted); }
 .guide-body .say { margin-top:0; }
 .guide-body .howto { padding-left:22px; }
@@ -313,7 +313,7 @@ body.wizard-mode { padding-bottom:64px; }
   display:flex; align-items:center; gap:16px;
   padding:12px 20px; background:var(--panel); border-top:1px solid var(--line);
 }
-.wizardStepLabel { font-size:12.5px; font-weight:700; color:var(--muted); }
+.wizardStepLabel { font-size:13px; font-weight:700; color:var(--muted); }
 .wizardBtns { display:flex; gap:8px; margin-left:auto; }
 
 /* Curved "look here" arrows above the bar, pointing down at the step count
