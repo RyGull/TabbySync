@@ -122,10 +122,11 @@ a:hover { text-decoration:underline; }
 
 label.field { display:block; margin:14px 0 4px; font-weight:600; font-size:13px; }
 .hint { color:var(--muted); font-size:12px; margin:3px 0 0; font-weight:400; }
-input[type=text], input[type=password], input[type=number], input[type=url], select {
+input[type=text], input[type=password], input[type=number], input[type=url], select, textarea {
   width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:7px;
   background:var(--field); color:var(--text); font-size:13px; font-family:inherit; }
 input[type=number] { width:110px; }
+textarea { resize:vertical; min-height:72px; line-height:1.5; }
 .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; align-items:center; }
 .switchline { display:flex; align-items:center; gap:11px; margin:6px 0; }
 .check { display:flex; align-items:center; gap:9px; margin:10px 0; font-size:13px; cursor:pointer; }

@@ -302,6 +302,13 @@
   // Whether restoring should also remove the link(s) from the list.
   // Default OFF (restoring keeps the link); toggled in the toolbar / Options.
   function removeOnRestore() { return !!(settings && settings.removeOnRestore); }
+  // How long "Recently deleted" keeps a deleted list, for the copy that says
+  // so — Options > Tabs > More options, defaulting to 30 like the trash
+  // pruning itself (TabbySync.trashAdd's own default) does before load.
+  function trashDaysLabel() {
+    var n = settings && settings.trashDays;
+    return (typeof n === "number" && n > 0 ? n : 30);
+  }
 
   // After a tab has been opened (restored), remove it from the list if the
   // "remove after restore" setting is on and its group isn't locked.
@@ -350,14 +357,14 @@
   function deleteTab(gid, index) {
     var g = groupById(gid); if (!g || g.locked) return; // locked groups are protected
     var tab = g.tabs[index];
-    if (tab) TabbySync.trashAdd(state, [{ kind: "tab", name: tab.title || tab.url, sourceName: groupLabelSafe(g), tabs: [copyTab(tab)] }]);
+    if (tab) TabbySync.trashAdd(state, [{ kind: "tab", name: tab.title || tab.url, sourceName: groupLabelSafe(g), tabs: [copyTab(tab)] }], settings && settings.trashDays);
     g.tabs.splice(index, 1); TabbySync.touchGroup(g);
     if (!g.tabs.length) TabbySync.removeGroup(state, gid);
     persist(); render();
   }
   function deleteGroup(gid) {
     var g = groupById(gid); if (!g || g.locked) return; // must unlock first
-    TabbySync.trashAdd(state, [{ kind: "group", name: groupLabelSafe(g), tabs: g.tabs.map(copyTab) }]);
+    TabbySync.trashAdd(state, [{ kind: "group", name: groupLabelSafe(g), tabs: g.tabs.map(copyTab) }], settings && settings.trashDays);
     TabbySync.removeGroup(state, gid); persist(); render();
   }
   function toggleLock(gid) {
@@ -425,10 +432,10 @@
     var unlocked = state.groups.filter(function (g) { return !g.locked; });
     if (!unlocked.length) return;
     if (!confirm("Delete all " + unlocked.length + " unlocked list" + (unlocked.length === 1 ? "" : "s") +
-      "? Locked lists are kept, and you can get these back from “Recently deleted” for 30 days.")) return;
+      "? Locked lists are kept, and you can get these back from “Recently deleted” for " + trashDaysLabel() + " days.")) return;
     TabbySync.trashAdd(state, unlocked.map(function (g) {
       return { kind: "group", name: groupLabelSafe(g), tabs: g.tabs.map(copyTab) };
-    }));
+    }), settings && settings.trashDays);
     var locked = state.groups.filter(function (g) { return g.locked; });
     state.groups.forEach(function (g) { if (!g.locked) state.deleted[g.id] = Date.now(); });
     state.groups = locked;
@@ -733,7 +740,7 @@
 
     if (!g.locked) {
       var del = el("button", "menu-item danger", "Delete this list");
-      del.title = "Deleted lists stay in “Recently deleted” for 30 days";
+      del.title = "Deleted lists stay in “Recently deleted” for " + trashDaysLabel() + " days";
       del.addEventListener("click", function () { menu.open = false; deleteGroup(g.id); });
       body.appendChild(del);
     }
@@ -930,7 +937,7 @@
     var list = (state.trash || []).slice();
     trashListEl.innerHTML = "";
     trashHelp.textContent = list.length
-      ? "Anything you delete is kept here for 30 days, on every computer you share with. Putting one back adds it to your lists again."
+      ? "Anything you delete is kept here for " + trashDaysLabel() + " days, on every computer you share with. Putting one back adds it to your lists again."
       : "";
     if (!list.length) {
       trashListEl.appendChild(el("div", "trash-empty-note", "Nothing has been deleted recently."));

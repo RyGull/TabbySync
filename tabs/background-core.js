@@ -66,22 +66,81 @@
     });
   }
 
+  // Pending "save & close N tabs?" confirmations, keyed by the notification
+  // id that's asking — see confirmBulkStash(). A background service worker
+  // has no window to run a blocking confirm() in, and this needs to work the
+  // same way whether stash() was triggered by the popup, the keyboard
+  // command, or the context menu (none of which is guaranteed to have a
+  // live page to show a dialog in), so it uses chrome.notifications' own
+  // buttons instead — one mechanism, every trigger.
+  var pendingStashConfirms = {};
+
+  function confirmBulkStash(count) {
+    if (!(chrome.notifications && chrome.notifications.create)) return Promise.resolve(true);
+    return new Promise(function (resolve) {
+      var id = "sl-stash-confirm-" + Date.now();
+      pendingStashConfirms[id] = resolve;
+      chrome.notifications.create(id, {
+        type: "basic",
+        iconUrl: chrome.runtime.getURL("icons/icon-128.png"),
+        title: "Save and close " + count + " tabs?",
+        message: "This saves " + count + " tabs from this window as a new list, then closes them.",
+        buttons: [{ title: "Save & close" }, { title: "Cancel" }],
+        requireInteraction: true
+      }, function () { void chrome.runtime.lastError; });
+    });
+  }
+  if (chrome.notifications) {
+    chrome.notifications.onButtonClicked.addListener(function (id, btnIdx) {
+      var resolve = pendingStashConfirms[id];
+      if (!resolve) return;
+      delete pendingStashConfirms[id];
+      chrome.notifications.clear(id);
+      resolve(btnIdx === 0); // 0 = "Save & close", 1 = "Cancel"
+    });
+    // Dismissed without a choice (the OS 'x', or it timed out despite
+    // requireInteraction on a platform that doesn't honor it) — when in
+    // doubt, don't close tabs nobody confirmed closing.
+    chrome.notifications.onClosed.addListener(function (id) {
+      var resolve = pendingStashConfirms[id];
+      if (!resolve) return;
+      delete pendingStashConfirms[id];
+      resolve(false);
+    });
+  }
+
+  function doStash(settings, state, tabs) {
+    var toStash = TabbySync.dedupeTabsForStash(state, tabs, settings.dedupe);
+    var saved = toStash.length
+      ? (TabbySync.addGroup(state, toStash, ""), TabbySync.saveState(state))
+      : Promise.resolve();
+    return saved.then(openOrFocusList).then(function () {
+      var ids = tabs.map(function (t) { return t.id; })
+        .filter(function (id) { return typeof id === "number"; });
+      return chrome.tabs.remove(ids).catch(function (e) {
+        console.warn("[TabbySync] could not close some tabs:", e && e.message);
+      });
+    });
+  }
+
   function stash(mode) {
     return tabsEnabled().then(function (enabled) {
       if (!enabled) return openOrFocusList();
-      return collectTabs(mode).then(function (tabs) {
-        if (!tabs.length) return openOrFocusList();
-        return Promise.all([TabbySync.getSettings(), TabbySync.getState()]).then(function (r) {
-          var settings = r[0], state = r[1];
-          var toStash = TabbySync.dedupeTabsForStash(state, tabs, settings.dedupe);
-          var saved = toStash.length
-            ? (TabbySync.addGroup(state, toStash, ""), TabbySync.saveState(state))
-            : Promise.resolve();
-          return saved.then(openOrFocusList).then(function () {
-            var ids = tabs.map(function (t) { return t.id; })
-              .filter(function (id) { return typeof id === "number"; });
-            return chrome.tabs.remove(ids).catch(function (e) {
-              console.warn("[TabbySync] could not close some tabs:", e && e.message);
+      return TabbySync.getSettings().then(function (settings) {
+        return collectTabs(mode).then(function (tabs) {
+          // Sites on the blocklist are left alone entirely — not saved, not
+          // closed — never merely deduped away later.
+          var blocklist = TabbySync.parseBlocklist(settings.blocklist);
+          var stashable = TabbySync.filterBlocked(tabs, blocklist);
+          if (!stashable.length) return openOrFocusList();
+          var threshold = settings.stashWarnAt;
+          var proceed = (threshold > 0 && stashable.length > threshold)
+            ? confirmBulkStash(stashable.length)
+            : Promise.resolve(true);
+          return proceed.then(function (go) {
+            if (!go) return; // cancelled — every tab stays exactly as it was
+            return TabbySync.getState().then(function (state) {
+              return doStash(settings, state, stashable);
             });
           });
         });

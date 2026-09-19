@@ -6,6 +6,35 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.6.6 — 2026-09-19
+
+- **Fixed two Options fields silently saving something other than what was
+  typed.** Bookmarks' "check for changes every ___ minutes" treated a typed
+  `0` the same as an empty field and saved 5 instead of clamping to the
+  field's own minimum of 1; Tabs' interval field had no floor at all, so a
+  typed negative number saved as-is (harmless — the background poll already
+  treats anything ≤0 as "off" — but the field could show a negative number
+  indefinitely). Both now clamp correctly and write the clamped value back
+  into the field, so what's on screen always matches what's active.
+- **New: desktop notifications when a sync fails**, off by default, one
+  toggle each under Bookmarks/Tabs > More options. Fires once when a sync
+  transitions into failing, not on every retry of one that's already down —
+  for when the popup isn't open to show the error dot. Needs the new
+  `notifications` permission (disclosed in the privacy policy).
+- **New: a "never save tabs from these sites" list for Tabs.** A
+  newline/comma-separated list of domains (subdomains included); a tab on
+  one of them is left exactly as it is by "Save Tabs" — not saved, not
+  closed.
+- **New: "ask before saving & closing more than N tabs at once."** 0 (the
+  default) never asks. When it fires, the confirmation is a notification
+  with Save & close / Cancel buttons rather than a dialog, so it works the
+  same whether "Save Tabs" was triggered from the popup, the keyboard
+  shortcut, or the right-click menu — none of which is guaranteed to have a
+  page open to show a dialog in.
+- **New: "Recently deleted" retention is now a setting** (Tabs > More
+  options, default 30 days, same as before) instead of a hardcoded number —
+  the saved-tabs page's own copy about it now reads the real value too.
+
 ## 1.6.5 — 2026-09-19
 
 - **The popup's logo is now a menu, and its two cards only show their

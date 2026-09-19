@@ -485,6 +485,7 @@ async function load() {
   $('bm-interval').value = c.bookmarks.intervalMin;
   $('bm-autosync').checked = c.bookmarks.autoSync;
   $('bm-deletewins').checked = c.bookmarks.deleteWins;
+  $('bm-notify-errors').checked = c.bookmarks.notifyErrors;
 
   $('tab-enable').checked = c.tabs.enabled;
   $('tab-interval').value = c.tabs.intervalMin;
@@ -503,6 +504,10 @@ async function load() {
   $('tab-remove-restore').checked = c.tabs.removeOnRestore;
   $('tab-pin-list').checked = c.tabs.pinList;
   $('tab-backup-pass').value = c.tabs.backupPass;
+  $('tab-notify-errors').checked = c.tabs.notifyErrors;
+  $('tab-blocklist').value = c.tabs.blocklist;
+  $('tab-stash-warn').value = c.tabs.stashWarnAt;
+  $('tab-trash-days').value = c.tabs.trashDays;
 
   let gt = c.genToken;
   if (!gt) { gt = SF.randomToken(); await SL.setConfig({ genToken: gt }); }
@@ -786,15 +791,23 @@ $('gen-use').addEventListener('click', async () => {
 // Bookmarks card
 // ---------------------------------------------------------------------------
 async function saveBookmarks() {
+  // parseInt(...) || 5 treated a deliberate "0" the same as "nothing typed",
+  // silently saving 5 instead of clamping to the field's own min="1" — check
+  // for NaN explicitly instead, then clamp. Write the clamped value back so
+  // the field never shows something other than what's actually saved.
+  const rawInterval = parseInt($('bm-interval').value, 10);
+  const intervalMin = Math.max(1, isNaN(rawInterval) ? 5 : rawInterval);
+  $('bm-interval').value = intervalMin;
   await SL.setConfig({ bookmarks: {
     enabled: $('bm-enable').checked,
-    intervalMin: Math.max(1, parseInt($('bm-interval').value, 10) || 5),
+    intervalMin,
     autoSync: $('bm-autosync').checked,
     deleteWins: $('bm-deletewins').checked,
+    notifyErrors: $('bm-notify-errors').checked,
   } });
   updateCardsDisabled();
 }
-['bm-enable', 'bm-interval', 'bm-autosync', 'bm-deletewins'].forEach((id) =>
+['bm-enable', 'bm-interval', 'bm-autosync', 'bm-deletewins', 'bm-notify-errors'].forEach((id) =>
   $(id).addEventListener('change', saveBookmarks));
 
 async function bmSlug() {
@@ -853,19 +866,38 @@ $('bm-imp-enc').addEventListener('click', async () => {
 const TabbySync = self.TabbySync;
 
 async function saveTabs() {
+  // Same NaN-vs-0 fix as saveBookmarks, plus a floor these fields never had:
+  // parseInt("-5") is a real (negative) number, not NaN, so `|| 0` let it
+  // straight through. Clamp to each field's own min, and write the clamped
+  // value back so the field never shows something other than what's saved.
+  const rawInterval = parseInt($('tab-interval').value, 10);
+  const intervalMin = Math.max(0, isNaN(rawInterval) ? 0 : rawInterval);
+  $('tab-interval').value = intervalMin;
+  const rawStashWarn = parseInt($('tab-stash-warn').value, 10);
+  const stashWarnAt = Math.max(0, isNaN(rawStashWarn) ? 0 : rawStashWarn);
+  $('tab-stash-warn').value = stashWarnAt;
+  const rawTrashDays = parseInt($('tab-trash-days').value, 10);
+  const trashDays = Math.max(1, isNaN(rawTrashDays) ? 30 : rawTrashDays);
+  $('tab-trash-days').value = trashDays;
+
   await SL.setConfig({ tabs: {
     enabled: $('tab-enable').checked,
-    intervalMin: parseInt($('tab-interval').value, 10) || 0,
+    intervalMin,
     dedupe: $('tab-dedupe').value,
     restoreAsGroup: $('tab-restore-group').checked,
     removeOnRestore: $('tab-remove-restore').checked,
     pinList: $('tab-pin-list').checked,
+    notifyErrors: $('tab-notify-errors').checked,
+    blocklist: $('tab-blocklist').value,
+    stashWarnAt,
+    trashDays,
   } });
   updateCardsDisabled();
   await send({ type: 'tabbysync-reschedule' });
 }
 ['tab-enable', 'tab-interval', 'tab-dedupe', 'tab-restore-group',
- 'tab-remove-restore', 'tab-pin-list'].forEach((id) =>
+ 'tab-remove-restore', 'tab-pin-list', 'tab-notify-errors', 'tab-blocklist',
+ 'tab-stash-warn', 'tab-trash-days'].forEach((id) =>
   $(id).addEventListener('change', saveTabs));
 $('tab-backup-pass').addEventListener('change', () =>
   SL.setConfig({ tabs: { backupPass: $('tab-backup-pass').value } }));

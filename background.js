@@ -16,6 +16,7 @@ import './shared/browser-compat.js';
 import './shared/config.js';       // sets self.TabbySyncConfig
 import './shared/status.js';       // sets self.TabbySyncStatus
 import './shared/providers.js';    // sets self.TabbySyncProviders
+import './shared/notify.js';       // sets self.TabbySyncNotify
 import './tabs/storage.js';        // sets self.TabbySync
 import './tabs/background-core.js';
 import './bookmarks/background-core.js';

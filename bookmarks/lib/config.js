@@ -25,6 +25,7 @@ export const DEFAULTS = {
   autoSync: true,
   deleteWins: false,
   enabled: true,
+  notifyErrors: false,
 };
 
 // Returns the bookmarks engine config, flattened from the shared config.
@@ -44,6 +45,7 @@ export async function getConfig() {
     autoSync: c.bookmarks.autoSync,
     deleteWins: c.bookmarks.deleteWins,
     enabled: c.bookmarks.enabled,
+    notifyErrors: c.bookmarks.notifyErrors,
   };
 }
 
@@ -62,6 +64,7 @@ export async function setConfig(patch) {
   if ('autoSync' in patch) bookmarks.autoSync = patch.autoSync;
   if ('deleteWins' in patch) bookmarks.deleteWins = patch.deleteWins;
   if ('enabled' in patch) bookmarks.enabled = patch.enabled;
+  if ('notifyErrors' in patch) bookmarks.notifyErrors = patch.notifyErrors;
   await shared().setConfig({ ...server, bookmarks });
 }
 

@@ -61,6 +61,7 @@
     bmInterval: "sl.bm.intervalMin",
     bmAutoSync: "sl.bm.autoSync",
     bmDeleteWins: "sl.bm.deleteWins",
+    bmNotifyErrors: "sl.bm.notifyErrors",
 
     tabEnabled: "sl.tab.enabled",
     tabInterval: "sl.tab.intervalMin",
@@ -69,6 +70,17 @@
     tabBackupPass: "sl.tab.backupPass",
     tabRemoveOnRestore: "sl.tab.removeOnRestore",
     tabPinList: "sl.tab.pinList",
+    tabNotifyErrors: "sl.tab.notifyErrors",
+    // Domain/host blocklist: tabs on these sites are never saved (or closed)
+    // by "Save Tabs" — stored as the raw newline/comma-separated text from
+    // Options; parsed and matched in tabs/storage.js (parseBlocklist/isBlockedUrl).
+    tabBlocklist: "sl.tab.blocklist",
+    // Ask before saving + closing more than this many tabs at once. 0 = never
+    // ask — matches the existing tabInterval convention of 0 meaning "off".
+    tabStashWarnAt: "sl.tab.stashWarnAt",
+    // How long a deleted list stays in "Recently deleted" before it's pruned
+    // for good. Previously a hardcoded 30 in tabs/storage.js.
+    tabTrashDays: "sl.tab.trashDays",
   };
 
   var ALL = Object.keys(K).map(function (k) { return K[k]; });
@@ -147,6 +159,7 @@
           intervalMin: Math.max(1, num(s[K.bmInterval], 5)),
           autoSync: s[K.bmAutoSync] !== false,        // default on
           deleteWins: s[K.bmDeleteWins] === true,     // default off
+          notifyErrors: s[K.bmNotifyErrors] === true, // default off
         },
         tabs: {
           enabled: s[K.tabEnabled] !== false,         // default on
@@ -156,6 +169,10 @@
           backupPass: s[K.tabBackupPass] || "",
           removeOnRestore: s[K.tabRemoveOnRestore] === true, // default off (keep on restore)
           pinList: s[K.tabPinList] === true,                 // default off
+          notifyErrors: s[K.tabNotifyErrors] === true,       // default off
+          blocklist: s[K.tabBlocklist] || "",
+          stashWarnAt: Math.max(0, num(s[K.tabStashWarnAt], 0)), // default 0 = never ask
+          trashDays: Math.max(1, num(s[K.tabTrashDays], 30)),
         },
       };
     });
@@ -208,6 +225,7 @@
       if ("intervalMin" in b) out[K.bmInterval] = b.intervalMin;
       if ("autoSync" in b) out[K.bmAutoSync] = b.autoSync;
       if ("deleteWins" in b) out[K.bmDeleteWins] = b.deleteWins;
+      if ("notifyErrors" in b) out[K.bmNotifyErrors] = b.notifyErrors;
     }
     if (patch.tabs) {
       var t = patch.tabs;
@@ -218,6 +236,10 @@
       if ("backupPass" in t) out[K.tabBackupPass] = t.backupPass;
       if ("removeOnRestore" in t) out[K.tabRemoveOnRestore] = t.removeOnRestore;
       if ("pinList" in t) out[K.tabPinList] = t.pinList;
+      if ("notifyErrors" in t) out[K.tabNotifyErrors] = t.notifyErrors;
+      if ("blocklist" in t) out[K.tabBlocklist] = t.blocklist;
+      if ("stashWarnAt" in t) out[K.tabStashWarnAt] = t.stashWarnAt;
+      if ("trashDays" in t) out[K.tabTrashDays] = t.trashDays;
     }
     return chrome.storage.local.set(out);
   }

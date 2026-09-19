@@ -58,7 +58,15 @@
   }
 
   var TRASH_MAX = 200;
-  var TRASH_TTL_MS = 30 * 24 * 3600 * 1000;
+  var TRASH_TTL_DAYS_DEFAULT = 30;
+  // days -> ms, falling back to the default for anything not a positive
+  // number (undefined when a caller has no settings loaded yet, 0/NaN from
+  // bad storage). Options clamps to >=1 on save; this clamps again so a
+  // corrupt or pre-this-feature value can never make trash live forever.
+  function trashTtlMs(days) {
+    var d = Number(days);
+    return (isFinite(d) && d > 0 ? d : TRASH_TTL_DAYS_DEFAULT) * 24 * 3600 * 1000;
+  }
 
   function emptyState() {
     return { version: 1, groups: [], deleted: {}, trash: [], trashDeleted: {}, updatedAt: 0 };
@@ -126,6 +134,40 @@
       out.push(t);
     });
     return out;
+  }
+
+  // Turn the "never save tabs from these sites" textarea into a clean list of
+  // hostnames: split on newline OR comma, trim, drop a leading "www.", drop
+  // any scheme/path someone pastes by accident (a full URL still works — only
+  // its hostname is kept), lowercase, drop empties.
+  function parseBlocklist(text) {
+    return (text || "").split(/[\n,]+/).map(function (line) {
+      line = line.trim();
+      if (!line) return "";
+      // Accept a bare domain ("example.com") or a full URL
+      // ("https://example.com/x") — only the hostname is ever matched.
+      if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(line)) line = "http://" + line;
+      try { return new URL(line).hostname.replace(/^www\./, "").toLowerCase(); }
+      catch (e) { return ""; }
+    }).filter(Boolean);
+  }
+
+  // True if the tab's URL's hostname is the blocklist entry, or a subdomain
+  // of it ("mail.example.com" is blocked by an "example.com" entry) — never
+  // a bare substring match, which would also catch "notexample.com".
+  function isBlockedUrl(url, blocklist) {
+    if (!blocklist || !blocklist.length) return false;
+    var host;
+    try { host = new URL(url).hostname.replace(/^www\./, "").toLowerCase(); }
+    catch (e) { return false; }
+    return blocklist.some(function (entry) {
+      return host === entry || host.slice(-(entry.length + 1)) === "." + entry;
+    });
+  }
+
+  function filterBlocked(tabs, blocklist) {
+    if (!blocklist || !blocklist.length) return tabs.slice();
+    return tabs.filter(function (t) { return !isBlockedUrl(t.url, blocklist); });
   }
 
   // One-shot cleanup: remove duplicate URLs already in the list, keeping the
@@ -199,7 +241,15 @@
         // end-to-end encryption passphrase (shared; never sent to the server)
         passphrase: c.passphrase,
         // passphrase for encrypted backup files (local only, file use only)
-        backupPass: c.tabs.backupPass
+        backupPass: c.tabs.backupPass,
+        // desktop notification when a sync fails (default off)
+        notifyErrors: c.tabs.notifyErrors,
+        // newline/comma-separated hosts "Save Tabs" leaves alone entirely
+        blocklist: c.tabs.blocklist,
+        // ask before saving + closing more than this many tabs (0 = never ask)
+        stashWarnAt: c.tabs.stashWarnAt,
+        // how long a deleted list stays in "Recently deleted"
+        trashDays: c.tabs.trashDays
       };
     });
   }
@@ -224,6 +274,10 @@
     if ("backupPass" in patch) tabs.backupPass = patch.backupPass;
     if ("removeOnRestore" in patch) tabs.removeOnRestore = patch.removeOnRestore;
     if ("pinList" in patch) tabs.pinList = patch.pinList;
+    if ("notifyErrors" in patch) tabs.notifyErrors = patch.notifyErrors;
+    if ("blocklist" in patch) tabs.blocklist = patch.blocklist;
+    if ("stashWarnAt" in patch) tabs.stashWarnAt = patch.stashWarnAt;
+    if ("trashDays" in patch) tabs.trashDays = patch.trashDays;
     out.tabs = tabs;
     return shared().setConfig(out).then(function () { return getSettings(); });
   }
@@ -417,7 +471,7 @@
     return b.createdAt - a.createdAt;
   }
 
-  function mergeStates(local, remote) {
+  function mergeStates(local, remote, trashDays) {
     if (!remote) return { state: local, changed: false };
     var deleted = {};
     [local.deleted || {}, remote.deleted || {}].forEach(function (map) {
@@ -453,7 +507,7 @@
     (local.trash || []).concat(remote.trash || []).forEach(function (e) {
       if (e && e.tid && !trashById[e.tid]) trashById[e.tid] = e;
     });
-    var cutoff = Date.now() - TRASH_TTL_MS;
+    var cutoff = Date.now() - trashTtlMs(trashDays);
     var trash = Object.keys(trashById).map(function (k) { return trashById[k]; })
       .filter(function (e) { return !trashDeleted[e.tid]; })
       .filter(function (e) { return e.deletedAt >= cutoff; })
@@ -562,8 +616,18 @@
           return st;
         }).catch(function (e) {
           setBadge("err");
-          setSyncStatus("error", e && (e.message || String(e)));
-          throw e;
+          var message = e && (e.message || String(e));
+          // Snapshot BEFORE overwriting — only notify the transition into
+          // error, never every retry of one that's already failing.
+          var notified = settings.notifyErrors
+            ? getSyncStatus().then(function (prev) {
+                if (prev.status !== "error" && self.TabbySyncNotify) {
+                  self.TabbySyncNotify.syncError("Tabs", message);
+                }
+              })
+            : Promise.resolve();
+          return notified.then(function () { return setSyncStatus("error", message); })
+            .then(function () { throw e; });
         });
       });
     });
@@ -580,7 +644,7 @@
       var pulled = r[1];
       var remote = pulled ? pulled.state : null;
       var etag = pulled ? pulled.etag : "";
-      var afterPull = mergeStates(initialLocal, remote).state;
+      var afterPull = mergeStates(initialLocal, remote, settings.trashDays).state;
 
       // Re-read local storage right before writing. Pulling from the server
       // can take a while (network round trip), and in that window this same
@@ -590,7 +654,7 @@
       // folds any such change back in, instead of this write silently
       // clobbering it with the stale snapshot we started with.
       return getState().then(function (freshLocal) {
-        var m = mergeStates(freshLocal, afterPull);
+        var m = mergeStates(freshLocal, afterPull, settings.trashDays);
 
         var saveIfChanged = m.changed
           ? saveState(m.state, { skipPush: true })
@@ -652,8 +716,8 @@
   // Deleted groups/tabs are copied into state.trash so they can be restored.
   // Removals are tombstoned in state.trashDeleted so they don't resurrect on
   // sync. Both are capped by count and age.
-  function pruneTrash(state) {
-    var cutoff = Date.now() - TRASH_TTL_MS;
+  function pruneTrash(state, trashDays) {
+    var cutoff = Date.now() - trashTtlMs(trashDays);
     state.trash = (state.trash || [])
       .filter(function (e) { return !state.trashDeleted[e.tid]; })
       .filter(function (e) { return e.deletedAt >= cutoff; })
@@ -665,7 +729,7 @@
     return state;
   }
   // entries: [{ kind:"group"|"tab", name, sourceName?, tabs:[...] }]
-  function trashAdd(state, entries) {
+  function trashAdd(state, entries, trashDays) {
     if (!entries || !entries.length) return state;
     if (!state.trash) state.trash = [];
     if (!state.trashDeleted) state.trashDeleted = {};
@@ -681,7 +745,7 @@
         })
       });
     });
-    return pruneTrash(state);
+    return pruneTrash(state, trashDays);
   }
   function trashRemove(state, tid) {
     if (!state.trashDeleted) state.trashDeleted = {};
@@ -864,6 +928,9 @@
     compareGroups: compareGroups,
     orderVal: orderVal,
     dedupeTabsForStash: dedupeTabsForStash,
+    parseBlocklist: parseBlocklist,
+    isBlockedUrl: isBlockedUrl,
+    filterBlocked: filterBlocked,
     removeDuplicates: removeDuplicates,
     getSettings: getSettings,
     setSettings: setSettings,
@@ -884,6 +951,7 @@
     importBackup: importBackup,
     importBackupMerge: importBackupMerge,
     importMergeText: importMergeText,
+    pruneTrash: pruneTrash,
     trashAdd: trashAdd,
     trashRemove: trashRemove,
     trashEmpty: trashEmpty,

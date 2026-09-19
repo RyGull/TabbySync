@@ -72,7 +72,7 @@ test('the policy does not claim a permission the manifest no longer requests', (
   // Guards the other direction: a permission dropped from the manifest but
   // left in the table makes the policy overstate what the extension can do.
   const known = new Set([...manifest.permissions, 'permissions']);
-  for (const claimed of ['bookmarks', 'tabs', 'tabGroups', 'storage', 'unlimitedStorage', 'contextMenus', 'alarms']) {
+  for (const claimed of ['bookmarks', 'tabs', 'tabGroups', 'storage', 'unlimitedStorage', 'contextMenus', 'alarms', 'notifications']) {
     if (policy.includes(`<code>${claimed}</code>`)) {
       assert.ok(known.has(claimed), `privacy.html lists "${claimed}" but the manifest does not request it`);
     }
@@ -89,6 +89,7 @@ test('every requested permission is actually used by the code', () => {
     storage: /chrome\.storage\./,
     contextMenus: /chrome\.contextMenus\./,
     alarms: /chrome\.alarms\./,
+    notifications: /chrome\.notifications\./,
     unlimitedStorage: null, // no API surface; it only raises the storage quota
   };
   for (const perm of manifest.permissions) {

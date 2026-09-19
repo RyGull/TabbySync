@@ -25,12 +25,26 @@ function report(kind) {
 // Run a sync and reflect the outcome on the shared badge.
 async function doSync(trigger, opts) {
   report('syncing');
+  // Snapshot BEFORE runSync — it overwrites state.lastStatus itself, so this
+  // is the only chance to tell "still failing" (already reported) from
+  // "just started failing" (worth a notification, if the user asked for one).
+  const prevStatus = (await getState()).lastStatus;
   const res = await runSync(trigger, opts);
   if (res && res.ok) report('ok');
   else if (res && (res.status === 'not configured')) report('none');
   else if (res && res.status === 'busy') { /* another run will set it */ }
-  else report('error');
+  else {
+    report('error');
+    if (prevStatus !== 'error') notifyIfEnabled(res && res.message);
+  }
   return res;
+}
+
+async function notifyIfEnabled(message) {
+  try {
+    const cfg = await getConfig();
+    if (cfg.notifyErrors) self.TabbySyncNotify.syncError('Bookmarks', message);
+  } catch { /* notifications not available — not fatal */ }
 }
 
 // Set the dot from stored state without running a sync (e.g. on worker wake).
