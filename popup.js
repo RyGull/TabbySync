@@ -55,6 +55,7 @@ async function refreshBookmarks() {
   if (s.enabled && s.lastError) { $("bmErrRow").hidden = false; $("bmErr").textContent = s.lastError; }
   else $("bmErrRow").hidden = true;
   $("bmSync").disabled = !s.enabled || !s.configured;
+  $("menuSyncBm").disabled = $("bmSync").disabled;
   return s;
 }
 
@@ -77,6 +78,8 @@ async function refreshTabs() {
   } else $("tabErrRow").hidden = true;
   $("stashAllTabs").disabled = !s.enabled;
   $("tabSync").disabled = !s.enabled || !s.configured;
+  $("menuSaveTabs").disabled = $("stashAllTabs").disabled;
+  $("menuSyncTabs").disabled = $("tabSync").disabled;
   return s;
 }
 
@@ -154,14 +157,15 @@ $("tabEnable").addEventListener("change", async function () {
 });
 
 $("bmSync").addEventListener("click", async function () {
-  $("bmSync").disabled = true; $("bmSync").textContent = "Syncing…"; setDot($("bmDot"), "busy");
+  $("bmSync").disabled = true; $("menuSyncBm").disabled = true;
+  $("bmSync").textContent = "Syncing…"; setDot($("bmDot"), "busy");
   await send({ type: "syncNow" });
   $("bmSync").textContent = "Sync Bookmarks";
   await refreshBookmarks();
 });
 
 $("stashAllTabs").addEventListener("click", async function () {
-  $("stashAllTabs").disabled = true;
+  $("stashAllTabs").disabled = true; $("menuSaveTabs").disabled = true;
   await send({ type: "sl-stash", mode: "all" });
   window.close(); // the list tab opens; close the popup
 });
@@ -170,11 +174,37 @@ $("tabOpen").addEventListener("click", async function () {
   window.close();
 });
 $("tabSync").addEventListener("click", async function () {
-  $("tabSync").disabled = true; $("tabSync").textContent = "…"; setDot($("tabDot"), "busy");
+  $("tabSync").disabled = true; $("menuSyncTabs").disabled = true;
+  $("tabSync").textContent = "…"; setDot($("tabDot"), "busy");
   await send({ type: "tabbysync-sync" });
   $("tabSync").textContent = "Sync Tabs";
   await refreshTabs();
 });
+
+// ---- logo menu ---------------------------------------------------------
+//
+// The logo doubles as a menu trigger (see .logoBtn in the <style>), listing
+// the same actions the cards' own hover-reveal panels expose — people can
+// use either. Each item just proxies a click to its card's real button
+// rather than duplicating the sync logic: a disabled proxied button quietly
+// no-ops (a disabled element never dispatches "click"), so there is nothing
+// extra to keep in sync beyond the disabled-state mirroring above.
+function setLogoMenuOpen(open) {
+  $("logoMenu").hidden = !open;
+  $("menuScrim").hidden = !open;
+  $("logoMenuBtn").setAttribute("aria-expanded", open ? "true" : "false");
+}
+$("logoMenuBtn").addEventListener("click", function () {
+  setLogoMenuOpen($("logoMenu").hidden);
+});
+$("menuScrim").addEventListener("click", function () { setLogoMenuOpen(false); });
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape") setLogoMenuOpen(false);
+});
+$("menuSyncBm").addEventListener("click", function () { setLogoMenuOpen(false); $("bmSync").click(); });
+$("menuSaveTabs").addEventListener("click", function () { setLogoMenuOpen(false); $("stashAllTabs").click(); });
+$("menuMyTabs").addEventListener("click", function () { setLogoMenuOpen(false); $("tabOpen").click(); });
+$("menuSyncTabs").addEventListener("click", function () { setLogoMenuOpen(false); $("tabSync").click(); });
 
 // ---- donation + feedback ---------------------------------------------------
 var PAYPAL_URL = "https://www.paypal.com/ncp/payment/B25W7V9VRGQG4";
@@ -197,9 +227,9 @@ $("donateBack").addEventListener("click", function () { showView("main"); });
 
 // ---- the Windows desktop app ------------------------------------------------
 //
-// Shown only on Windows, and only as one line in the main view: the pitch
-// itself lives in a slide-over, the same way Donate does, so mentioning a
-// companion app costs the popup no room it was using for sync status.
+// Shown only on Windows, as its own promo card below the two sync cards: the
+// full pitch still lives in a slide-over, the same way Donate does, so this
+// card only needs a tagline, not the whole paragraph.
 //
 // The copy and the URL come from shared/desktop-app.js — three places in this
 // extension link to the app, and none of them owns the wording.
@@ -207,6 +237,8 @@ $("donateBack").addEventListener("click", function () { showView("main"); });
   var app = self.TabbySyncDesktopApp;
   if (!app || !app.isWindows()) return; // not Windows: never rendered at all
 
+  $("deskPromoTitle").textContent = app.NAME;
+  $("deskPromoTagline").textContent = app.TAGLINE;
   $("deskTitle").textContent = "🖥️ " + app.NAME;
   $("deskPitch").textContent = app.PITCH;
   $("deskWhich").textContent = app.WHICH_RELEASE;

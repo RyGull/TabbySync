@@ -59,6 +59,42 @@
       background:var(--panel); color:var(--text); border:1px solid var(--line); cursor:pointer; }
     .theme-btn:hover { border-color:var(--muted); }
     .theme-btn .ic { font-size:14px; }
+
+    /* logo menu: the logo doubles as the trigger for every sync action, so
+       the cards below can stay this uncluttered. A ring traces its outline —
+       only the gradient's angle animates (a registered custom property), so
+       the ring itself stays put and the bookmark-blue/tab-orange visibly
+       chase each other around it, rather than the ring shape rotating. */
+    @property --ring-angle { syntax:'<angle>'; inherits:false; initial-value:0deg; }
+    #mainView { position:relative; }
+    .logoBtn { display:inline-flex; align-items:center; gap:5px; border:0; background:transparent;
+      cursor:pointer; padding:6px 8px; border-radius:10px; position:relative; z-index:1; }
+    .logoBtn .caret { font-size:9px; color:var(--muted); transform:translateY(1px); }
+    .logoBtn::before { content:""; position:absolute; inset:-4px; z-index:-1; border-radius:14px;
+      padding:2.5px; --ring-angle:0deg;
+      background:conic-gradient(from var(--ring-angle), var(--bm), var(--tab), var(--bm), var(--tab), var(--bm));
+      -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite:xor; mask-composite:exclude;
+      opacity:.9; animation:logoSwirl 2.6s linear infinite; }
+    @keyframes logoSwirl { to { --ring-angle:360deg; } }
+    .logoBtn:hover::before { padding:3px; opacity:1; }
+    @media (prefers-reduced-motion: reduce) { .logoBtn::before { animation:none; } }
+
+    .menuScrim { position:absolute; inset:0; z-index:5; }
+    .menuPanel { position:absolute; top:54px; left:12px; width:216px; background:var(--bg);
+      border:1px solid var(--line); border-radius:12px; box-shadow:0 14px 32px rgba(20,20,25,.22);
+      z-index:10; overflow:hidden; }
+    .menuGroup { padding:6px; }
+    .menuGroup + .menuGroup { border-top:1px solid var(--line); }
+    .menuLabel { font-size:9.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+      color:var(--muted); padding:6px 8px 4px; }
+    .menuItem { display:flex; align-items:center; gap:9px; width:100%; text-align:left; border:0;
+      background:transparent; border-radius:8px; padding:8px 8px; font-size:12.5px; font-weight:600;
+      color:var(--text); cursor:pointer; }
+    .menuItem:hover:not(:disabled) { background:var(--panel); }
+    .menuItem:disabled { opacity:.5; cursor:default; }
+    .menuItem .ic { width:18px; text-align:center; font-size:13px; }
+
     .cardsWrap { position:relative; }
     .cards { padding:2px 15px 6px; display:flex; flex-direction:column; gap:10px; }
     /* Fresh-install state: the real cards blurred behind two setup buttons,
@@ -81,11 +117,26 @@
     .setupBtn:hover { border-color:var(--muted); }
     .setupBtn.primary { background:var(--bm); color:#fff; border-color:var(--bm); }
 
-    .card { border:1px solid var(--line); border-radius:11px; overflow:hidden; background:var(--panel); }
+    .card { border:1px solid var(--line); border-radius:11px; overflow:hidden; background:var(--panel); position:relative; }
     .card.bm { border-left:4px solid var(--bm); }
     .card.tab { border-left:4px solid var(--tab); }
     .card.off { opacity:.55; }
     .card-h { display:flex; align-items:center; gap:9px; padding:10px 12px 6px; }
+
+    /* Hover (or keyboard-focus) a card and its toggle + buttons float in over
+       a light blur — the same "blur what's behind, float a crisp card on
+       top" move .setupOverlay above already uses for the fresh-install
+       prompt, just scoped to one card and lighter. */
+    .cardBody { transition:filter .16s ease, opacity .16s ease; }
+    .card:hover .cardBody, .card:focus-within .cardBody { filter:blur(3px); opacity:.45; }
+    .cardReveal { position:absolute; inset:5px; z-index:4; border-radius:9px; background:var(--bg);
+      border:1px solid var(--line); box-shadow:0 10px 24px rgba(20,20,25,.18);
+      display:flex; flex-direction:column; justify-content:center; gap:8px; padding:10px 12px;
+      opacity:0; pointer-events:none; transition:opacity .16s ease; }
+    .card:hover .cardReveal, .card:focus-within .cardReveal { opacity:1; pointer-events:auto; }
+    .revealRow { display:flex; align-items:center; gap:9px; }
+    .revealRow .revealLabel { font-size:11.5px; font-weight:600; color:var(--muted); }
+    .cardReveal .acts { padding:0; }
     .badge { width:26px; height:26px; border-radius:8px; display:grid; place-items:center; font-size:15px; }
     .bm .badge { background:var(--bm-soft); }
     .tab .badge { background:var(--tab-soft); }
@@ -165,15 +216,19 @@
     .donate-bar + .donate-bar { border-left:1px solid var(--line); }
     .donate-bar:hover { background:var(--panel); }
     .donate-bar .chev { color:var(--muted); font-size:15px; }
-    /* The Windows app entry point. A full-width row of its own rather than a
-       third .donate-bar: at 320px, three bars side by side leaves each one too
-       narrow to read. Only ever shown on Windows — see shared/desktop-app.js. */
-    .desk-bar { width:100%; border:0; border-top:1px solid var(--line); border-radius:0;
-      background:transparent; color:var(--text); display:flex; align-items:center;
-      justify-content:center; gap:6px; padding:11px 10px; font-size:12.5px;
-      font-weight:700; cursor:pointer; }
-    .desk-bar:hover { background:var(--panel); }
-    .desk-bar .chev { color:var(--muted); font-size:15px; }
+    /* The Windows app entry point — a card of its own in the gap the cards
+       leave above the footer now that their buttons only show on hover.
+       Only ever shown on Windows — see shared/desktop-app.js. */
+    .cpPromo { width:calc(100% - 30px); margin:0 15px 10px; border:1px solid var(--line);
+      border-radius:11px; background:var(--panel); color:var(--text); display:flex;
+      align-items:center; gap:10px; padding:10px 12px; text-align:left; cursor:pointer; }
+    .cpPromo:hover { border-color:var(--muted); }
+    .cpBadge { width:26px; height:26px; flex:0 0 auto; border-radius:8px; display:grid;
+      place-items:center; font-size:15px; background:var(--panel); border:1px solid var(--line); }
+    .cpText { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:1px; }
+    .cpTitle { font-weight:700; font-size:12.5px; }
+    .cpTagline { color:var(--muted); font-size:11px; line-height:1.35; }
+    .cpPromo .chev { flex:0 0 auto; color:var(--muted); font-size:16px; }
 
     /* dedicated donation screen (swaps in for the whole popup, so it never scrolls) */
     .dv-head { display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line); }
@@ -198,9 +253,26 @@
 <body>
  <div id="mainView">
   <div class="head">
-    <img class="logo logo-light" src="icons/logo-light.png" alt="TabbySync">
-    <img class="logo logo-dark" src="icons/logo-dark.png" alt="TabbySync">
+    <button class="logoBtn" id="logoMenuBtn" type="button" aria-haspopup="menu" aria-expanded="false">
+      <img class="logo logo-light" src="icons/logo-light.png" alt="TabbySync — open the sync menu">
+      <img class="logo logo-dark" src="icons/logo-dark.png" alt="TabbySync — open the sync menu">
+      <span class="caret">▾</span>
+    </button>
     <button class="opts" id="opts">Options</button>
+  </div>
+
+  <div class="menuScrim" id="menuScrim" hidden></div>
+  <div class="menuPanel" id="logoMenu" role="menu" hidden>
+    <div class="menuGroup">
+      <div class="menuLabel">📑 Bookmarks</div>
+      <button class="menuItem" id="menuSyncBm" type="button" role="menuitem"><span class="ic">🔁</span>Sync Bookmarks</button>
+    </div>
+    <div class="menuGroup">
+      <div class="menuLabel">🗂️ Tabs</div>
+      <button class="menuItem" id="menuSaveTabs" type="button" role="menuitem"><span class="ic">💾</span>Save Tabs</button>
+      <button class="menuItem" id="menuMyTabs" type="button" role="menuitem"><span class="ic">📂</span>My Tabs</button>
+      <button class="menuItem" id="menuSyncTabs" type="button" role="menuitem"><span class="ic">🔁</span>Sync Tabs</button>
+    </div>
   </div>
 
   <!-- Fresh-install state: the cards behind are real (counts, toggles — not
@@ -212,43 +284,57 @@
     <div class="cards" id="cardsRow">
       <!-- Bookmarks -->
       <section class="card bm" id="bmCard">
-        <div class="card-h">
-          <span class="badge">📑</span>
-          <span class="title">Bookmarks<small id="bmSub">the same on every computer</small></span>
-          <span class="dot" id="bmDot"></span>
-          <label class="sw" title="Enable bookmark sync">
-            <input type="checkbox" id="bmEnable"><span class="track"></span>
-          </label>
+        <div class="cardBody">
+          <div class="card-h">
+            <span class="badge">📑</span>
+            <span class="title">Bookmarks<small id="bmSub">the same on every computer</small></span>
+            <span class="dot" id="bmDot"></span>
+          </div>
+          <div class="rows" id="bmRows">
+            <div class="kv"><span>Saved</span><span class="v" id="bmCount">—</span></div>
+            <div class="kv"><span>Last sync</span><span class="v" id="bmLast">—</span></div>
+            <div class="kv" id="bmErrRow" hidden><span>Error</span><span class="v err" id="bmErr"></span></div>
+          </div>
         </div>
-        <div class="rows" id="bmRows">
-          <div class="kv"><span>Saved</span><span class="v" id="bmCount">—</span></div>
-          <div class="kv"><span>Last sync</span><span class="v" id="bmLast">—</span></div>
-          <div class="kv" id="bmErrRow" hidden><span>Error</span><span class="v err" id="bmErr"></span></div>
-        </div>
-        <div class="acts">
-          <button class="primary grow" id="bmSync">Sync Bookmarks</button>
+        <div class="cardReveal">
+          <div class="revealRow">
+            <label class="sw" title="Enable bookmark sync">
+              <input type="checkbox" id="bmEnable"><span class="track"></span>
+            </label>
+            <span class="revealLabel">Bookmark sync</span>
+          </div>
+          <div class="acts">
+            <button class="primary grow" id="bmSync">Sync Bookmarks</button>
+          </div>
         </div>
       </section>
 
       <!-- Tabs -->
       <section class="card tab" id="tabCard">
-        <div class="card-h">
-          <span class="badge">🗂️</span>
-          <span class="title">Tabs<small id="tabSub">save tabs, reopen anywhere</small></span>
-          <span class="dot" id="tabDot"></span>
-          <label class="sw" title="Enable tab sync">
-            <input type="checkbox" id="tabEnable"><span class="track"></span>
-          </label>
+        <div class="cardBody">
+          <div class="card-h">
+            <span class="badge">🗂️</span>
+            <span class="title">Tabs<small id="tabSub">save tabs, reopen anywhere</small></span>
+            <span class="dot" id="tabDot"></span>
+          </div>
+          <div class="rows" id="tabRows">
+            <div class="kv"><span>Saved</span><span class="v" id="tabCount">—</span></div>
+            <div class="kv"><span>Last sync</span><span class="v" id="tabLast">—</span></div>
+            <div class="kv" id="tabErrRow" hidden><span>Error</span><span class="v err" id="tabErr"></span></div>
+          </div>
         </div>
-        <div class="rows" id="tabRows">
-          <div class="kv"><span>Saved</span><span class="v" id="tabCount">—</span></div>
-          <div class="kv"><span>Last sync</span><span class="v" id="tabLast">—</span></div>
-          <div class="kv" id="tabErrRow" hidden><span>Error</span><span class="v err" id="tabErr"></span></div>
-        </div>
-        <div class="acts">
-          <button class="primary grow" id="stashAllTabs">Save Tabs</button>
-          <button class="accent" id="tabOpen">My Tabs</button>
-          <button id="tabSync">Sync Tabs</button>
+        <div class="cardReveal">
+          <div class="revealRow">
+            <label class="sw" title="Enable tab sync">
+              <input type="checkbox" id="tabEnable"><span class="track"></span>
+            </label>
+            <span class="revealLabel">Tab sync</span>
+          </div>
+          <div class="acts">
+            <button class="primary grow" id="stashAllTabs">Save Tabs</button>
+            <button class="accent" id="tabOpen">My Tabs</button>
+            <button id="tabSync">Sync Tabs</button>
+          </div>
         </div>
       </section>
     </div>
@@ -262,6 +348,18 @@
       <button class="setupBtn" id="manualOpen" type="button">Set up manually</button>
     </div>
   </div>
+
+  <!-- Windows only — see shared/desktop-app.js. Sits here, right below the
+       two sync cards, because that is the one spot in this layout with room
+       for a full tagline instead of a bare icon + name. -->
+  <button class="cpPromo" id="deskOpen" type="button" hidden>
+    <span class="cpBadge">🖥️</span>
+    <span class="cpText">
+      <span class="cpTitle" id="deskPromoTitle"></span>
+      <small class="cpTagline" id="deskPromoTagline"></small>
+    </span>
+    <span class="chev">›</span>
+  </button>
 
   <div class="foot" id="footEl" hidden>
     <div class="profileRow" id="profileRow">
@@ -281,10 +379,6 @@
       <span>❤️ Donate</span><span class="chev">›</span>
     </button>
   </div>
-
-  <button class="desk-bar" id="deskOpen" type="button" hidden>
-    <span>🖥️ Windows desktop app</span><span class="chev">›</span>
-  </button>
 
   <div class="priv-foot">
     <a id="privacyLink" class="priv-link">🔒 Privacy Policy</a>
