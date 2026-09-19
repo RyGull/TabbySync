@@ -93,13 +93,39 @@
     resolve(proceed);
   }
 
+  // The popup's own content is ~210px tall (measured); chrome.windows.create's
+  // width/height are the OUTER window size, title bar included, so asking for
+  // exactly that leaves no room for the title bar and the page scrolls —
+  // which is the bug this constant exists to not repeat. The extra height
+  // is slack for that chrome across platforms, not content.
+  var CONFIRM_W = 400, CONFIRM_H = 300;
+
+  // Chrome has no "center the window" option, so this centers it manually
+  // against the last-focused browser window — the same computation any
+  // "centered dialog" library does, just against the browser window rather
+  // than the screen, which is what actually reads as centered while the
+  // browser doesn't fill the display.
+  function centeredPopupBounds(w, h) {
+    return chrome.windows.getLastFocused().then(function (parent) {
+      if (!(parent && typeof parent.left === "number" && typeof parent.width === "number")) return {};
+      return {
+        left: Math.round(parent.left + (parent.width - w) / 2),
+        top: Math.round(parent.top + (parent.height - h) / 2),
+      };
+    }).catch(function () { return {}; });
+  }
+
   function confirmBulkStashWindow(count) {
     var confirmId = "sl-stash-confirm-" + Date.now();
     return new Promise(function (resolve) {
       pendingStashConfirms[confirmId] = resolve;
       var url = chrome.runtime.getURL("tabs/confirm-stash.html") +
         "?confirmId=" + encodeURIComponent(confirmId) + "&count=" + encodeURIComponent(count);
-      chrome.windows.create({ url: url, type: "popup", width: 400, height: 210, focused: true })
+      centeredPopupBounds(CONFIRM_W, CONFIRM_H).then(function (pos) {
+        var opts = { url: url, type: "popup", width: CONFIRM_W, height: CONFIRM_H, focused: true };
+        if ("left" in pos) { opts.left = pos.left; opts.top = pos.top; }
+        return chrome.windows.create(opts);
+      })
         .then(function (win) { stashConfirmWindows[confirmId] = win.id; })
         .catch(function () {
           // Couldn't even open the window — fall back to a notification

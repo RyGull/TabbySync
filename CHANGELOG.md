@@ -6,6 +6,21 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.6.9 — 2026-09-19
+
+- **Fixed the "save and close many tabs?" popup window scrolling and
+  opening off-center.** `chrome.windows.create`'s width/height are the
+  OUTER window size, title bar included — asking for exactly the
+  content's own height (210px) left no room for the title bar, so the
+  page scrolled. Sized the window generously past the measured content
+  height instead, and stopped forcing the page itself to a fixed
+  height so a size mismatch shows as blank space, never a scrollbar.
+  Chrome has no "center window" option, so it's now centered by
+  computing the midpoint of the last-focused browser window and
+  passing that as `left`/`top` — falls back to Chrome's own default
+  placement if that computation isn't available for some reason,
+  rather than failing to open at all.
+
 ## 1.6.8 — 2026-09-19
 
 - **Added a Home link to the popup's footer**, to the left of Privacy
