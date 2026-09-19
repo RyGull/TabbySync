@@ -6,6 +6,37 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.6.5 — 2026-09-19
+
+- **The popup's logo is now a menu, and its two cards only show their
+  buttons on hover.** Every card used to carry its buttons and its
+  enable toggle at all times; a card now shows just its status until
+  you hover it (or tab to it with a keyboard), at which point the
+  toggle and that card's buttons float in over a light blur — the same
+  blur-then-float move the fresh-install prompt already used. The logo
+  doubles as a second way to reach the same actions: click it — a
+  ring traces its outline, spinning blue into orange and back (only
+  the gradient's angle animates, so the ring itself stays put) to mark
+  it as live — for a dropdown grouped by section. Both paths trigger
+  the same buttons, so there is nothing to keep in sync beyond
+  disabled state.
+- **Renamed the popup and saved-tabs-page buttons to say what they
+  do.** "Sync now" is now "Sync Bookmarks" on the bookmarks card and
+  "Sync Tabs" on the tabs card, "Save my tabs" is "Save Tabs", "My
+  lists" is "My Tabs", and the popup's "Shared as" is "My Profile".
+  Carried into the saved-tabs page's own Sync button, its empty-state
+  instructions, and the README.
+- **The Advanced and delete options section reads as dangerous before
+  you touch it, not just after.** Its border and heading used to turn
+  red only once opened; both are red at rest now, so the one section
+  on the options page that can permanently delete synced data looks
+  the part before anything is clicked.
+- **The Windows Control Panel promo moved into the popup**, from a
+  bare bottom bar to its own card with a tagline, using the room the
+  cards' now-hidden buttons freed up above the profile footer. Still
+  reads its name, tagline and URL from shared/desktop-app.js, same as
+  the other two entry points.
+
 ## 1.6.4 — 2026-09-10
 
 - **Fixed `store/paste/14-amo-reviewer-notes.txt` going over AMO's 3000-

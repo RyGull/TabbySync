@@ -137,6 +137,12 @@
     .revealRow { display:flex; align-items:center; gap:9px; }
     .revealRow .revealLabel { font-size:11.5px; font-weight:600; color:var(--muted); }
     .cardReveal .acts { padding:0; }
+    /* Three buttons in the tabs card's row, versus one in the bookmarks
+       card's — tighter gap/padding here only, so "Save Tabs"/"My Tabs"/
+       "Sync Tabs" all fit on one line without shrinking the font. */
+    .card.tab .cardReveal { padding-left:9px; padding-right:9px; }
+    .card.tab .cardReveal .acts { gap:5px; }
+    .card.tab .cardReveal .acts button { padding:8px 6px; }
     .badge { width:26px; height:26px; border-radius:8px; display:grid; place-items:center; font-size:15px; }
     .bm .badge { background:var(--bm-soft); }
     .tab .badge { background:var(--tab-soft); }
