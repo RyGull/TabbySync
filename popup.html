@@ -212,7 +212,9 @@
     /* small privacy-policy footer, below the feedback/donate bars */
     .priv-foot { display:flex; align-items:center; justify-content:space-between; gap:8px;
       padding:6px 15px 9px; border-top:1px solid var(--line); }
-    .priv-link { font-size:11px; color:var(--muted); cursor:pointer; text-decoration:none; }
+    .priv-left { display:flex; align-items:center; gap:11px; }
+    .priv-link { font-size:11px; color:var(--muted); cursor:pointer; text-decoration:none;
+      display:inline-flex; align-items:center; gap:4px; }
     .priv-link:hover { color:var(--bm); text-decoration:underline; }
     .priv-right { display:flex; align-items:center; gap:8px; }
     .priv-right .ver { align-self:auto; margin:0; } /* reset .head's bottom-align/margin for this row */
@@ -400,7 +402,10 @@
   </div>
 
   <div class="priv-foot">
-    <a id="privacyLink" class="priv-link">🔒 Privacy Policy</a>
+    <span class="priv-left">
+      <a id="homeLink" class="priv-link">🏠 Home</a>
+      <a id="privacyLink" class="priv-link">🔒 Privacy Policy</a>
+    </span>
     <span class="priv-right">
       <span class="ver" id="ver"></span>
       <span id="sl-theme"></span>

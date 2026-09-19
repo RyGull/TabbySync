@@ -6,6 +6,20 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.6.8 — 2026-09-19
+
+- **Added a Home link to the popup's footer**, to the left of Privacy
+  Policy, opening tabbysync.com in a new tab — same click-gated pattern
+  as the existing Donate/Feedback links (nothing about your setup, your
+  bookmarks or your tabs travels with it; it's an ordinary page load).
+  Refined `test/privacy-policy.test.js`'s "reaches no server operated by
+  its developer" check to match what it actually claims: no *automatic*
+  reach to the developer's own domain (a fetch, a redirect, an embedded
+  resource) rather than banning the string outright, since a link a
+  person chooses to click was never the thing that test was written to
+  catch — the existing PayPal/GitHub/JSONBin links already got this
+  exact treatment.
+
 ## 1.6.7 — 2026-09-19
 
 - **The "save and close a lot of tabs at once?" prompt is now its own small

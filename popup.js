@@ -143,6 +143,12 @@ $("wizardOpen").addEventListener("click", function () {
   catch (e) { window.open(url, "_blank"); }
 });
 
+$("homeLink").addEventListener("click", function () {
+  var url = "https://tabbysync.com";
+  try { chrome.tabs.create({ url: url }); }
+  catch (e) { window.open(url, "_blank", "noopener"); }
+});
+
 $("privacyLink").addEventListener("click", function () {
   var url = chrome.runtime.getURL("privacy.html");
   try { chrome.tabs.create({ url: url }); }

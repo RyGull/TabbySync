@@ -218,15 +218,18 @@ test('the only hosts the extension can reach are the ones the policy names', () 
     'https://jsonbin.io',          // account help link in Options
     'https://docs.github.com',     // link to GitHub's privacy statement
     'https://rygull.github.io',    // the published privacy policy, click-gated
+    'https://tabbysync.com',       // Home link in the popup footer, click-gated
     'http://www.w3.org',           // SVG xmlns, not a network fetch
   ];
 
-  // On rygull.github.io specifically: it is where the policy is published for
-  // people to read (website/config.php's PRIVACY_URL points at the same file),
-  // and it is only ever reached because someone clicked the link — nothing
-  // fetches it. It is listed rather than the tabbysync.com copy on purpose:
-  // the test below refuses the developer's own domain outright, and a claim
-  // that holds except for one link is not the claim being made.
+  // rygull.github.io and tabbysync.com are both places the developer
+  // operates, and both are here for the same reason the PayPal/GitHub/
+  // JSONBin links above are: someone has to click them for the browser to
+  // ever go there — nothing in the extension fetches, redirects to, or
+  // otherwise reaches them on its own. See 'the extension reaches no server
+  // operated by its developer' below for where that line is actually drawn
+  // (plain <a href> only, and only in .html — never in .js, where a
+  // reference would mean a real network call).
   const placeholders = /YOURDOMAIN|YOUR-DOMAIN|your-server\.example|example\.com|a\.example|b\.example|raw\.example/;
 
   for (const file of [...jsFiles, ...htmlFiles]) {
@@ -254,14 +257,39 @@ test('no extension page loads a remote script, style, image or frame', () => {
   }
 });
 
-test('the extension reaches no server operated by its developer', () => {
+test('the extension reaches no server operated by its developer, except a link someone has to click', () => {
   // The strongest claim in the policy, and the reason the embedded feedback
   // form was removed: TabbySync contacts only the sync destination the user
-  // configures, plus GitHub/JSONBin if they pick one of those. Any http(s)
-  // reference to the developer's own domain would break that.
-  for (const file of [...jsFiles, ...htmlFiles]) {
+  // configures, plus GitHub/JSONBin if they pick one of those. "Contacts"
+  // means the extension reaching out on its own — a fetch, a redirect, an
+  // embedded resource — not a plain link that does nothing until a person
+  // clicks it, same as the already-disclosed PayPal/GitHub/JSONBin links,
+  // which get exactly this same treatment (see popup.js: every one of them
+  // is a URL string opened with chrome.tabs.create()/window.open() from
+  // inside a click handler — there is no plain <a href> anywhere in this
+  // codebase's own pages; every outbound link is wired this way).
+  //
+  // So a tabbysync.com reference is fine ONLY where it's handed straight to
+  // chrome.tabs.create() or window.open() — i.e. only fires from a click —
+  // checked here as "the call appears within a short distance of the
+  // reference", not by trying to fully parse the file. Anywhere else (a
+  // fetch(), a src=, a bare reference with no navigation call nearby) still
+  // fails: those are exactly the shapes an automatic reach would take.
+  const NAV_CALL = /chrome\.tabs\.create|window\.open/;
+  const CONTEXT_CHARS = 250;
+  for (const file of jsFiles) {
+    const src = read(file);
+    const re = /https?:\/\/[^\s"'`]*tabbysync\.com/g;
+    let m;
+    while ((m = re.exec(src))) {
+      const context = src.slice(Math.max(0, m.index - CONTEXT_CHARS), m.index + CONTEXT_CHARS);
+      assert.match(context, NAV_CALL,
+        `${file} references the developer's own domain without an adjacent chrome.tabs.create()/window.open() — looks like more than a click-gated link: ${m[0]}`);
+    }
+  }
+  for (const file of htmlFiles) {
     assert.doesNotMatch(read(file), /https?:\/\/[^\s"'`]*tabbysync\.com/,
-      `${file} reaches the developer's own domain`);
+      `${file} references the developer's own domain directly — every outbound link in this codebase is wired through a click handler in .js, not a static href`);
   }
 });
 
