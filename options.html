@@ -302,12 +302,14 @@
             <div class="mini">
               <label for="tab-dedupe">If a tab is already saved</label>
               <select id="tab-dedupe">
-                <option value="group">Don't save it twice</option>
+                <option value="all">Don't save it twice</option>
+                <option value="group">Don't save it twice in the same action</option>
                 <option value="allow">Save it again anyway</option>
-                <option value="all">Skip it if it's anywhere in my lists</option>
               </select>
             </div>
-            <p class="hint">A skipped tab still closes in your window — it just isn't saved a second time.</p>
+            <p class="hint">A skipped tab still closes in your window — it just isn't saved a second time.
+              "Don't save it twice" checks everything you've already saved, not just what you're saving right
+              now; the "in the same action" option only catches duplicates among the tabs in this one save.</p>
             <div class="row">
               <button class="btn" id="tab-dedupe-now">Clean up duplicates I already saved</button>
             </div>

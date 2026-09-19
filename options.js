@@ -489,17 +489,10 @@ async function load() {
 
   $('tab-enable').checked = c.tabs.enabled;
   $('tab-interval').value = c.tabs.intervalMin;
-  // Duplicate handling used to be a required dropdown with no default, so
-  // setup could not finish until you ruled on a question you had no basis to
-  // answer yet. "Skip duplicates within the same send" is the answer almost
-  // everyone wants; it is written down here rather than left blank, so the UI
-  // and the stored setting always agree.
-  if (c.tabs.dedupe) {
-    $('tab-dedupe').value = c.tabs.dedupe;
-  } else {
-    $('tab-dedupe').value = 'group';
-    await SL.setConfig({ tabs: { dedupe: 'group' } });
-  }
+  // Default is "all" — skip a tab that's saved anywhere already — applied in
+  // shared/config.js's getConfig() itself, so it holds even if Options is
+  // never opened. An install that already had a choice saved keeps it.
+  $('tab-dedupe').value = c.tabs.dedupe;
   $('tab-restore-group').checked = c.tabs.restoreAsGroup;
   $('tab-remove-restore').checked = c.tabs.removeOnRestore;
   $('tab-pin-list').checked = c.tabs.pinList;

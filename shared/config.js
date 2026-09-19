@@ -164,7 +164,7 @@
         tabs: {
           enabled: s[K.tabEnabled] !== false,         // default on
           intervalMin: num(s[K.tabInterval], 5),
-          dedupe: s[K.tabDedupe] || "",   // no default — the user must choose in Options
+          dedupe: s[K.tabDedupe] || "all",   // default: skip a tab that's saved anywhere already
           restoreAsGroup: s[K.tabRestoreGroup] === true,
           backupPass: s[K.tabBackupPass] || "",
           removeOnRestore: s[K.tabRemoveOnRestore] === true, // default off (keep on restore)

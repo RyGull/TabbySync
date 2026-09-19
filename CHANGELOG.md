@@ -6,6 +6,27 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.6.12 — 2026-09-19
+
+- **"Don't save it twice" only checked the tabs in the save you were doing
+  right now, not anything saved before it** — so the same URL, saved in two
+  separate Save Tabs actions, was saved twice despite that setting. Worse,
+  the setting's real default (in `shared/config.js`) was actually "off"
+  (`""`, resolved to "allow" — no dedup at all) until Options was opened
+  once, which is where the *displayed* default of "Don't save it twice" was
+  actually written to storage; anyone who saved tabs from the popup without
+  ever opening Options got no deduping at all, contradicting what the
+  dropdown showed.
+  - The default is now applied where settings are read
+    (`shared/config.js`'s `getConfig()`), not as a side effect of opening
+    Options, so it holds from first install.
+  - The default itself changed to checking every list already saved (was:
+    only the tabs in the current save). "Don't save it twice" now means
+    that; the batch-only behavior is still available, relabeled "Don't save
+    it twice in the same action," for anyone who wants it. An install that
+    already had a choice saved keeps it — nothing changes underneath an
+    explicit choice.
+
 ## 1.6.11 — 2026-09-19
 
 - **Fixed "Save Tabs" landing on a broken `…tablist.html[object Object]`
