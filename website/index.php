@@ -111,6 +111,27 @@ require __DIR__ . '/includes/header.php';
         <p>Published so it can be audited, not just trusted — a sync tool that touches
           your bookmarks, tabs and credentials should be checkable, not a black box.</p>
       </article>
+
+      <article class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        </div>
+        <h3>Won't quietly wipe your bookmarks</h3>
+        <p>Every merge checks how much would disappear against what's actually in your
+          browser right now. Above twenty bookmarks, if four fifths or more would go at
+          once, it stops and asks instead of finishing — an accidental mass-delete isn't
+          silently possible.</p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v10m0 0-4-4m4 4 4-4"/><path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></svg>
+        </div>
+        <h3>One-file setup for your next computer</h3>
+        <p>“Save settings and credentials” makes one encrypted file with your access
+          code, sync name and password lock already in it — restore it on step 1 of the
+          next computer's setup and there's nothing left to type by hand.</p>
+      </article>
     </div>
   </div>
 </section>
