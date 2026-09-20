@@ -131,9 +131,9 @@ require __DIR__ . '/includes/header.php';
         <p class="shot-note">Shown: syncing to your own website, with the password lock on.</p>
       </div>
       <figure class="shot-figure shot-figure-narrow">
-        <img class="shot-light" src="/assets/img/screenshots/popup-light.png" width="480" height="788"
+        <img class="shot-light" src="/assets/img/screenshots/popup-light.png" width="480" height="650"
              alt="TabbySync popup in light mode, showing the Bookmarks and Tabs cards with their sync status." loading="lazy" decoding="async">
-        <img class="shot-dark" src="/assets/img/screenshots/popup-dark.png" width="480" height="788"
+        <img class="shot-dark" src="/assets/img/screenshots/popup-dark.png" width="480" height="650"
              alt="The same TabbySync popup in dark mode." loading="lazy" decoding="async">
       </figure>
     </div>
@@ -142,14 +142,15 @@ require __DIR__ . '/includes/header.php';
       <div class="shot-copy">
         <h3>Never set it up before? There's a wizard for that</h3>
         <p>On a fresh install, the popup shows the same two cards blurred behind two buttons:
-          <strong>Walk me through it</strong>, or set it up yourself. The guided path is the same
-          four questions below, one at a time, with Back and Next — not a second, simplified setup
-          to keep in step with the real one.</p>
+          <strong>Walk me through it</strong>, or set it up yourself. The guided path asks the same
+          questions as the full settings page, one screen at a time, with Back and Next — not a
+          second, simplified setup to keep in step with the real one. Already set up somewhere else?
+          Step 1 also takes a settings backup and skips the rest.</p>
         <p class="shot-note">Shown: step 1, before anything has been chosen yet.</p>
       </div>
       <figure class="shot-figure">
         <img class="shot-light" src="/assets/img/screenshots/wizard-light.png" width="1280" height="800"
-             alt="TabbySync's guided setup wizard in light mode, showing step 1 of 4 with a Back and Next bar." loading="lazy" decoding="async">
+             alt="TabbySync's guided setup wizard in light mode, showing step 1 with a Back and Next bar." loading="lazy" decoding="async">
         <img class="shot-dark" src="/assets/img/screenshots/wizard-dark.png" width="1280" height="800"
              alt="The same guided setup wizard in dark mode." loading="lazy" decoding="async">
       </figure>
