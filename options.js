@@ -579,9 +579,15 @@ $('srv-save').addEventListener('click', async () => {
   lastConfig = await SL.getConfig();
   const access = await settleAccess(asked, origins);
   await send({ type: 'tabbysync-reschedule' });
-  // Nudge both engines (they also auto-sync from the config change).
-  send({ type: 'syncNow' });
-  send({ type: 'tabbysync-sync' });
+  // Nudge whichever engines are actually turned on (they also auto-sync from
+  // the config change). 'tabbysync-sync' forces a push even if Tabs is off
+  // (see its handler in tabs/background-core.js) — sending it unconditionally
+  // pushed the browser's current tabs to whatever destination and encryption
+  // state was configured, on Save alone, before "What should it keep in
+  // sync?" ever turned Tabs on. Bookmarks doesn't need the same guard: its
+  // 'syncNow' handler already checks cfg.bookmarks.enabled itself.
+  if (lastConfig.bookmarks.enabled) send({ type: 'syncNow' });
+  if (lastConfig.tabs.enabled) send({ type: 'tabbysync-sync' });
   preview();
   status('srv-status', access.granted
     ? 'Saved — syncing the enabled tools now.'

@@ -251,6 +251,19 @@ input[type=file] { display:none; }
 .howto b { color:var(--text); }
 .howto .row { margin-top:8px; }
 
+/* Step 2's own four actions, as solid numbered circles instead of the plain
+   "1." browser marker — this is the one list on the page someone has to
+   actually follow in order rather than just read, so it gets to look like it. */
+#selfhostCard .howto { list-style:none; padding-left:0; counter-reset:selfhost-step; }
+#selfhostCard .howto li {
+  counter-increment:selfhost-step; position:relative; margin:16px 0; padding-left:40px;
+}
+#selfhostCard .howto li::before {
+  content:counter(selfhost-step); position:absolute; left:0; top:0;
+  width:26px; height:26px; border-radius:50%; background:var(--host); color:#fff;
+  font-weight:700; font-size:13px; line-height:26px; text-align:center;
+}
+
 /* ---- engines: a switch, a sentence, and everything else folded away ----- */
 .engine { border:1px solid var(--line); border-left:4px solid var(--edge, var(--line));
   border-radius:11px; background:var(--field); padding:13px 15px; }
