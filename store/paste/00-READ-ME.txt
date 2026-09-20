@@ -8,35 +8,36 @@ none of it.
   01-detailed-description.txt   Store listing → Description
   02-short-description.txt      Store listing → Summary (132 char limit; this is 124)
   03-single-purpose.txt         Privacy practices → Single purpose
-  04..10-permission-*.txt       Privacy practices → one box per permission
-  11-permission-host.txt        Privacy practices → host permission justification
-  12-whats-new.txt              Optional; some listings show it, some don't
+  04..10-permission-*.txt       Privacy practices → one box per required permission
+  11-permission-notifications.txt Privacy practices → notifications permission justification
+  12-permission-host.txt        Privacy practices → host permission justification (optional)
+  13-whats-new.txt              Optional; some listings show it, some don't
 
-Firefox (addons.mozilla.org) asks for two of its own:
+Firefox (addons.mozilla.org) asks for four of its own:
 
-  13-amo-privacy-policy.txt     "This add-on has a Privacy Policy" -> the box
-  14-amo-reviewer-notes.txt     "Notes to Reviewer"
-  15-amo-developer-comments.txt Technical Details -> Developer Comments (public)
-  16-amo-whiteboard.txt         Technical Details -> Whiteboard (reviewers only)
+  14-amo-privacy-policy.txt     "This add-on has a Privacy Policy" -> the box
+  15-amo-reviewer-notes.txt     "Notes to Reviewer"
+  16-amo-developer-comments.txt Technical Details -> Developer Comments (public)
+  17-amo-whiteboard.txt         Technical Details -> Whiteboard (reviewers only)
 
 AMO's limits, read out of its own source (addons-server) after "Notes to
 Reviewer" silently swallowed everything past character 3000:
 
-  Notes to Reviewer (approval_notes)      3000   file 14 is 2921
-  Developer Comments                      3000   file 15 is 1807
-  Release notes                           3000   file 12 is 816
-  Summary (no URLs allowed in it)          250   file 02 is 125
+  Notes to Reviewer (approval_notes)      3000   file 15 is 2912
+  Developer Comments                      3000   file 16 is 1806
+  Release notes                           3000   file 13 is 809
+  Summary (no URLs allowed in it)          250   file 02 is 124
   Description                            15000
-  Privacy policy                        150000   file 13 is ~6500
-  Whiteboard                            100000   file 16 is 1258
+  Privacy policy                        150000   file 14 is ~6455
+  Whiteboard                            100000   file 17 is 1257
 
 The two 3000s are the ones to watch: paste past them and the rest is gone
 without a warning.
 
 The privacy policy and Developer Comments fields render Markdown, which is
-why file 13 has a blank line after every heading and before every list --
+why file 14 has a blank line after every heading and before every list --
 without them, Markdown folds a heading into the paragraph below it -- and
-why file 15 uses **bold** rather than capitals. Notes to Reviewer and the
+why file 16 uses **bold** rather than capitals. Notes to Reviewer and the
 Whiteboard are plain text.
 
 The UUID shown on that page is read-only: it is browser_specific_settings

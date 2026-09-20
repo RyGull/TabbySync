@@ -1,0 +1,1 @@
+Shows a desktop notification only when a sync transitions into a failure state, and only if the user turns that on (Options > Bookmarks/Tabs > More options > "Notify me if a sync fails" — off by default for both). The popup's own status dot already shows an error without it; this is only for someone who doesn't have the popup open. Used for nothing else.

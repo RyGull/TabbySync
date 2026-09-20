@@ -104,7 +104,8 @@ One box per permission in the dashboard, one file per box:
 | `unlimitedStorage` | `paste/08-permission-unlimitedStorage.txt` |
 | `contextMenus` | `paste/09-permission-contextMenus.txt` |
 | `alarms` | `paste/10-permission-alarms.txt` |
-| host permissions (optional) | `paste/11-permission-host.txt` |
+| `notifications` | `paste/11-permission-notifications.txt` |
+| host permissions (optional) | `paste/12-permission-host.txt` |
 
 Each one is a claim about the manifest — "no host access at install time", "no
 content scripts", "tabs read only when you act". They were written by reading
@@ -153,7 +154,7 @@ Then certify all three:
 
 ## What's new in this version
 
-Paste from `paste/12-whats-new.txt` — keep it in sync with the version you're
+Paste from `paste/13-whats-new.txt` — keep it in sync with the version you're
 actually submitting; `00-READ-ME.txt` has the character limit it must stay under.
 
 ## Before you hit submit
