@@ -1,3 +1,5 @@
-New install? The popup now offers a guided setup: click "Walk me through it" for a step-by-step wizard through the same four setup questions, one at a time, with Back and Next. "Set up manually" opens Settings exactly as before — both end up in the same place.
+This update reworks the guided setup wizard: self-hosting used to ask for the web address and access code before the file that creates them existed, then told you to scroll back up once you had it. Now the file comes first — by the time you're asked to connect, the access code is already filled in and only the uploaded address is left to add. No step requires going back.
 
-The popup and Settings pages are also tidier: the popup fits without scrolling, and Settings puts the Windows Control Panel app front and center for anyone who has it, with a real screenshot instead of one fixed picture.
+Fixed: your open tabs could get pushed to a newly configured destination before Tab sync was ever turned on, or before a password lock was set. Tabs is now gated the same way Bookmarks always was.
+
+New: step 1 of the wizard can restore a previously saved settings backup — access code, sync name and password lock included — instead of setting up from scratch. Handy for a second computer; the final step now points you to making one.

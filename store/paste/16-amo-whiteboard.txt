@@ -1,6 +1,6 @@
 Standing notes for reviewers (the per-version notes carry the detail for each submission).
 
-BUILD: no bundler, minifier or transpiler; every .js/.html/.css file in the upload is the source as written. The only generated file is manifest.json, derived from the Chrome one by scripts/make-manifest.mjs at package time — hence the source upload. `npm test` (187 tests, no dependencies) and `bash scripts/package.sh firefox` rebuild it from the source archive's root.
+BUILD: no bundler, minifier or transpiler; every .js/.html/.css file in the upload is the source as written. The only generated file is manifest.json, derived from the Chrome one by scripts/make-manifest.mjs at package time — hence the source upload. `npm test` (236 tests, no dependencies) and `bash scripts/package.sh firefox` rebuild it from the source archive's root.
 
 SOURCE: also public at https://github.com/RyGull/TabbySync. The licence is proprietary but LICENSE section 1 explicitly permits reading, studying and auditing the code, so nothing in it restricts review.
 
