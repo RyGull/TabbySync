@@ -1133,25 +1133,26 @@ async function settingsExport(includeSecrets) {
 $('set-exp').addEventListener('click', () => settingsExport(false));
 $('set-exp-enc').addEventListener('click', () => settingsExport(true));
 
-$('set-imp').addEventListener('click', () => $('set-file').click());
-$('set-file').addEventListener('change', async () => {
-  const file = $('set-file').files[0];
+// Shared by the full backup card's own restore button and the step-1 "already
+// set up elsewhere" shortcut (see quickRestoreDetails in options.html) — same
+// file format, same confirm-before-overwrite rule, just a different passphrase
+// box and status line to read from and write to.
+async function restoreSettingsFile(file, passInputId, statusId) {
   if (!file) return;
-  $('set-file').value = '';
   try {
     const text = await file.text();
     let payload;
     try {
-      payload = await parseSettingsBackup(text, $('set-backup-pass').value);
+      payload = await parseSettingsBackup(text, $(passInputId).value);
     } catch (e) {
       // Say which of the two it is. "Import failed" for a locked file that
       // just needs its passphrase typed in the box above is not an answer.
       if (e.code === 'PASSPHRASE_REQUIRED') {
-        status('set-io-status', 'That backup is encrypted — put its passphrase in the box above and try again.', 'bad');
+        status(statusId, 'That backup is encrypted — put its passphrase in the box above and try again.', 'bad');
         return;
       }
       if (e.code === 'BAD_PASSPHRASE') {
-        status('set-io-status', 'That passphrase does not open this backup.', 'bad');
+        status(statusId, 'That passphrase does not open this backup.', 'bad');
         return;
       }
       throw e;
@@ -1172,14 +1173,28 @@ $('set-file').addEventListener('change', async () => {
       (s.syncName ? `\nSync name: ${s.syncName}` : '') +
       '\n\nThis replaces the settings on this page. Your saved tab lists and your bookmarks ' +
       'are not touched.' + missing);
-    if (!ok) { status('set-io-status', 'Nothing was changed.', ''); return; }
+    if (!ok) { status(statusId, 'Nothing was changed.', ''); return; }
 
     await chrome.storage.local.set(settingsToApply(payload));
-    flash('set-io-status', 'Settings restored. Reloading…', 'ok');
+    flash(statusId, 'Settings restored. Reloading…', 'ok');
     setTimeout(() => location.reload(), 1200);
   } catch (e) {
-    status('set-io-status', 'Restore failed: ' + e.message, 'bad');
+    status(statusId, 'Restore failed: ' + e.message, 'bad');
   }
+}
+
+$('set-imp').addEventListener('click', () => $('set-file').click());
+$('set-file').addEventListener('change', () => {
+  const file = $('set-file').files[0];
+  $('set-file').value = '';
+  restoreSettingsFile(file, 'set-backup-pass', 'set-io-status');
+});
+
+$('qr-restore').addEventListener('click', () => $('qr-file').click());
+$('qr-file').addEventListener('change', () => {
+  const file = $('qr-file').files[0];
+  $('qr-file').value = '';
+  restoreSettingsFile(file, 'qr-pass', 'qr-status');
 });
 
 // ---- the Windows desktop app -------------------------------------------------
@@ -1350,6 +1365,14 @@ function initWizard() {
     // would surface reading "Not set up yet" right under a page that just
     // finished setting it up.
     refreshBand();
+  });
+  $('wizardSaveBackup').addEventListener('click', () => {
+    // settingsIoCard is one of the SIDELINED_IDS — Finish's own click handler
+    // is what unhides it, so run that first rather than duplicating its logic
+    // here to reach a card that doesn't exist on screen yet.
+    $('wizardFinish').click();
+    $('settingsIoCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('set-backup-pass').focus();
   });
   // Switching providers can add or drop step 2 — re-render so "Step X of N"
   // and Back/Next still match what's actually left to click through.

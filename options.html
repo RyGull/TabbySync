@@ -87,6 +87,26 @@
       <p class="say">TabbySync keeps no copy of its own and runs no server. You pick the destination,
         and your data goes only there. <a href="privacy.html" target="_blank" rel="noopener">Read the privacy policy →</a></p>
 
+      <!-- A shortcut around the whole wizard for a second (or third) computer:
+           a "Save settings and credentials" file from another install already
+           has everything the steps below would ask for. Restoring here writes
+           it straight to storage and reloads — no need to walk through
+           providers, self-hosting or the password lock by hand again. -->
+      <details class="more quick-restore" id="quickRestoreDetails">
+        <summary>Already set up on another computer? Restore your backup instead</summary>
+        <div class="inner">
+          <p class="hint">From “Save settings and credentials” on that computer's settings page. Skips
+            everything below — paste in its passphrase, pick the file, and you're syncing.</p>
+          <label class="field" for="qr-pass">Passphrase</label>
+          <input type="password" id="qr-pass" placeholder="the backup's passphrase" spellcheck="false" autocomplete="off">
+          <div class="row">
+            <button class="btn primary" id="qr-restore" type="button">Restore from a file…</button>
+          </div>
+          <input type="file" id="qr-file" accept=".json,application/json">
+          <div class="status" id="qr-status"></div>
+        </div>
+      </details>
+
       <!-- The real control is the <select>; the cards below drive it. Keeping
            the select means every provider lookup, save path and test path in
            options.js reads exactly the same value it always did — the cards
@@ -575,8 +595,13 @@
           <p class="say">TabbySync is syncing. Take a look at the rest of this page whenever you like — a
             password lock if you skipped it, backups, and (on Windows) the Control Panel app for juggling
             more than one profile. None of it is required.</p>
+          <p class="say"><b>Setting up another computer next?</b> Save settings and credentials below
+            (under “Back up these settings”) makes one encrypted file with your access code, sync name and
+            password lock already in it — open it on step 1 of the next computer's setup and there's
+            nothing left to retype.</p>
           <div class="row">
             <button class="btn primary" id="wizardFinish" type="button">Show me the rest of the page</button>
+            <button class="btn outline" id="wizardSaveBackup" type="button">Save settings for my next computer</button>
           </div>
         </div>
         <div class="card-aside" aria-hidden="true">

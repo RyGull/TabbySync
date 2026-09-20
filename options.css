@@ -286,6 +286,13 @@ details.more[open] > summary::before { transform:rotate(90deg); }
 details.more .inner { border-top:1px solid var(--line); padding-top:10px; }
 details.more .inner h3:first-child { margin-top:6px; }
 
+/* The step-1 shortcut for a second computer: a box, not just a link, so it
+   reads as an alternate path rather than one more collapsed "more options". */
+.quick-restore { background:var(--field); border:1px solid var(--line); border-radius:9px;
+  padding:10px 13px; margin-bottom:16px; }
+.quick-restore > summary { margin:0; }
+.quick-restore .inner { margin-top:8px; }
+
 .mini { display:flex; align-items:center; gap:8px; font-size:14px; flex-wrap:wrap; margin:10px 0; }
 .mini label { font-weight:600; }
 .mini input[type=number] { width:82px; }
