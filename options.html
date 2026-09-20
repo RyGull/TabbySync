@@ -120,11 +120,62 @@
       <div class="row" id="guide-row" hidden>
         <button class="btn primary" id="guide-open" type="button">Show me how, step by step →</button>
       </div>
+    </section>
+
+    <!-- ================= 2. SELF-HOSTING (only for "my own website") =======
+         Comes before the connection fields below on purpose: for this
+         provider the access code and web address don't exist yet, so this
+         card creates them first. Nothing here needs anyone to jump back to
+         an earlier card — the fields card right after already picks up
+         what this one just made. -->
+    <section class="card selfhost" id="selfhostCard">
+      <h2><span class="step-n">2</span> Don't have that file yet?</h2>
+      <p class="say">TabbySync writes it for you, with a fresh access code already inside. Takes about
+        three minutes, and you only do it once.</p>
+
+      <ol class="howto">
+        <li>
+          <b>Download it.</b>
+          <div class="row">
+            <button class="btn primary" id="gen-download" type="button">Make my file →</button>
+          </div>
+        </li>
+        <li><b>Upload the whole <code>tabbysync</code> folder</b> to your web space — the same place your
+          website's pages live (on cPanel that's usually <code>public_html/</code>). Your web address must
+          start with <code>https://</code>.</li>
+        <li><b>Fill in the access code below</b> — it's already generated, just needs copying into the
+          next card.
+          <div class="row">
+            <button class="btn" id="gen-use" type="button">Fill in my access code</button>
+          </div>
+        </li>
+        <li>Then, on the next card: paste the web address you uploaded to, and click <b>“Save and
+          connect”</b>, then <b>“Check it works”</b>. Repeat the same address, code and group name on
+          your other computers.</li>
+      </ol>
+
+      <details class="more">
+        <summary>The access code TabbySync generated</summary>
+        <div class="inner">
+          <p class="hint">This is baked into the file you download. Generating a new one means uploading the
+            file again.</p>
+          <div class="row">
+            <input type="text" id="gen-token" spellcheck="false" autocomplete="off" readonly style="flex:1;min-width:220px">
+            <button class="btn" id="gen-regen" type="button">Make a new one</button>
+          </div>
+        </div>
+      </details>
+      <div class="status" id="gen-status"></div>
+    </section>
+
+    <!-- ================= CONNECT TO IT ================= -->
+    <section class="card server-fields" id="serverFieldsCard">
+      <h2><span class="step-n">2</span> Connect to it</h2>
 
       <div class="fields">
         <label class="field" for="srv-url" id="srv-url-label">Web address of the file you uploaded</label>
         <input type="url" id="srv-url" placeholder="https://example.com/tabbysync/tabbysync.php" spellcheck="false">
-        <p class="hint" id="srv-url-hint">It ends in <code>tabbysync.php</code> — the file from step 2 below.
+        <p class="hint" id="srv-url-hint">It ends in <code>tabbysync.php</code> — the file from step 2 above.
           It must start with <code>https://</code>: your access code is sent with every request, so a plain
           <code>http://</code> address would expose it to anyone on the network (<code>localhost</code> excepted).</p>
 
@@ -152,47 +203,6 @@
         <button class="btn" id="srv-test">Check it works</button>
       </div>
       <div class="status" id="srv-status"></div>
-    </section>
-
-    <!-- ================= 2. SELF-HOSTING (only for "my own website") ======= -->
-    <section class="card selfhost" id="selfhostCard">
-      <h2><span class="step-n">2</span> Don't have that file yet?</h2>
-      <p class="say">TabbySync writes it for you, with a fresh access code already inside. Takes about
-        three minutes, and you only do it once.</p>
-
-      <ol class="howto">
-        <li>
-          <b>Download it.</b>
-          <div class="row">
-            <button class="btn primary" id="gen-download" type="button">Make my file →</button>
-          </div>
-        </li>
-        <li><b>Upload the whole <code>tabbysync</code> folder</b> to your web space — the same place your
-          website's pages live (on cPanel that's usually <code>public_html/</code>). Your web address must
-          start with <code>https://</code>.</li>
-        <li><b>Come back up to step 1</b> and paste the address of the uploaded file, e.g.
-          <code>https://example.com/tabbysync/tabbysync.php</code>, then click the button below to fill in
-          the access code for you.
-          <div class="row">
-            <button class="btn" id="gen-use" type="button">Fill in my access code above</button>
-          </div>
-        </li>
-        <li><b>Click “Save and connect”</b>, then “Check it works”. Repeat the same address, code and group
-          name on your other computers.</li>
-      </ol>
-
-      <details class="more">
-        <summary>The access code TabbySync generated</summary>
-        <div class="inner">
-          <p class="hint">This is baked into the file you download. Generating a new one means uploading the
-            file again.</p>
-          <div class="row">
-            <input type="text" id="gen-token" spellcheck="false" autocomplete="off" readonly style="flex:1;min-width:220px">
-            <button class="btn" id="gen-regen" type="button">Make a new one</button>
-          </div>
-        </div>
-      </details>
-      <div class="status" id="gen-status"></div>
     </section>
 
     <!-- ================= 3. PASSWORD LOCK ================= -->

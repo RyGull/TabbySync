@@ -777,7 +777,7 @@ $('gen-use').addEventListener('click', async () => {
   const t = $('gen-token').value.trim();
   if (!t) { flash('gen-status', 'Generate a token first.', 'bad'); return; }
   $('srv-token').value = t;
-  flash('gen-status', 'Token applied above. Now set the Server URL + sync name and click “Save & grant access”.', 'ok');
+  flash('gen-status', 'Access code filled in. On the next card, add the web address you uploaded to and click “Save and connect”.', 'ok');
 });
 
 // ---------------------------------------------------------------------------
@@ -1224,7 +1224,7 @@ function initWizard() {
   // dedup ("don't save it twice") and "Clean up duplicates" never catch it.
   history.replaceState(null, '', location.pathname);
 
-  const STEP_IDS = ['serverCard', 'selfhostCard', 'encCard', 'whatCard'];
+  const STEP_IDS = ['serverCard', 'selfhostCard', 'serverFieldsCard', 'encCard', 'whatCard'];
   // Real settings, not part of any step — out of the way until Finish so a
   // first-time setup isn't nine cards deep before it needs to be.
   const SIDELINED_IDS = ['statusBand', 'brakeCard', 'dangerCard', 'settingsIoCard', 'desktopCard'];
@@ -1310,7 +1310,7 @@ function initWizard() {
 
   async function goNext() {
     const id = visibleSteps()[stepIndex];
-    if (id === 'serverCard') {
+    if (id === 'serverFieldsCard') {
       $('srv-save').click();
       if (!await waitForOutcome('srv-status')) return; // error is already shown in place
     } else if (id === 'encCard' && $('enc-switch').checked && $('enc-pass').value && $('enc-clear').hidden) {
