@@ -6,6 +6,77 @@ can see it belongs in this file.
 
 Versions before 1.3.0 predate this changelog; their history is in the git log.
 
+## 1.6.18 — 2026-09-20
+
+- **Gave the popup's "Sync Tabs" button the tab card's orange border**, so it
+  reads as one of the three grouped tab actions (alongside "Save Tabs" and
+  "My Tabs") instead of a plain default button that happened to be sitting
+  next to them. Kept its default text color rather than also taking
+  accent's orange text, so it stays visually distinct from "My Tabs" —
+  grouped, not duplicated.
+
+## 1.6.17 — 2026-09-20
+
+- **Surfaced the encrypted settings-backup feature during setup, where it was
+  previously unreachable.** `shared/settings-backup.js` already exported
+  every credential (access code, sync name, password-lock passphrase) sealed
+  with a passphrase, and could restore them in one step — but its whole card
+  is in the wizard's `SIDELINED_IDS`, hidden until Finish, so there was no
+  way to use it while actually setting up a second computer. Added two entry
+  points around the existing logic instead of a second implementation of it:
+  step 1 now has a "Restore your backup instead" box with its own passphrase
+  field and file picker (`restoreSettingsFile()` in `options.js`, shared with
+  the original restore button), and the final "You're all set" step explains
+  the feature and adds a button that finishes the wizard, scrolls to the
+  backup card, and focuses its passphrase field.
+
+## 1.6.16 — 2026-09-20
+
+- Renamed JSONBin's "Name for this computer" field to "Profile Name", to
+  read consistently with the same label already used for the custom/GitHub
+  Gist field. It remains a different, purely cosmetic per-computer field
+  under the hood — JSONBin has no named profile to identify, since it keys
+  everything off the API key alone.
+- Matched its placeholder text with the other Profile Name field's style:
+  both now show `e.g. Home, Work`, replacing "e.g. Home laptop, Work" and a
+  bare "work".
+
+## 1.6.15 — 2026-09-20
+
+- **Fixed the browser's current tabs being pushed to a newly configured sync
+  destination before Tabs sync was ever turned on, or before a password lock
+  was set.** "Save and connect" unconditionally sent a `tabbysync-sync`
+  message; its handler (`tabs/background-core.js`) calls `syncNow(true)`,
+  and `force=true` skips the `settings.syncEnabled` check entirely — unlike
+  bookmarks, whose own `isConfigured()` already requires `bookmarks.enabled`
+  before a sync can run. That meant clicking "Save and connect" could sync
+  your open tabs immediately, ahead of the "What should it keep in sync?"
+  step that turns Tabs on, and ahead of the password-lock step before it.
+  Gated both nudges on the engine's own enabled flag in `options.js`, the
+  same pattern `applyPassphrase()` already used correctly elsewhere on the
+  same page.
+- Renamed "Name for this group of computers" to "Profile Name" (custom /
+  GitHub Gist providers).
+- Step 2's four self-hosting actions (make the file, upload it, fill in the
+  code, save) now show as numbered orange circles instead of a plain
+  browser "1." marker, so they read as steps to follow rather than prose.
+
+## 1.6.14 — 2026-09-20
+
+- **Fixed the guided setup asking for the self-hosted server's web address
+  and access code before the file that creates them existed.** Step 1
+  (`serverCard`) required a successful "Save and connect" — access code
+  included — before "Next" would advance, but that code is only generated in
+  step 2 (`selfhostCard`), whose own instructions said to scroll back up to
+  step 1 once you had it. In wizard mode this was worse than an
+  inconvenience: step 1 could not be passed at all until you already had
+  values only step 2 produces. Restructured the flow so `selfhostCard`
+  (generate the file, get its access code) now runs before a new
+  `serverFieldsCard` (the URL/token/name fields and Save/Connect) — choosing
+  a destination always advances immediately, and by the time Save is
+  required, the access code is already filled in and only the uploaded URL
+  is left to add. No step requires going backward.
+
 ## 1.6.13 — 2026-09-19
 
 - **Duplicate detection missed the extension's own Options page** — two tabs
