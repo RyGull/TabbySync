@@ -187,6 +187,11 @@
     /* secondary action, highlighted with the tab card's orange instead of filled */
     .card.tab button.accent { color:var(--tab); border-color:var(--tab); }
     .card.tab button.accent:hover:not(:disabled) { background:var(--tab-soft); }
+    /* Sync Tabs: same orange border as the group, but the default text color
+       rather than accent's — reads as one of the three grouped actions
+       without looking like a second "My Tabs". */
+    .card.tab button.outline { border-color:var(--tab); }
+    .card.tab button.outline:hover:not(:disabled) { background:var(--tab-soft); }
     .grow { flex:1; }
 
     /* profile/encryption row: a box on the left (small centered "Profile"
@@ -354,7 +359,7 @@
           <div class="acts">
             <button class="primary grow" id="stashAllTabs">Save Tabs</button>
             <button class="accent" id="tabOpen">My Tabs</button>
-            <button id="tabSync">Sync Tabs</button>
+            <button class="outline" id="tabSync">Sync Tabs</button>
           </div>
         </div>
       </section>
